@@ -198,7 +198,27 @@ export function groupDataByProductionDays(data: ProductionData[]): DailyGroupedD
   const result: DailyGroupedData[] = [];
 
   grouped.forEach((dayData, date) => {
+    const sortedDayData = [...dayData].sort(
+      (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+    );
+
     const stats = calculateDailyStats(dayData);
+
+    // Логируем детали для каждого дня
+    console.log(`📊 День ${date}:`, {
+      записей: dayData.length,
+      первая_запись: {
+        время: sortedDayData[0]?.datetime,
+        значение: sortedDayData[0]?.value,
+      },
+      последняя_запись: {
+        время: sortedDayData[sortedDayData.length - 1]?.datetime,
+        значение: sortedDayData[sortedDayData.length - 1]?.value,
+      },
+      производство: stats.totalProduction,
+      средняя_скорость: stats.averageSpeed.toFixed(2),
+    });
+
     result.push({ date, data: dayData, stats });
   });
 
