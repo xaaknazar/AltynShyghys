@@ -178,15 +178,20 @@ export function groupDataByProductionDays(data: ProductionData[]): DailyGroupedD
 
   data.forEach((item) => {
     const itemDate = new Date(item.datetime);
-    const localHour = (itemDate.getUTCHours() + TIMEZONE_OFFSET) % 24;
 
-    // Если до 20:00 местного времени, относим к предыдущему дню
-    const dayDate = new Date(itemDate);
+    // Конвертируем в местное время
+    const localTime = new Date(itemDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const localHour = localTime.getUTCHours();
+    const localDate = new Date(localTime);
+
+    // Если до 20:00 местного времени, это относится к производственному дню,
+    // который начался вчера в 20:00
     if (localHour < 20) {
-      dayDate.setUTCDate(dayDate.getUTCDate() - 1);
+      localDate.setUTCDate(localDate.getUTCDate() - 1);
     }
 
-    const dayKey = format(dayDate, 'yyyy-MM-dd');
+    // Форматируем местную дату
+    const dayKey = format(localDate, 'yyyy-MM-dd');
 
     if (!grouped.has(dayKey)) {
       grouped.set(dayKey, []);
@@ -209,10 +214,12 @@ export function groupDataByProductionDays(data: ProductionData[]): DailyGroupedD
       записей: dayData.length,
       первая_запись: {
         время: sortedDayData[0]?.datetime,
+        время_местное: new Date(new Date(sortedDayData[0]?.datetime).getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
         значение: sortedDayData[0]?.value,
       },
       последняя_запись: {
         время: sortedDayData[sortedDayData.length - 1]?.datetime,
+        время_местное: new Date(new Date(sortedDayData[sortedDayData.length - 1]?.datetime).getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
         значение: sortedDayData[sortedDayData.length - 1]?.value,
       },
       производство: stats.totalProduction,
