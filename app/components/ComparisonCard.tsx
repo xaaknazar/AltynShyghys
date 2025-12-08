@@ -33,7 +33,7 @@ export default function ComparisonCard({ currentTotal, previousTotal, currentAvg
   return (
     <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
       <h3 className="text-lg font-display text-gray-400 tracking-wider mb-6">
-        СРАВНЕНИЕ СУТОК
+        СРАВНЕНИЕ ПОСЛЕДНИХ ДВУХ СУТОК
       </h3>
 
       <div className="space-y-6">
@@ -41,13 +41,13 @@ export default function ComparisonCard({ currentTotal, previousTotal, currentAvg
           <div className="text-sm text-gray-400 mb-3">Общий объем производства</div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-xs text-gray-500 mb-1">Сегодня</div>
+              <div className="text-xs text-gray-500 mb-1">Последние сутки</div>
               <div className="text-2xl font-display font-bold text-industrial-accent">
                 {formatNumber(currentTotal, 1)} <span className="text-sm text-gray-500">т</span>
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">Вчера</div>
+              <div className="text-xs text-gray-500 mb-1">Предыдущие сутки</div>
               <div className="text-2xl font-display font-bold text-gray-400">
                 {formatNumber(previousTotal, 1)} <span className="text-sm text-gray-500">т</span>
               </div>
@@ -63,13 +63,13 @@ export default function ComparisonCard({ currentTotal, previousTotal, currentAvg
           <div className="text-sm text-gray-400 mb-3">Средняя скорость</div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-xs text-gray-500 mb-1">Сегодня</div>
+              <div className="text-xs text-gray-500 mb-1">Последние сутки</div>
               <div className="text-2xl font-display font-bold text-blue-400">
                 {formatNumber(currentAvg, 1)} <span className="text-sm text-gray-500">т/ч</span>
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">Вчера</div>
+              <div className="text-xs text-gray-500 mb-1">Предыдущие сутки</div>
               <div className="text-2xl font-display font-bold text-gray-400">
                 {formatNumber(previousAvg, 1)} <span className="text-sm text-gray-500">т/ч</span>
               </div>
@@ -96,9 +96,9 @@ export default function ComparisonCard({ currentTotal, previousTotal, currentAvg
             </div>
             <div>
               <div className="text-sm font-mono text-gray-300">
-                {totalDiffPercent > 5 ? 'Производительность выше вчерашней' :
-                 totalDiffPercent < -5 ? 'Производительность ниже вчерашней' :
-                 'Производительность на уровне вчерашней'}
+                {totalDiffPercent > 5 ? 'Производительность выше предыдущих суток' :
+                 totalDiffPercent < -5 ? 'Производительность ниже предыдущих суток' :
+                 'Производительность на уровне предыдущих суток'}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 {totalDiffPercent > 5 ? 'Отличная работа! Продолжайте в том же духе.' :

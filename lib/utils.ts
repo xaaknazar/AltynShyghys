@@ -1,4 +1,4 @@
-import { startOfDay, endOfDay, subDays, parseISO } from 'date-fns';
+import { startOfDay, endOfDay, subDays, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, format } from 'date-fns';
 
 export interface ProductionData {
   _id: string;
@@ -123,4 +123,80 @@ export function formatNumber(num: number, decimals: number = 1): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
+}
+
+/**
+ * Получить начало и конец месяца (производственные сутки 08:00 - 08:00) в UTC
+ */
+export function getProductionMonthBounds(date: Date = new Date()) {
+  // Текущее время в UTC
+  const nowUTC = new Date(date);
+
+  // Преобразуем в местное время (UTC + offset)
+  const localYear = nowUTC.getUTCFullYear();
+  const localMonth = nowUTC.getUTCMonth();
+
+  // Начало месяца в местном времени
+  const monthStartLocal = new Date(Date.UTC(localYear, localMonth, 1));
+
+  // Устанавливаем 08:00 местного времени = (8 - offset) UTC
+  const utcHourForStart = (8 - TIMEZONE_OFFSET + 24) % 24;
+  monthStartLocal.setUTCHours(utcHourForStart, 0, 0, 0);
+
+  // Конец месяца - последний день месяца в 08:00
+  const monthEndLocal = new Date(Date.UTC(localYear, localMonth + 1, 1));
+  monthEndLocal.setUTCHours(utcHourForStart, 0, 0, 0);
+
+  console.log('📅 Production month (local 08:00-08:00):', {
+    startUTC: monthStartLocal.toISOString(),
+    endUTC: monthEndLocal.toISOString(),
+  });
+
+  return { start: monthStartLocal, end: monthEndLocal };
+}
+
+/**
+ * Группировать данные по суткам (08:00 - 08:00)
+ */
+export interface DailyGroupedData {
+  date: string; // YYYY-MM-DD
+  data: ProductionData[];
+  stats: DailyStats;
+}
+
+export function groupDataByProductionDays(data: ProductionData[]): DailyGroupedData[] {
+  if (!data || data.length === 0) return [];
+
+  const grouped = new Map<string, ProductionData[]>();
+
+  data.forEach((item) => {
+    const itemDate = new Date(item.datetime);
+    const localHour = (itemDate.getUTCHours() + TIMEZONE_OFFSET) % 24;
+
+    // Если до 08:00 местного времени, относим к предыдущему дню
+    const dayDate = new Date(itemDate);
+    if (localHour < 8) {
+      dayDate.setUTCDate(dayDate.getUTCDate() - 1);
+    }
+
+    const dayKey = format(dayDate, 'yyyy-MM-dd');
+
+    if (!grouped.has(dayKey)) {
+      grouped.set(dayKey, []);
+    }
+    grouped.get(dayKey)!.push(item);
+  });
+
+  // Преобразуем в массив и рассчитываем статистику для каждого дня
+  const result: DailyGroupedData[] = [];
+
+  grouped.forEach((dayData, date) => {
+    const stats = calculateDailyStats(dayData);
+    result.push({ date, data: dayData, stats });
+  });
+
+  // Сортируем по дате
+  result.sort((a, b) => a.date.localeCompare(b.date));
+
+  return result;
 }

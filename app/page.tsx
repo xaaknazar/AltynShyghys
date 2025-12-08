@@ -7,20 +7,29 @@ import ProductionChart from '@/app/components/ProductionChart';
 import ComparisonCard from '@/app/components/ComparisonCard';
 import LoadingState from '@/app/components/LoadingState';
 import ErrorState from '@/app/components/ErrorState';
-import { ProductionData, calculateDailyStats } from '@/lib/utils';
+import { ProductionData, calculateDailyStats, DailyGroupedData } from '@/lib/utils';
 
-interface ApiResponse {
+interface LatestDataResponse {
+  success: boolean;
+  data: ProductionData;
+}
+
+interface MonthlyApiResponse {
   success: boolean;
   data: ProductionData[];
+  dailyGrouped: DailyGroupedData[];
   period: {
     start: string;
     end: string;
   };
+  count: number;
+  daysCount: number;
 }
 
 export default function HomePage() {
-  const [currentData, setCurrentData] = useState<ProductionData[]>([]);
-  const [previousData, setPreviousData] = useState<ProductionData[]>([]);
+  const [latestData, setLatestData] = useState<ProductionData | null>(null);
+  const [monthlyData, setMonthlyData] = useState<ProductionData[]>([]);
+  const [dailyGrouped, setDailyGrouped] = useState<DailyGroupedData[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>(new Date().toISOString());
   const [error, setError] = useState<string | null>(null);
@@ -28,16 +37,19 @@ export default function HomePage() {
   const fetchData = async () => {
     try {
       setError(null);
-      
-      const currentResponse = await fetch('/api/production/current');
-      const currentResult: ApiResponse = await currentResponse.json();
-      
-      const previousResponse = await fetch('/api/production/previous');
-      const previousResult: ApiResponse = await previousResponse.json();
 
-      if (currentResult.success && previousResult.success) {
-        setCurrentData(currentResult.data);
-        setPreviousData(previousResult.data);
+      // Получаем последнюю запись для текущей скорости
+      const latestResponse = await fetch('/api/production/latest');
+      const latestResult: LatestDataResponse = await latestResponse.json();
+
+      // Получаем месячные данные
+      const monthlyResponse = await fetch('/api/production/monthly');
+      const monthlyResult: MonthlyApiResponse = await monthlyResponse.json();
+
+      if (latestResult.success && monthlyResult.success) {
+        setLatestData(latestResult.data);
+        setMonthlyData(monthlyResult.data);
+        setDailyGrouped(monthlyResult.dailyGrouped);
         setLastUpdate(new Date().toISOString());
       } else {
         setError('Ошибка при загрузке данных');
@@ -52,12 +64,14 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchData();
+    // Обновление каждые 5 минут (300000 мс)
     const interval = setInterval(fetchData, 300000);
     return () => clearInterval(interval);
   }, []);
 
-  const currentStats = calculateDailyStats(currentData);
-  const previousStats = calculateDailyStats(previousData);
+  // Текущие сутки - последний день в месячных данных
+  const currentDayData = dailyGrouped.length > 0 ? dailyGrouped[dailyGrouped.length - 1] : null;
+  const currentStats = currentDayData ? currentDayData.stats : calculateDailyStats([]);
 
   if (loading) {
     return <LoadingState />;
@@ -67,10 +81,9 @@ export default function HomePage() {
     return <ErrorState message={error} onRetry={fetchData} />;
   }
 
-  const latestData = currentData[currentData.length - 1];
-  const currentPeriod = currentData.length > 0 ? {
-    start: currentData[0].datetime,
-    end: currentData[currentData.length - 1].datetime,
+  const currentPeriod = currentDayData ? {
+    start: currentDayData.data[0]?.datetime,
+    end: currentDayData.data[currentDayData.data.length - 1]?.datetime,
   } : null;
 
   return (
@@ -80,13 +93,13 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-display font-bold text-industrial-accent">
-                МАСЛОЗАВОД
+                МАСЛОЗАВОД ALTYN SHYGHYS
               </h1>
               <p className="text-sm text-gray-400 font-mono mt-1">
                 Производственная панель мониторинга
               </p>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <div className="text-xs text-gray-500 font-mono">Последнее обновление</div>
@@ -119,13 +132,17 @@ export default function HomePage() {
         <div className="space-y-8">
           {latestData && (
             <SpeedIndicator
-              currentSpeed={currentStats.currentSpeed}
-              status={currentStats.status}
+              currentSpeed={latestData.speed}
+              status={
+                latestData.speed >= 45 ? 'normal' :
+                latestData.speed >= 40 ? 'warning' :
+                'danger'
+              }
               lastUpdate={latestData.datetime}
             />
           )}
 
-          {currentPeriod && (
+          {currentPeriod && currentDayData && (
             <DailyStatsCard
               totalProduction={currentStats.totalProduction}
               averageSpeed={currentStats.averageSpeed}
@@ -135,28 +152,66 @@ export default function HomePage() {
             />
           )}
 
+          {/* Отображение данных за месяц по суткам */}
+          <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
+            <h3 className="text-lg font-display text-gray-400 tracking-wider mb-6">
+              ПРОИЗВОДСТВО ЗА МЕСЯЦ ПО СУТКАМ
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dailyGrouped.map((day) => (
+                <div
+                  key={day.date}
+                  className="bg-industrial-dark/50 rounded-lg p-4 border border-industrial-blue/20 hover:border-industrial-accent/50 transition-colors"
+                >
+                  <div className="text-sm text-gray-400 mb-2 font-mono">
+                    {new Date(day.date).toLocaleDateString('ru-RU', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })}
+                  </div>
+                  <div className="text-2xl font-display font-bold text-industrial-accent mb-1">
+                    {day.stats.totalProduction.toFixed(1)} т
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Средняя: {day.stats.averageSpeed.toFixed(1)} т/ч
+                  </div>
+                  <div className={`text-xs mt-2 ${
+                    day.stats.progress >= 100 ? 'text-industrial-success' :
+                    day.stats.progress >= 80 ? 'text-industrial-warning' :
+                    'text-industrial-danger'
+                  }`}>
+                    План: {day.stats.progress.toFixed(0)}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Графики для последних двух суток */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {currentData.length > 0 && (
+            {dailyGrouped.length > 0 && (
               <ProductionChart
-                data={currentData}
-                title="ГРАФИК ТЕКУЩИХ СУТОК"
+                data={dailyGrouped[dailyGrouped.length - 1].data}
+                title={`ГРАФИК ${dailyGrouped[dailyGrouped.length - 1].date}`}
               />
             )}
 
-            {previousData.length > 0 && (
+            {dailyGrouped.length > 1 && (
               <ProductionChart
-                data={previousData}
-                title="ГРАФИК ПРЕДЫДУЩИХ СУТОК"
+                data={dailyGrouped[dailyGrouped.length - 2].data}
+                title={`ГРАФИК ${dailyGrouped[dailyGrouped.length - 2].date}`}
               />
             )}
           </div>
 
-          {currentData.length > 0 && previousData.length > 0 && (
+          {/* Сравнение суток */}
+          {dailyGrouped.length > 1 && (
             <ComparisonCard
-              currentTotal={currentStats.totalProduction}
-              previousTotal={previousStats.totalProduction}
-              currentAvg={currentStats.averageSpeed}
-              previousAvg={previousStats.averageSpeed}
+              currentTotal={dailyGrouped[dailyGrouped.length - 1].stats.totalProduction}
+              previousTotal={dailyGrouped[dailyGrouped.length - 2].stats.totalProduction}
+              currentAvg={dailyGrouped[dailyGrouped.length - 1].stats.averageSpeed}
+              previousAvg={dailyGrouped[dailyGrouped.length - 2].stats.averageSpeed}
             />
           )}
         </div>
@@ -166,7 +221,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
             <div className="font-mono">
-              © 2025 Маслозавод. Система мониторинга производства.
+              © 2025 Маслозавод Altyn Shyghys. Система мониторинга производства.
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-industrial-success animate-pulse" />
