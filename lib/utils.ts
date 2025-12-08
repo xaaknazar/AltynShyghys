@@ -98,7 +98,14 @@ export function calculateDailyStats(data: ProductionData[]): DailyStats {
   const lastValue = sortedData[sortedData.length - 1].value;
   const totalProduction = lastValue - firstValue;
 
-  const averageSpeed = data.reduce((sum, d) => sum + d.speed, 0) / data.length;
+  // Рассчитываем среднюю скорость на основе общего производства и времени
+  const firstTime = new Date(sortedData[0].datetime).getTime();
+  const lastTime = new Date(sortedData[sortedData.length - 1].datetime).getTime();
+  const hoursElapsed = (lastTime - firstTime) / (1000 * 60 * 60); // миллисекунды в часы
+
+  // Средняя скорость = общее производство / время в часах
+  const averageSpeed = hoursElapsed > 0 ? totalProduction / hoursElapsed : 0;
+
   const currentSpeed = sortedData[sortedData.length - 1].speed;
   const progress = (totalProduction / TARGETS.daily) * 100;
 

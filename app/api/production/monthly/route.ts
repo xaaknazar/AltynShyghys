@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { getProductionMonthBounds, groupDataByProductionDays } from '@/lib/utils';
 
+// Отключаем кеширование для получения свежих данных
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     const { db } = await connectToDatabase();
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
     // Группируем данные по суткам
     const dailyGrouped = groupDataByProductionDays(formattedData);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: formattedData,
       dailyGrouped: dailyGrouped,
@@ -57,6 +61,13 @@ export async function GET(request: NextRequest) {
       count: formattedData.length,
       daysCount: dailyGrouped.length,
     });
+
+    // Отключаем кеширование на клиенте
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
   } catch (error: any) {
     console.error('❌ Error fetching monthly data:', error);
     return NextResponse.json(

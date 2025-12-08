@@ -39,11 +39,23 @@ export default function HomePage() {
       setError(null);
 
       // Получаем последнюю запись для текущей скорости
-      const latestResponse = await fetch('/api/production/latest');
+      const latestResponse = await fetch('/api/production/latest', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      });
       const latestResult: LatestDataResponse = await latestResponse.json();
 
       // Получаем месячные данные
-      const monthlyResponse = await fetch('/api/production/monthly');
+      const monthlyResponse = await fetch('/api/production/monthly', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      });
       const monthlyResult: MonthlyApiResponse = await monthlyResponse.json();
 
       if (latestResult.success && monthlyResult.success) {
@@ -153,36 +165,86 @@ export default function HomePage() {
             />
           )}
 
+          {/* Общий итог за месяц */}
+          {dailyGrouped.length > 0 && (
+            <div className="bg-gradient-to-br from-industrial-darker/90 to-industrial-dark/90 backdrop-blur-sm rounded-2xl border-2 border-industrial-accent/40 p-8">
+              <h3 className="text-2xl font-display text-industrial-accent tracking-wider mb-6">
+                ИТОГИ ЗА МЕСЯЦ
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-sm text-gray-400 mb-2">Общее производство</div>
+                  <div className="text-5xl font-display font-bold text-industrial-accent">
+                    {dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0).toFixed(1)}
+                    <span className="text-2xl ml-2 text-gray-500">т</span>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-gray-400 mb-2">Рабочих дней</div>
+                  <div className="text-5xl font-display font-bold text-blue-400">
+                    {dailyGrouped.length}
+                    <span className="text-2xl ml-2 text-gray-500">дн</span>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-gray-400 mb-2">Среднее за сутки</div>
+                  <div className="text-5xl font-display font-bold text-industrial-success">
+                    {(dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0) / dailyGrouped.length).toFixed(1)}
+                    <span className="text-2xl ml-2 text-gray-500">т</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Отображение данных за месяц по суткам */}
           <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
             <h3 className="text-lg font-display text-gray-400 tracking-wider mb-6">
-              ПРОИЗВОДСТВО ЗА МЕСЯЦ ПО СУТКАМ
+              ДЕТАЛИЗАЦИЯ ПО СУТКАМ
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {dailyGrouped.map((day) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {dailyGrouped.map((day, index) => (
                 <div
                   key={day.date}
-                  className="bg-industrial-dark/50 rounded-lg p-4 border border-industrial-blue/20 hover:border-industrial-accent/50 transition-colors"
+                  className={`bg-industrial-dark/50 rounded-lg p-3 border transition-all ${
+                    index === dailyGrouped.length - 1
+                      ? 'border-industrial-accent/70 shadow-lg shadow-industrial-accent/20'
+                      : 'border-industrial-blue/20 hover:border-industrial-accent/50'
+                  }`}
                 >
-                  <div className="text-sm text-gray-400 mb-2 font-mono">
-                    {new Date(day.date).toLocaleDateString('ru-RU', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs text-gray-400 font-mono">
+                      {new Date(day.date).toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                      })}
+                    </div>
+                    {index === dailyGrouped.length - 1 && (
+                      <span className="text-xs text-industrial-accent font-bold">СЕГОДНЯ</span>
+                    )}
                   </div>
-                  <div className="text-2xl font-display font-bold text-industrial-accent mb-1">
-                    {day.stats.totalProduction.toFixed(1)} т
+                  <div className="text-xl font-display font-bold text-industrial-accent mb-1">
+                    {day.stats.totalProduction.toFixed(0)} т
                   </div>
-                  <div className="text-xs text-gray-500">
-                    Средняя: {day.stats.averageSpeed.toFixed(1)} т/ч
+                  <div className="text-xs text-gray-500 mb-1">
+                    ⌀ {day.stats.averageSpeed.toFixed(1)} т/ч
                   </div>
-                  <div className={`text-xs mt-2 ${
+                  <div className="w-full bg-industrial-dark rounded-full h-1.5 mb-1">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${
+                        day.stats.progress >= 100 ? 'bg-industrial-success' :
+                        day.stats.progress >= 80 ? 'bg-industrial-warning' :
+                        'bg-industrial-danger'
+                      }`}
+                      style={{ width: `${Math.min(day.stats.progress, 100)}%` }}
+                    />
+                  </div>
+                  <div className={`text-xs font-mono ${
                     day.stats.progress >= 100 ? 'text-industrial-success' :
                     day.stats.progress >= 80 ? 'text-industrial-warning' :
                     'text-industrial-danger'
                   }`}>
-                    План: {day.stats.progress.toFixed(0)}%
+                    {day.stats.progress.toFixed(0)}%
                   </div>
                 </div>
               ))}
