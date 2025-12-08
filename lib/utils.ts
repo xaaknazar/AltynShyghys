@@ -94,9 +94,8 @@ export function calculateDailyStats(data: ProductionData[]): DailyStats {
     (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
   );
 
-  const firstValue = sortedData[0].value;
-  const lastValue = sortedData[sortedData.length - 1].value;
-  const totalProduction = lastValue - firstValue;
+  // Считаем производство как сумму всех difference за период
+  const totalProduction = data.reduce((sum, d) => sum + (d.difference || 0), 0);
 
   // Рассчитываем среднюю скорость на основе общего производства и времени
   const firstTime = new Date(sortedData[0].datetime).getTime();
