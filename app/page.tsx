@@ -50,7 +50,8 @@ export default function HomePage() {
         setLatestData(latestResult.data);
         setMonthlyData(monthlyResult.data);
         setDailyGrouped(monthlyResult.dailyGrouped);
-        setLastUpdate(new Date().toISOString());
+        // Используем время последней записи из БД как время обновления
+        setLastUpdate(latestResult.data.datetime);
       } else {
         setError('Ошибка при загрузке данных');
       }
@@ -93,7 +94,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-display font-bold text-industrial-accent">
-                МАСЛОЗАВОД ALTYN SHYGHYS
+                МАСЛОЗАВОД «АЛТЫН ШЫҒЫС»
               </h1>
               <p className="text-sm text-gray-400 font-mono mt-1">
                 Производственная панель мониторинга
@@ -221,7 +222,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
             <div className="font-mono">
-              © 2025 Маслозавод Altyn Shyghys. Система мониторинга производства.
+              © 2025 Маслозавод «Алтын Шығыс». Система мониторинга производства.
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-industrial-success animate-pulse" />
