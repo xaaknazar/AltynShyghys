@@ -9,13 +9,13 @@ module.exports = {
     extend: {
       colors: {
         industrial: {
-          dark: '#0a0e1a',
-          darker: '#050810',
-          blue: '#1e3a5f',
-          accent: '#FFC107',
-          success: '#00ff88',
-          warning: '#ffb800',
-          danger: '#ff3366',
+          dark: '#f8f9fa',
+          darker: '#ffffff',
+          blue: '#e3e9f0',
+          accent: '#d4a017',
+          success: '#28a745',
+          warning: '#ffc107',
+          danger: '#dc3545',
         },
       },
       fontFamily: {

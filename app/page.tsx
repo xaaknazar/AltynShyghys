@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import SpeedIndicator from '@/app/components/SpeedIndicator';
 import DailyStatsCard from '@/app/components/DailyStatsCard';
 import CurrentDayChart from '@/app/components/CurrentDayChart';
 import DayDetailModal from '@/app/components/DayDetailModal';
@@ -188,18 +187,6 @@ export default function HomePage() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-8">
-          {latestData && (
-            <SpeedIndicator
-              currentSpeed={latestData.speed}
-              status={
-                latestData.speed >= 45 ? 'normal' :
-                latestData.speed >= 40 ? 'warning' :
-                'danger'
-              }
-              lastUpdate={latestData.datetime}
-            />
-          )}
-
           {currentPeriod && currentDayData && (
             <DailyStatsCard
               totalProduction={currentStats.totalProduction}
