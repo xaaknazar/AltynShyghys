@@ -16,8 +16,8 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white border border-gray-300 rounded-xl p-6 shadow-sm">
-        <h3 className="text-lg font-display text-gray-700 tracking-wider mb-6">
+      <div className="bg-industrial-darker/80 backdrop-blur-sm border border-industrial-blue/30 rounded-xl p-6">
+        <h3 className="text-lg font-display text-gray-400 tracking-wider mb-6">
           ГРАФИК ТЕКУЩИХ СУТОК (30-МИНУТНЫЕ ИНТЕРВАЛЫ)
         </h3>
         <div className="text-center text-gray-500 py-8">
@@ -38,17 +38,17 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
   });
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-      <h3 className="text-base font-display text-slate-700 tracking-wide mb-6 font-semibold">
+    <div className="bg-industrial-darker/80 backdrop-blur-sm border border-industrial-blue/30 rounded-xl p-6">
+      <h3 className="text-lg font-display text-gray-400 tracking-wider mb-6">
         ГРАФИК ТЕКУЩИХ СУТОК (30-МИНУТНЫЕ ИНТЕРВАЛЫ)
       </h3>
 
       {/* График */}
-      <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-100">
+      <div className="relative bg-industrial-dark/30 rounded-lg p-6 border border-industrial-blue/20">
         {/* Линия нормы */}
         <div className="absolute left-0 right-0 flex items-center" style={{ bottom: `${(TARGETS.hourly / maxSpeed) * 100}%` }}>
-          <div className="w-full h-px bg-amber-300 border-t border-dashed border-amber-400"></div>
-          <div className="absolute -right-2 -top-3 text-xs text-amber-700 font-mono font-semibold bg-white px-2 py-0.5 rounded border border-amber-200">
+          <div className="w-full h-px bg-industrial-warning/50 border-t border-dashed border-industrial-warning/70"></div>
+          <div className="absolute -right-2 -top-3 text-xs text-industrial-warning font-mono bg-industrial-darker px-2 py-0.5 rounded border border-industrial-warning/40">
             {TARGETS.hourly} т/ч
           </div>
         </div>
@@ -66,25 +66,25 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
                 <div
                   className={`w-full rounded-t transition-all duration-200 ${
                     isAboveNorm
-                      ? 'bg-emerald-500 hover:bg-emerald-600'
+                      ? 'bg-industrial-success hover:brightness-110'
                       : isNearNorm
-                      ? 'bg-amber-400 hover:bg-amber-500'
-                      : 'bg-rose-400 hover:bg-rose-500'
+                      ? 'bg-industrial-warning hover:brightness-110'
+                      : 'bg-industrial-danger hover:brightness-110'
                   }`}
                   style={{ height: `${heightPercent}%`, minHeight: '8px' }}
                 ></div>
 
                 {/* Всплывающая подсказка */}
                 <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
-                  <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg whitespace-nowrap">
-                    <div className="text-xs text-slate-500 mb-1 font-mono font-semibold">{interval.time}</div>
-                    <div className="text-base font-bold text-amber-700">
+                  <div className="bg-industrial-darker border border-industrial-blue/50 rounded-lg p-3 shadow-xl whitespace-nowrap">
+                    <div className="text-xs text-gray-400 mb-1 font-mono">{interval.time}</div>
+                    <div className="text-base font-bold text-industrial-accent">
                       {formatNumber(interval.averageSpeed, 1)} т/ч
                     </div>
-                    <div className="text-xs text-slate-600 mt-1.5">
+                    <div className="text-xs text-gray-500 mt-1.5">
                       Произведено: {formatNumber(interval.totalProduction, 1)} т
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-gray-600">
                       Записей: {interval.recordCount}
                     </div>
                   </div>
@@ -92,7 +92,7 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
 
                 {/* Метка времени (каждый 4-й интервал) */}
                 {index % 4 === 0 && (
-                  <div className="text-xs text-slate-500 font-mono mt-2 -rotate-45 origin-top-left">
+                  <div className="text-xs text-gray-500 font-mono mt-2 -rotate-45 origin-top-left">
                     {interval.time}
                   </div>
                 )}
@@ -103,17 +103,17 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
       </div>
 
       {/* Легенда */}
-      <div className="flex items-center justify-center gap-8 mt-6 text-xs text-slate-600 font-medium">
+      <div className="flex items-center justify-center gap-8 mt-6 text-xs text-gray-400 font-medium">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-emerald-500"></div>
+          <div className="w-3 h-3 rounded bg-industrial-success"></div>
           <span>≥ {TARGETS.hourly} т/ч (норма)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-amber-400"></div>
+          <div className="w-3 h-3 rounded bg-industrial-warning"></div>
           <span>≥ {TARGETS.hourly * 0.8} т/ч</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-rose-400"></div>
+          <div className="w-3 h-3 rounded bg-industrial-danger"></div>
           <span>&lt; {TARGETS.hourly * 0.8} т/ч</span>
         </div>
       </div>
