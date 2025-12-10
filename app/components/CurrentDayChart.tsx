@@ -117,7 +117,6 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
           <span>&lt; {TARGETS.hourly * 0.8} т/ч</span>
         </div>
       </div>
-      </div>
     </div>
   );
 }
