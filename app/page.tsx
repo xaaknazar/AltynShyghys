@@ -181,7 +181,7 @@ export default function HomePage() {
           {/* Общий итог за месяц */}
           {dailyGrouped.length > 0 && (() => {
             const totalProduction = dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0);
-            const monthlyPlan = 26 * 1200; // 26 рабочих дней (28 дней - 2 дня ППР) × 1200 т/день
+            const monthlyPlan = dailyGrouped.length * 1200; // План по прошедшим дням × 1200 т/день
             const planProgress = (totalProduction / monthlyPlan) * 100;
 
             return (
@@ -198,7 +198,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">Рабочих дней</div>
+                    <div className="text-sm text-gray-400 mb-2">Прошедших дней</div>
                     <div className="text-5xl font-display font-bold text-blue-400">
                       {dailyGrouped.length}
                       <span className="text-2xl ml-2 text-gray-500">дн</span>
@@ -212,12 +212,12 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">План месяца</div>
+                    <div className="text-sm text-gray-400 mb-2">План (прошедшие дни)</div>
                     <div className="text-5xl font-display font-bold text-gray-400">
                       {monthlyPlan.toLocaleString('ru-RU')}
                       <span className="text-2xl ml-2 text-gray-500">т</span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">26 дн × 1200 т</div>
+                    <div className="text-xs text-gray-500 mt-1">{dailyGrouped.length} дн × 1200 т</div>
                   </div>
                 </div>
 

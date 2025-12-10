@@ -7,6 +7,8 @@ interface CurrentDayChartProps {
 }
 
 export default function CurrentDayChart({ data }: CurrentDayChartProps) {
+  console.log('📈 CurrentDayChart data:', data ? `${data.length} intervals` : 'no data', data);
+
   if (!data || data.length === 0) {
     return (
       <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
@@ -21,7 +23,8 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
   }
 
   // Находим максимальное значение для нормализации высоты столбцов
-  const maxSpeed = Math.max(...data.map((d) => d.averageSpeed), TARGETS.hourly);
+  const maxSpeed = Math.max(...data.map((d) => d.averageSpeed), TARGETS.hourly * 1.2);
+  console.log('📊 Max speed for chart:', maxSpeed);
 
   return (
     <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
@@ -40,24 +43,24 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
         </div>
 
         {/* Столбцы графика */}
-        <div className="flex items-end justify-between gap-1 h-64">
+        <div className="flex items-end justify-start gap-0.5 h-80 overflow-x-auto pb-2">
           {data.map((interval, index) => {
-            const heightPercent = (interval.averageSpeed / maxSpeed) * 100;
+            const heightPercent = Math.max((interval.averageSpeed / maxSpeed) * 100, 2);
             const isAboveNorm = interval.averageSpeed >= TARGETS.hourly;
             const isNearNorm = interval.averageSpeed >= TARGETS.hourly * 0.8;
 
             return (
-              <div key={interval.time} className="flex-1 flex flex-col items-center group relative">
+              <div key={interval.time} className="flex flex-col items-center group relative min-w-[20px]">
                 {/* Столбец */}
                 <div
-                  className={`w-full rounded-t transition-all duration-300 ${
+                  className={`w-full rounded-t transition-all duration-300 border-t-2 ${
                     isAboveNorm
-                      ? 'bg-gradient-to-t from-industrial-success/80 to-industrial-success hover:from-industrial-success hover:to-green-400'
+                      ? 'bg-gradient-to-t from-industrial-success/80 to-industrial-success hover:from-industrial-success hover:to-green-400 border-industrial-success'
                       : isNearNorm
-                      ? 'bg-gradient-to-t from-industrial-warning/80 to-industrial-warning hover:from-industrial-warning hover:to-yellow-400'
-                      : 'bg-gradient-to-t from-industrial-danger/80 to-industrial-danger hover:from-industrial-danger hover:to-red-400'
+                      ? 'bg-gradient-to-t from-industrial-warning/80 to-industrial-warning hover:from-industrial-warning hover:to-yellow-400 border-industrial-warning'
+                      : 'bg-gradient-to-t from-industrial-danger/80 to-industrial-danger hover:from-industrial-danger hover:to-red-400 border-industrial-danger'
                   }`}
-                  style={{ height: `${heightPercent}%` }}
+                  style={{ height: `${heightPercent}%`, minHeight: '4px' }}
                 ></div>
 
                 {/* Всплывающая подсказка */}
