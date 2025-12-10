@@ -250,7 +250,13 @@ export function groupDataByProductionDays(data: ProductionData[]): DailyGroupedD
 export function aggregateToThirtyMinutes(data: ProductionData[]): ThirtyMinuteData[] {
   if (!data || data.length === 0) return [];
 
-  const intervals = new Map<string, { speeds: number[]; production: number; count: number }>();
+  const intervals = new Map<number, {
+    timestamp: number;
+    displayTime: string;
+    speeds: number[];
+    production: number;
+    count: number;
+  }>();
 
   data.forEach((item) => {
     const itemDate = new Date(item.datetime);
@@ -262,13 +268,25 @@ export function aggregateToThirtyMinutes(data: ProductionData[]): ThirtyMinuteDa
 
     // Округляем до ближайшего 30-минутного интервала
     const intervalMinute = minute < 30 ? 0 : 30;
-    const timeKey = `${hour.toString().padStart(2, '0')}:${intervalMinute.toString().padStart(2, '0')}`;
 
-    if (!intervals.has(timeKey)) {
-      intervals.set(timeKey, { speeds: [], production: 0, count: 0 });
+    // Создаем timestamp интервала для правильной сортировки
+    const intervalDate = new Date(localTime);
+    intervalDate.setUTCMinutes(intervalMinute, 0, 0);
+    const intervalTimestamp = intervalDate.getTime();
+
+    const displayTime = `${hour.toString().padStart(2, '0')}:${intervalMinute.toString().padStart(2, '0')}`;
+
+    if (!intervals.has(intervalTimestamp)) {
+      intervals.set(intervalTimestamp, {
+        timestamp: intervalTimestamp,
+        displayTime,
+        speeds: [],
+        production: 0,
+        count: 0
+      });
     }
 
-    const interval = intervals.get(timeKey)!;
+    const interval = intervals.get(intervalTimestamp)!;
     interval.speeds.push(item.speed);
     interval.production += item.difference || 0;
     interval.count++;
@@ -277,19 +295,19 @@ export function aggregateToThirtyMinutes(data: ProductionData[]): ThirtyMinuteDa
   // Преобразуем в массив и рассчитываем средние значения
   const result: ThirtyMinuteData[] = [];
 
-  intervals.forEach((interval, time) => {
+  // Сортируем по timestamp
+  const sortedIntervals = Array.from(intervals.entries()).sort((a, b) => a[0] - b[0]);
+
+  sortedIntervals.forEach(([timestamp, interval]) => {
     const averageSpeed = interval.speeds.reduce((sum, s) => sum + s, 0) / interval.speeds.length;
 
     result.push({
-      time,
+      time: interval.displayTime,
       averageSpeed,
       totalProduction: interval.production,
       recordCount: interval.count,
     });
   });
-
-  // Сортируем по времени
-  result.sort((a, b) => a.time.localeCompare(b.time));
 
   return result;
 }

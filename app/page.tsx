@@ -114,13 +114,38 @@ export default function HomePage() {
       <header className="bg-industrial-darker/90 backdrop-blur-md border-b border-industrial-blue/30 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-display font-bold text-industrial-accent">
-                МАСЛОЗАВОД «АЛТЫН ШЫҒЫС»
-              </h1>
-              <p className="text-sm text-gray-400 font-mono mt-1">
-                Производственная панель мониторинга
-              </p>
+            {/* Левая часть с названием и текущей подачей */}
+            <div className="flex items-center gap-6">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-display font-bold text-industrial-accent">
+                  МАСЛОЗАВОД «АЛТЫН ШЫҒЫС»
+                </h1>
+                <p className="text-sm text-gray-400 font-mono mt-1">
+                  Производственная панель мониторинга
+                </p>
+              </div>
+
+              {/* Компактный индикатор текущей подачи */}
+              {latestData && (
+                <div className="hidden lg:flex items-center gap-3 bg-industrial-dark/50 backdrop-blur-sm rounded-lg px-4 py-2 border border-industrial-blue/30">
+                  <div className="text-xs text-gray-400 uppercase tracking-wide">
+                    Текущая подача
+                  </div>
+                  <div className={`text-2xl font-display font-bold ${
+                    latestData.speed >= 45 ? 'text-industrial-success' :
+                    latestData.speed >= 40 ? 'text-industrial-warning' :
+                    'text-industrial-danger'
+                  }`}>
+                    {latestData.speed.toFixed(1)}
+                    <span className="text-sm ml-1 text-gray-500">т/ч</span>
+                  </div>
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${
+                    latestData.speed >= 45 ? 'bg-industrial-success' :
+                    latestData.speed >= 40 ? 'bg-industrial-warning' :
+                    'bg-industrial-danger'
+                  }`} />
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
@@ -137,6 +162,16 @@ export default function HomePage() {
                   })}
                 </div>
               </div>
+              <a
+                href="/shift-master"
+                className="hidden md:flex items-center gap-2 px-4 py-2 bg-industrial-accent/20 hover:bg-industrial-accent/30 border border-industrial-accent/50 rounded-lg transition-all"
+                title="Перейти к управлению сменой"
+              >
+                <svg className="w-5 h-5 text-industrial-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-sm font-medium text-gray-300">Мастер смены</span>
+              </a>
               <button
                 onClick={fetchData}
                 className="p-3 bg-industrial-blue/30 hover:bg-industrial-blue/50 rounded-lg transition-colors"
