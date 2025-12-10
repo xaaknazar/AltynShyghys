@@ -110,47 +110,47 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen grid-background">
-      <header className="bg-industrial-darker/90 backdrop-blur-md border-b border-industrial-blue/30 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-6">
+      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 py-5">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Левая часть с названием и текущей подачей */}
             <div className="flex items-center gap-6">
               <div>
-                <h1 className="text-3xl md:text-4xl font-display font-bold text-industrial-accent">
+                <h1 className="text-2xl md:text-3xl font-display font-bold text-industrial-accent">
                   МАСЛОЗАВОД «АЛТЫН ШЫҒЫС»
                 </h1>
-                <p className="text-sm text-gray-400 font-mono mt-1">
+                <p className="text-xs text-slate-500 font-mono mt-1">
                   Производственная панель мониторинга
                 </p>
               </div>
 
               {/* Компактный индикатор текущей подачи */}
               {latestData && (
-                <div className="hidden lg:flex items-center gap-3 bg-industrial-dark/50 backdrop-blur-sm rounded-lg px-4 py-2 border border-industrial-blue/30">
-                  <div className="text-xs text-gray-400 uppercase tracking-wide">
+                <div className="hidden lg:flex items-center gap-3 bg-slate-50 rounded-lg px-4 py-2.5 border border-slate-200">
+                  <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold">
                     Текущая подача
                   </div>
                   <div className={`text-2xl font-display font-bold ${
-                    latestData.speed >= 45 ? 'text-industrial-success' :
-                    latestData.speed >= 40 ? 'text-industrial-warning' :
-                    'text-industrial-danger'
+                    latestData.speed >= 45 ? 'text-emerald-600' :
+                    latestData.speed >= 40 ? 'text-amber-600' :
+                    'text-rose-600'
                   }`}>
                     {latestData.speed.toFixed(1)}
-                    <span className="text-sm ml-1 text-gray-500">т/ч</span>
+                    <span className="text-sm ml-1 text-slate-400">т/ч</span>
                   </div>
                   <div className={`w-2 h-2 rounded-full animate-pulse ${
-                    latestData.speed >= 45 ? 'bg-industrial-success' :
-                    latestData.speed >= 40 ? 'bg-industrial-warning' :
-                    'bg-industrial-danger'
+                    latestData.speed >= 45 ? 'bg-emerald-500' :
+                    latestData.speed >= 40 ? 'bg-amber-500' :
+                    'bg-rose-500'
                   }`} />
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <div className="text-right">
-                <div className="text-xs text-gray-500 font-mono">Последнее обновление</div>
-                <div className="text-sm text-gray-300 font-mono">
+                <div className="text-xs text-slate-500 font-mono">Последнее обновление</div>
+                <div className="text-sm text-slate-700 font-mono font-semibold">
                   {new Date(lastUpdate).toLocaleString('ru-RU', {
                     day: '2-digit',
                     month: '2-digit',
@@ -163,20 +163,20 @@ export default function HomePage() {
               </div>
               <a
                 href="/shift-master"
-                className="hidden md:flex items-center gap-2 px-4 py-2 bg-industrial-accent/20 hover:bg-industrial-accent/30 border border-industrial-accent/50 rounded-lg transition-all"
+                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all"
                 title="Перейти к управлению сменой"
               >
-                <svg className="w-5 h-5 text-industrial-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <span className="text-sm font-medium text-gray-300">Мастер смены</span>
+                <span className="text-sm font-medium text-amber-800">Мастер смены</span>
               </a>
               <button
                 onClick={fetchData}
-                className="p-3 bg-industrial-blue/30 hover:bg-industrial-blue/50 rounded-lg transition-colors"
+                className="p-2.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200"
                 title="Обновить данные"
               >
-                <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
