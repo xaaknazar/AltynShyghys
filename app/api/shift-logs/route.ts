@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -11,8 +11,7 @@ export async function GET(request: NextRequest) {
     const shiftDate = searchParams.get('shift_date'); // YYYY-MM-DD
     const shiftType = searchParams.get('shift_type'); // 'day' or 'night'
 
-    const client = await clientPromise;
-    const db = client.db('ALtyn_Shyghys');
+    const { db } = await connectToDatabase();
     const collection = db.collection('Shift_Logs');
 
     let query: any = {};
@@ -88,8 +87,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db('ALtyn_Shyghys');
+    const { db } = await connectToDatabase();
     const collection = db.collection('Shift_Logs');
 
     const newLog = {
