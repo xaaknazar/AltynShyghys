@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react';
 import SpeedIndicator from '@/app/components/SpeedIndicator';
 import DailyStatsCard from '@/app/components/DailyStatsCard';
-import ProductionChart from '@/app/components/ProductionChart';
-import ComparisonCard from '@/app/components/ComparisonCard';
+import CurrentDayChart from '@/app/components/CurrentDayChart';
 import LoadingState from '@/app/components/LoadingState';
 import ErrorState from '@/app/components/ErrorState';
-import { ProductionData, calculateDailyStats, DailyGroupedData } from '@/lib/utils';
+import { ProductionData, calculateDailyStats, DailyGroupedData, aggregateToThirtyMinutes, ThirtyMinuteData } from '@/lib/utils';
 
 interface LatestDataResponse {
   success: boolean;
@@ -30,6 +29,7 @@ export default function HomePage() {
   const [latestData, setLatestData] = useState<ProductionData | null>(null);
   const [monthlyData, setMonthlyData] = useState<ProductionData[]>([]);
   const [dailyGrouped, setDailyGrouped] = useState<DailyGroupedData[]>([]);
+  const [currentDayThirtyMin, setCurrentDayThirtyMin] = useState<ThirtyMinuteData[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>(new Date().toISOString());
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +62,14 @@ export default function HomePage() {
         setLatestData(latestResult.data);
         setMonthlyData(monthlyResult.data);
         setDailyGrouped(monthlyResult.dailyGrouped);
+
+        // Получаем данные текущих суток и группируем по 30-минутным интервалам
+        const currentDay = monthlyResult.dailyGrouped[monthlyResult.dailyGrouped.length - 1];
+        if (currentDay && currentDay.data) {
+          const thirtyMinData = aggregateToThirtyMinutes(currentDay.data);
+          setCurrentDayThirtyMin(thirtyMinData);
+        }
+
         // Используем время последней записи из БД как время обновления
         setLastUpdate(latestResult.data.datetime);
       } else {
@@ -165,37 +173,83 @@ export default function HomePage() {
             />
           )}
 
+          {/* График текущих суток с 30-минутными интервалами */}
+          <CurrentDayChart data={currentDayThirtyMin} />
+
           {/* Общий итог за месяц */}
-          {dailyGrouped.length > 0 && (
-            <div className="bg-gradient-to-br from-industrial-darker/90 to-industrial-dark/90 backdrop-blur-sm rounded-2xl border-2 border-industrial-accent/40 p-8">
-              <h3 className="text-2xl font-display text-industrial-accent tracking-wider mb-6">
-                ИТОГИ ЗА МЕСЯЦ
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-sm text-gray-400 mb-2">Общее производство</div>
-                  <div className="text-5xl font-display font-bold text-industrial-accent">
-                    {dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0).toFixed(1)}
-                    <span className="text-2xl ml-2 text-gray-500">т</span>
+          {dailyGrouped.length > 0 && (() => {
+            const totalProduction = dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0);
+            const monthlyPlan = 26 * 1200; // 26 рабочих дней (28 дней - 2 дня ППР) × 1200 т/день
+            const planProgress = (totalProduction / monthlyPlan) * 100;
+
+            return (
+              <div className="bg-gradient-to-br from-industrial-darker/90 to-industrial-dark/90 backdrop-blur-sm rounded-2xl border-2 border-industrial-accent/40 p-8">
+                <h3 className="text-2xl font-display text-industrial-accent tracking-wider mb-6">
+                  ИТОГИ ЗА МЕСЯЦ
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400 mb-2">Общее производство</div>
+                    <div className="text-5xl font-display font-bold text-industrial-accent">
+                      {totalProduction.toFixed(1)}
+                      <span className="text-2xl ml-2 text-gray-500">т</span>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400 mb-2">Рабочих дней</div>
+                    <div className="text-5xl font-display font-bold text-blue-400">
+                      {dailyGrouped.length}
+                      <span className="text-2xl ml-2 text-gray-500">дн</span>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400 mb-2">Среднее за сутки</div>
+                    <div className="text-5xl font-display font-bold text-industrial-success">
+                      {(totalProduction / dailyGrouped.length).toFixed(1)}
+                      <span className="text-2xl ml-2 text-gray-500">т</span>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400 mb-2">План месяца</div>
+                    <div className="text-5xl font-display font-bold text-gray-400">
+                      {monthlyPlan.toLocaleString('ru-RU')}
+                      <span className="text-2xl ml-2 text-gray-500">т</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">26 дн × 1200 т</div>
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-sm text-gray-400 mb-2">Рабочих дней</div>
-                  <div className="text-5xl font-display font-bold text-blue-400">
-                    {dailyGrouped.length}
-                    <span className="text-2xl ml-2 text-gray-500">дн</span>
+
+                <div className="bg-industrial-dark/30 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-400 font-mono">Выполнение плана месяца</span>
+                    <span className={`text-lg font-mono font-bold ${
+                      planProgress >= 100 ? 'text-industrial-success' :
+                      planProgress >= 80 ? 'text-industrial-warning' :
+                      'text-industrial-danger'
+                    }`}>
+                      {planProgress.toFixed(1)}%
+                    </span>
                   </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-gray-400 mb-2">Среднее за сутки</div>
-                  <div className="text-5xl font-display font-bold text-industrial-success">
-                    {(dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0) / dailyGrouped.length).toFixed(1)}
-                    <span className="text-2xl ml-2 text-gray-500">т</span>
+                  <div className="h-3 bg-industrial-dark rounded-full overflow-hidden border border-industrial-blue/30">
+                    <div
+                      className={`h-full transition-all duration-1000 ease-out ${
+                        planProgress >= 100 ? 'bg-gradient-to-r from-industrial-success to-green-400' :
+                        planProgress >= 80 ? 'bg-gradient-to-r from-industrial-warning to-yellow-400' :
+                        'bg-gradient-to-r from-industrial-danger to-red-400'
+                      }`}
+                      style={{ width: `${Math.min(planProgress, 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    {planProgress >= 100
+                      ? `План выполнен! Перевыполнение на ${(totalProduction - monthlyPlan).toFixed(1)} т`
+                      : `До плана: ${(monthlyPlan - totalProduction).toFixed(1)} т`
+                    }
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Отображение данных за месяц по суткам */}
           <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
@@ -251,32 +305,48 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Графики для последних двух суток */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {dailyGrouped.length > 0 && (
-              <ProductionChart
-                data={dailyGrouped[dailyGrouped.length - 1].data}
-                title={`ГРАФИК ${dailyGrouped[dailyGrouped.length - 1].date}`}
-              />
-            )}
+          {/* Комментарий по производительности */}
+          {dailyGrouped.length > 1 && (() => {
+            const current = dailyGrouped[dailyGrouped.length - 1].stats.totalProduction;
+            const previous = dailyGrouped[dailyGrouped.length - 2].stats.totalProduction;
+            const diff = current - previous;
+            const diffPercent = previous > 0 ? (diff / previous) * 100 : 0;
 
-            {dailyGrouped.length > 1 && (
-              <ProductionChart
-                data={dailyGrouped[dailyGrouped.length - 2].data}
-                title={`ГРАФИК ${dailyGrouped[dailyGrouped.length - 2].date}`}
-              />
-            )}
-          </div>
-
-          {/* Сравнение суток */}
-          {dailyGrouped.length > 1 && (
-            <ComparisonCard
-              currentTotal={dailyGrouped[dailyGrouped.length - 1].stats.totalProduction}
-              previousTotal={dailyGrouped[dailyGrouped.length - 2].stats.totalProduction}
-              currentAvg={dailyGrouped[dailyGrouped.length - 1].stats.averageSpeed}
-              previousAvg={dailyGrouped[dailyGrouped.length - 2].stats.averageSpeed}
-            />
-          )}
+            return (
+              <div className={`rounded-xl p-5 border-2 ${
+                diffPercent > 5 ? 'bg-industrial-success/10 border-industrial-success/30' :
+                diffPercent < -5 ? 'bg-industrial-danger/10 border-industrial-danger/30' :
+                'bg-industrial-warning/10 border-industrial-warning/30'
+              }`}>
+                <div className="flex items-center gap-4">
+                  <div className={`text-3xl ${
+                    diffPercent > 5 ? 'text-industrial-success' :
+                    diffPercent < -5 ? 'text-industrial-danger' :
+                    'text-industrial-warning'
+                  }`}>
+                    {diffPercent > 5 ? '✓' : diffPercent < -5 ? '!' : '~'}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-base font-mono text-gray-300 mb-1">
+                      {diffPercent > 5 ? 'Производительность выше предыдущих суток' :
+                       diffPercent < -5 ? 'Производительность ниже предыдущих суток' :
+                       'Производительность на уровне предыдущих суток'}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {diffPercent > 5 ? 'Отличная работа! Продолжайте в том же духе.' :
+                       diffPercent < -5 ? 'Требуется внимание. Проверьте причины снижения.' :
+                       'Стабильная работа в пределах нормы.'}
+                    </div>
+                    <div className={`text-sm font-mono mt-2 ${
+                      diffPercent > 0 ? 'text-industrial-success' : 'text-industrial-danger'
+                    }`}>
+                      {diffPercent > 0 ? '↑' : '↓'} {Math.abs(diff).toFixed(1)} т ({Math.abs(diffPercent).toFixed(1)}%)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </main>
 

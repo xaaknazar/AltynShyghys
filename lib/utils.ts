@@ -170,6 +170,16 @@ export interface DailyGroupedData {
   stats: DailyStats;
 }
 
+/**
+ * Данные для 30-минутного интервала
+ */
+export interface ThirtyMinuteData {
+  time: string; // HH:mm
+  averageSpeed: number;
+  totalProduction: number;
+  recordCount: number;
+}
+
 export function groupDataByProductionDays(data: ProductionData[]): DailyGroupedData[] {
   if (!data || data.length === 0) return [];
 
@@ -230,6 +240,56 @@ export function groupDataByProductionDays(data: ProductionData[]): DailyGroupedD
 
   // Сортируем по дате
   result.sort((a, b) => a.date.localeCompare(b.date));
+
+  return result;
+}
+
+/**
+ * Группировать данные по 30-минутным интервалам
+ */
+export function aggregateToThirtyMinutes(data: ProductionData[]): ThirtyMinuteData[] {
+  if (!data || data.length === 0) return [];
+
+  const intervals = new Map<string, { speeds: number[]; production: number; count: number }>();
+
+  data.forEach((item) => {
+    const itemDate = new Date(item.datetime);
+
+    // Конвертируем в местное время (UTC+5)
+    const localTime = new Date(itemDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const hour = localTime.getUTCHours();
+    const minute = localTime.getUTCMinutes();
+
+    // Округляем до ближайшего 30-минутного интервала
+    const intervalMinute = minute < 30 ? 0 : 30;
+    const timeKey = `${hour.toString().padStart(2, '0')}:${intervalMinute.toString().padStart(2, '0')}`;
+
+    if (!intervals.has(timeKey)) {
+      intervals.set(timeKey, { speeds: [], production: 0, count: 0 });
+    }
+
+    const interval = intervals.get(timeKey)!;
+    interval.speeds.push(item.speed);
+    interval.production += item.difference || 0;
+    interval.count++;
+  });
+
+  // Преобразуем в массив и рассчитываем средние значения
+  const result: ThirtyMinuteData[] = [];
+
+  intervals.forEach((interval, time) => {
+    const averageSpeed = interval.speeds.reduce((sum, s) => sum + s, 0) / interval.speeds.length;
+
+    result.push({
+      time,
+      averageSpeed,
+      totalProduction: interval.production,
+      recordCount: interval.count,
+    });
+  });
+
+  // Сортируем по времени
+  result.sort((a, b) => a.time.localeCompare(b.time));
 
   return result;
 }
