@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import SpeedIndicator from '@/app/components/SpeedIndicator';
 import DailyStatsCard from '@/app/components/DailyStatsCard';
 import CurrentDayChart from '@/app/components/CurrentDayChart';
+import DayDetailModal from '@/app/components/DayDetailModal';
 import LoadingState from '@/app/components/LoadingState';
 import ErrorState from '@/app/components/ErrorState';
 import { ProductionData, calculateDailyStats, DailyGroupedData, aggregateToThirtyMinutes, ThirtyMinuteData } from '@/lib/utils';
@@ -30,6 +31,7 @@ export default function HomePage() {
   const [monthlyData, setMonthlyData] = useState<ProductionData[]>([]);
   const [dailyGrouped, setDailyGrouped] = useState<DailyGroupedData[]>([]);
   const [currentDayThirtyMin, setCurrentDayThirtyMin] = useState<ThirtyMinuteData[]>([]);
+  const [selectedDay, setSelectedDay] = useState<DailyGroupedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>(new Date().toISOString());
   const [error, setError] = useState<string | null>(null);
@@ -255,15 +257,17 @@ export default function HomePage() {
           <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
             <h3 className="text-lg font-display text-gray-400 tracking-wider mb-6">
               ДЕТАЛИЗАЦИЯ ПО СУТКАМ
+              <span className="text-xs text-gray-500 ml-3">(нажмите для подробной информации)</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {dailyGrouped.map((day, index) => (
                 <div
                   key={day.date}
-                  className={`bg-industrial-dark/50 rounded-lg p-3 border transition-all ${
+                  onClick={() => setSelectedDay(day)}
+                  className={`bg-industrial-dark/50 rounded-lg p-3 border transition-all cursor-pointer ${
                     index === dailyGrouped.length - 1
-                      ? 'border-industrial-accent/70 shadow-lg shadow-industrial-accent/20'
-                      : 'border-industrial-blue/20 hover:border-industrial-accent/50'
+                      ? 'border-industrial-accent/70 shadow-lg shadow-industrial-accent/20 hover:shadow-industrial-accent/40'
+                      : 'border-industrial-blue/20 hover:border-industrial-accent/50 hover:shadow-lg'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -363,6 +367,11 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* Модальное окно детализации дня */}
+      {selectedDay && (
+        <DayDetailModal dayData={selectedDay} onClose={() => setSelectedDay(null)} />
+      )}
     </div>
   );
 }
