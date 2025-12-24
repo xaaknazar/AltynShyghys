@@ -9,9 +9,9 @@ module.exports = {
     extend: {
       colors: {
         industrial: {
-          dark: '#e2e8f0',
-          darker: '#f8fafc',
-          blue: '#cbd5e1',
+          dark: '#334155',
+          darker: '#1e293b',
+          blue: '#64748b',
           accent: '#3b82f6',
           success: '#10b981',
           warning: '#f59e0b',
