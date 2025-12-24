@@ -6,25 +6,25 @@
 @tailwind utilities;
 
 :root {
-  --gradient-primary: linear-gradient(135deg, #0f172a 0%, #020617 100%);
-  --gradient-accent: linear-gradient(135deg, #c8a951 0%, #a67c2e 100%);
-  --gradient-success: linear-gradient(135deg, #059669 0%, #047857 100%);
-  --glow-accent: 0 0 12px rgba(200, 169, 81, 0.3);
-  --glow-success: 0 0 12px rgba(5, 150, 105, 0.3);
+  --gradient-primary: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --glow-accent: 0 0 8px rgba(59, 130, 246, 0.15);
+  --glow-success: 0 0 8px rgba(16, 185, 129, 0.15);
 }
 
 body {
-  background: #020617;
-  color: #e2e8f0;
+  background: #f1f5f9;
+  color: #1e293b;
   font-family: 'JetBrains Mono', monospace;
   overflow-x: hidden;
 }
 
 .grid-background {
-  background-color: #020617;
+  background-color: #f1f5f9;
   background-image:
-    linear-gradient(rgba(200, 169, 81, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(200, 169, 81, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
@@ -76,14 +76,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(226, 232, 240, 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(200, 169, 81, 0.4);
+  background: rgba(59, 130, 246, 0.4);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(200, 169, 81, 0.6);
+  background: rgba(59, 130, 246, 0.6);
 }
