@@ -102,31 +102,31 @@ export default function OTKPage() {
   const status = !isNaN(numValue) ? getAnalysisStatus(selectedType, numValue) : null;
 
   return (
-    <div className="min-h-screen grid-background">
-      <header className="bg-industrial-darker/95 backdrop-blur-md border-b border-industrial-accent/20 sticky top-0 z-50 shadow-lg shadow-industrial-accent/10">
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-industrial-accent">
+              <h1 className="text-2xl md:text-3xl font-display font-bold text-blue-600">
                 ЛАБОРАТОРНЫЙ КОНТРОЛЬ
               </h1>
-              <p className="text-xs text-gray-400 font-mono mt-1">
+              <p className="text-xs text-slate-600 font-mono mt-1">
                 Ввод результатов анализов качества
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 href="/analysis"
-                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-industrial-accent/20 hover:bg-industrial-accent/30 border border-industrial-accent/40 rounded-lg transition-all"
+                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all"
               >
-                <svg className="w-4 h-4 text-industrial-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="text-sm font-medium text-industrial-accent">Анализ данных</span>
+                <span className="text-sm font-medium text-blue-700">Анализ данных</span>
               </Link>
               <Link
                 href="/"
-                className="px-4 py-2.5 bg-industrial-dark/70 hover:bg-industrial-dark border border-industrial-blue/30 rounded-lg text-gray-300 transition-all"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-slate-800 transition-all"
               >
                 ← На главную
               </Link>
@@ -139,31 +139,31 @@ export default function OTKPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Форма ввода */}
           <div className="lg:col-span-2">
-            <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
-              <h2 className="text-xl font-display text-industrial-accent mb-6">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <h2 className="text-xl font-display text-blue-600 mb-6">
                 НОВЫЙ АНАЛИЗ
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Информация о смене */}
-                <div className="bg-industrial-dark/50 rounded-lg p-4 border border-industrial-blue/20">
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-2">Дата смены</label>
+                      <label className="block text-xs text-slate-600 mb-2">Дата смены</label>
                       <input
                         type="date"
                         value={shiftDate}
                         onChange={(e) => setShiftDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-industrial-darker border border-industrial-blue/30 rounded-lg text-gray-200 font-mono text-sm focus:border-industrial-accent focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-2">Смена</label>
+                      <label className="block text-xs text-slate-600 mb-2">Смена</label>
                       <select
                         value={shiftType}
                         onChange={(e) => setShiftType(e.target.value as ShiftType)}
-                        className="w-full px-3 py-2 bg-industrial-darker border border-industrial-blue/30 rounded-lg text-gray-200 font-mono text-sm focus:border-industrial-accent focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
                         required
                       >
                         <option value="day">Дневная (08:00-20:00)</option>
@@ -171,12 +171,12 @@ export default function OTKPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-2">Время отбора</label>
+                      <label className="block text-xs text-slate-600 mb-2">Время отбора</label>
                       <input
                         type="datetime-local"
                         value={sampleTime}
                         onChange={(e) => setSampleTime(e.target.value)}
-                        className="w-full px-3 py-2 bg-industrial-darker border border-industrial-blue/30 rounded-lg text-gray-200 font-mono text-sm focus:border-industrial-accent focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
                         required
                       />
                     </div>
@@ -185,7 +185,7 @@ export default function OTKPage() {
 
                 {/* Тип анализа */}
                 <div>
-                  <label className="block text-sm text-gray-300 mb-3 font-semibold">Тип анализа</label>
+                  <label className="block text-sm text-slate-800 mb-3 font-semibold">Тип анализа</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {Object.entries(ANALYSIS_CONFIG).map(([type, conf]) => (
                       <button
@@ -194,12 +194,12 @@ export default function OTKPage() {
                         onClick={() => setSelectedType(type as AnalysisType)}
                         className={`p-4 rounded-lg border-2 transition-all text-left ${
                           selectedType === type
-                            ? 'border-industrial-accent bg-industrial-accent/10'
-                            : 'border-industrial-blue/20 bg-industrial-dark/30 hover:border-industrial-accent/50'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-slate-200 bg-white hover:border-blue-300'
                         }`}
                       >
-                        <div className="text-sm font-semibold text-gray-200">{conf.label}</div>
-                        <div className="text-xs text-gray-400 mt-1">
+                        <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
+                        <div className="text-xs text-slate-600 mt-1">
                           Норма: {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
                         </div>
                       </button>
@@ -209,7 +209,7 @@ export default function OTKPage() {
 
                 {/* Значение */}
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2 font-semibold">
+                  <label className="block text-sm text-slate-800 mb-2 font-semibold">
                     Значение ({config.unit})
                   </label>
                   <div className="relative">
@@ -218,28 +218,28 @@ export default function OTKPage() {
                       step="0.01"
                       value={value}
                       onChange={(e) => setValue(e.target.value)}
-                      className={`w-full px-4 py-3 bg-industrial-darker border-2 rounded-lg text-gray-200 font-mono text-lg focus:outline-none ${
-                        status === 'normal' ? 'border-industrial-success' :
-                        status === 'warning' ? 'border-industrial-warning' :
-                        status === 'danger' ? 'border-industrial-danger' :
-                        'border-industrial-blue/30 focus:border-industrial-accent'
+                      className={`w-full px-4 py-3 bg-white border-2 rounded-lg text-slate-800 font-mono text-lg focus:outline-none ${
+                        status === 'normal' ? 'border-emerald-500' :
+                        status === 'warning' ? 'border-amber-500' :
+                        status === 'danger' ? 'border-rose-500' :
+                        'border-slate-300 focus:border-blue-500'
                       }`}
                       placeholder={`Введите значение (${config.min === 0 ? `до ${config.max}` : `${config.min}-${config.max}`})`}
                       required
                     />
                     {status && (
                       <div className={`absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full ${
-                        status === 'normal' ? 'bg-industrial-success' :
-                        status === 'warning' ? 'bg-industrial-warning' :
-                        'bg-industrial-danger'
+                        status === 'normal' ? 'bg-emerald-500' :
+                        status === 'warning' ? 'bg-amber-500' :
+                        'bg-rose-500'
                       } animate-pulse`} />
                     )}
                   </div>
                   {status && (
                     <div className={`text-xs mt-2 font-mono ${
-                      status === 'normal' ? 'text-industrial-success' :
-                      status === 'warning' ? 'text-industrial-warning' :
-                      'text-industrial-danger'
+                      status === 'normal' ? 'text-emerald-500' :
+                      status === 'warning' ? 'text-amber-500' :
+                      'text-rose-500'
                     }`}>
                       {status === 'normal' ? '✓ В пределах нормы' :
                        status === 'warning' ? '⚠ Близко к границе нормы' :
@@ -250,24 +250,24 @@ export default function OTKPage() {
 
                 {/* Лаборант */}
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">Лаборант (необязательно)</label>
+                  <label className="block text-sm text-slate-800 mb-2">Лаборант (необязательно)</label>
                   <input
                     type="text"
                     value={technicianName}
                     onChange={(e) => setTechnicianName(e.target.value)}
-                    className="w-full px-4 py-2 bg-industrial-darker border border-industrial-blue/30 rounded-lg text-gray-200 focus:border-industrial-accent focus:outline-none"
+                    className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:border-blue-500 focus:outline-none"
                     placeholder="Имя лаборанта"
                   />
                 </div>
 
                 {/* Комментарии */}
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">Комментарии (необязательно)</label>
+                  <label className="block text-sm text-slate-800 mb-2">Комментарии (необязательно)</label>
                   <textarea
                     value={comments}
                     onChange={(e) => setComments(e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-2 bg-industrial-darker border border-industrial-blue/30 rounded-lg text-gray-200 focus:border-industrial-accent focus:outline-none resize-none"
+                    className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:border-blue-500 focus:outline-none resize-none"
                     placeholder="Дополнительная информация..."
                   />
                 </div>
@@ -276,8 +276,8 @@ export default function OTKPage() {
                 {message && (
                   <div className={`p-4 rounded-lg border ${
                     message.type === 'success'
-                      ? 'bg-industrial-success/10 border-industrial-success/30 text-industrial-success'
-                      : 'bg-industrial-danger/10 border-industrial-danger/30 text-industrial-danger'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-rose-50 border-rose-200 text-rose-700'
                   }`}>
                     {message.text}
                   </div>
@@ -287,7 +287,7 @@ export default function OTKPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-4 bg-industrial-accent hover:bg-industrial-accent/80 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-display text-lg rounded-lg transition-all shadow-lg"
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-lg transition-all shadow-lg"
                 >
                   {submitting ? 'Сохранение...' : 'Сохранить анализ'}
                 </button>
@@ -297,13 +297,13 @@ export default function OTKPage() {
 
           {/* Недавние анализы */}
           <div className="lg:col-span-1">
-            <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6 sticky top-24">
-              <h3 className="text-lg font-display text-gray-400 mb-4">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 sticky top-24 shadow-sm">
+              <h3 className="text-lg font-display text-slate-700 mb-4">
                 НЕДАВНИЕ АНАЛИЗЫ
               </h3>
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
                 {recentAnalyses.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8 text-sm">
+                  <div className="text-center text-slate-600 py-8 text-sm">
                     Пока нет анализов за эту смену
                   </div>
                 ) : (
@@ -313,25 +313,25 @@ export default function OTKPage() {
                     return (
                       <div
                         key={analysis.id}
-                        className="bg-industrial-dark/50 rounded-lg p-3 border border-industrial-blue/20"
+                        className="bg-slate-50 rounded-lg p-3 border border-slate-200"
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-slate-600">
                             {new Date(analysis.sample_time).toLocaleTimeString('ru-RU', {
                               hour: '2-digit',
                               minute: '2-digit',
                             })}
                           </div>
                           <div className={`w-2 h-2 rounded-full ${
-                            stat === 'normal' ? 'bg-industrial-success' :
-                            stat === 'warning' ? 'bg-industrial-warning' :
-                            'bg-industrial-danger'
+                            stat === 'normal' ? 'bg-emerald-500' :
+                            stat === 'warning' ? 'bg-amber-500' :
+                            'bg-rose-500'
                           }`} />
                         </div>
-                        <div className="text-sm text-gray-300 truncate mb-1">
+                        <div className="text-sm text-slate-800 truncate mb-1">
                           {conf.label}
                         </div>
-                        <div className="text-lg font-mono font-bold text-industrial-accent">
+                        <div className="text-lg font-mono font-bold text-blue-600">
                           {analysis.value.toFixed(2)}{conf.unit}
                         </div>
                       </div>

@@ -109,39 +109,39 @@ export default function HomePage() {
   } : null;
 
   return (
-    <div className="min-h-screen grid-background">
-      <header className="bg-industrial-darker/95 backdrop-blur-md border-b border-industrial-accent/20 sticky top-0 z-50 shadow-lg shadow-industrial-accent/10">
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-5">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Левая часть с названием и текущей подачей */}
             <div className="flex items-center gap-6">
               <div>
-                <h1 className="text-2xl md:text-3xl font-display font-bold text-industrial-accent">
+                <h1 className="text-2xl md:text-3xl font-display font-bold text-blue-600">
                   МАСЛОЗАВОД «АЛТЫН ШЫҒЫС»
                 </h1>
-                <p className="text-xs text-gray-400 font-mono mt-1">
+                <p className="text-xs text-slate-600 font-mono mt-1">
                   Производственная панель мониторинга
                 </p>
               </div>
 
               {/* Компактный индикатор текущей подачи */}
               {latestData && (
-                <div className="hidden lg:flex items-center gap-3 bg-industrial-dark/70 rounded-lg px-4 py-2.5 border border-industrial-accent/30">
-                  <div className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+                <div className="hidden lg:flex items-center gap-3 bg-slate-100 rounded-lg px-4 py-2.5 border border-slate-200">
+                  <div className="text-xs text-slate-600 uppercase tracking-wide font-semibold">
                     Текущая подача
                   </div>
                   <div className={`text-2xl font-display font-bold ${
-                    latestData.speed >= 45 ? 'text-industrial-success' :
-                    latestData.speed >= 40 ? 'text-industrial-warning' :
-                    'text-industrial-danger'
+                    latestData.speed >= 45 ? 'text-emerald-500' :
+                    latestData.speed >= 40 ? 'text-amber-500' :
+                    'text-rose-500'
                   }`}>
                     {latestData.speed.toFixed(1)}
-                    <span className="text-sm ml-1 text-gray-500">т/ч</span>
+                    <span className="text-sm ml-1 text-slate-500">т/ч</span>
                   </div>
                   <div className={`w-2 h-2 rounded-full animate-pulse ${
-                    latestData.speed >= 45 ? 'bg-industrial-success' :
-                    latestData.speed >= 40 ? 'bg-industrial-warning' :
-                    'bg-industrial-danger'
+                    latestData.speed >= 45 ? 'bg-emerald-500' :
+                    latestData.speed >= 40 ? 'bg-amber-500' :
+                    'bg-rose-500'
                   }`} />
                 </div>
               )}
@@ -149,8 +149,8 @@ export default function HomePage() {
 
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <div className="text-xs text-gray-400 font-mono">Последнее обновление</div>
-                <div className="text-sm text-gray-200 font-mono font-semibold">
+                <div className="text-xs text-slate-600 font-mono">Последнее обновление</div>
+                <div className="text-sm text-slate-800 font-mono font-semibold">
                   {new Date(lastUpdate).toLocaleString('ru-RU', {
                     day: '2-digit',
                     month: '2-digit',
@@ -163,30 +163,30 @@ export default function HomePage() {
               </div>
               <a
                 href="/otk"
-                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-industrial-success/20 hover:bg-industrial-success/30 border border-industrial-success/40 rounded-lg transition-all"
+                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all"
                 title="Лабораторный контроль"
               >
-                <svg className="w-4 h-4 text-industrial-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
-                <span className="text-sm font-medium text-industrial-success">ОТК</span>
+                <span className="text-sm font-medium text-emerald-700">ОТК</span>
               </a>
               <a
                 href="/shift-master"
-                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-industrial-accent/20 hover:bg-industrial-accent/30 border border-industrial-accent/40 rounded-lg transition-all"
+                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all"
                 title="Перейти к управлению сменой"
               >
-                <svg className="w-4 h-4 text-industrial-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <span className="text-sm font-medium text-industrial-accent">Мастер смены</span>
+                <span className="text-sm font-medium text-blue-700">Мастер смены</span>
               </a>
               <button
                 onClick={fetchData}
-                className="p-2.5 bg-industrial-dark/70 hover:bg-industrial-dark border border-industrial-blue/30 rounded-lg transition-colors"
+                className="p-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors"
                 title="Обновить данные"
               >
-                <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
@@ -217,64 +217,64 @@ export default function HomePage() {
             const planProgress = (totalProduction / monthlyPlan) * 100;
 
             return (
-              <div className="bg-gradient-to-br from-industrial-darker/90 to-industrial-dark/90 backdrop-blur-sm rounded-2xl border-2 border-industrial-accent/40 p-8">
-                <h3 className="text-2xl font-display text-industrial-accent tracking-wider mb-6">
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+                <h3 className="text-2xl font-display text-blue-600 tracking-wider mb-6">
                   ИТОГИ ЗА МЕСЯЦ
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">Общее производство</div>
-                    <div className="text-5xl font-display font-bold text-industrial-accent">
+                    <div className="text-sm text-slate-600 mb-2">Общее производство</div>
+                    <div className="text-5xl font-display font-bold text-blue-600">
                       {totalProduction.toFixed(1)}
-                      <span className="text-2xl ml-2 text-gray-500">т</span>
+                      <span className="text-2xl ml-2 text-slate-500">т</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">Прошедших дней</div>
-                    <div className="text-5xl font-display font-bold text-blue-400">
+                    <div className="text-sm text-slate-600 mb-2">Прошедших дней</div>
+                    <div className="text-5xl font-display font-bold text-blue-500">
                       {dailyGrouped.length}
-                      <span className="text-2xl ml-2 text-gray-500">дн</span>
+                      <span className="text-2xl ml-2 text-slate-500">дн</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">Среднее за сутки</div>
-                    <div className="text-5xl font-display font-bold text-industrial-success">
+                    <div className="text-sm text-slate-600 mb-2">Среднее за сутки</div>
+                    <div className="text-5xl font-display font-bold text-emerald-500">
                       {(totalProduction / dailyGrouped.length).toFixed(1)}
-                      <span className="text-2xl ml-2 text-gray-500">т</span>
+                      <span className="text-2xl ml-2 text-slate-500">т</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">План (прошедшие дни)</div>
-                    <div className="text-5xl font-display font-bold text-gray-400">
+                    <div className="text-sm text-slate-600 mb-2">План (прошедшие дни)</div>
+                    <div className="text-5xl font-display font-bold text-slate-600">
                       {monthlyPlan.toLocaleString('ru-RU')}
-                      <span className="text-2xl ml-2 text-gray-500">т</span>
+                      <span className="text-2xl ml-2 text-slate-500">т</span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">{dailyGrouped.length} дн × 1200 т</div>
+                    <div className="text-xs text-slate-500 mt-1">{dailyGrouped.length} дн × 1200 т</div>
                   </div>
                 </div>
 
-                <div className="bg-industrial-dark/30 rounded-lg p-4">
+                <div className="bg-slate-50 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-400 font-mono">Выполнение плана месяца</span>
+                    <span className="text-sm text-slate-600 font-mono">Выполнение плана месяца</span>
                     <span className={`text-lg font-mono font-bold ${
-                      planProgress >= 100 ? 'text-industrial-success' :
-                      planProgress >= 80 ? 'text-industrial-warning' :
-                      'text-industrial-danger'
+                      planProgress >= 100 ? 'text-emerald-500' :
+                      planProgress >= 80 ? 'text-amber-500' :
+                      'text-rose-500'
                     }`}>
                       {planProgress.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="h-3 bg-industrial-dark rounded-full overflow-hidden border border-industrial-blue/30">
+                  <div className="h-3 bg-slate-200 rounded-full overflow-hidden border border-slate-300">
                     <div
                       className={`h-full transition-all duration-1000 ease-out ${
-                        planProgress >= 100 ? 'bg-gradient-to-r from-industrial-success to-green-400' :
-                        planProgress >= 80 ? 'bg-gradient-to-r from-industrial-warning to-yellow-400' :
-                        'bg-gradient-to-r from-industrial-danger to-red-400'
+                        planProgress >= 100 ? 'bg-gradient-to-r from-emerald-500 to-green-400' :
+                        planProgress >= 80 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' :
+                        'bg-gradient-to-r from-rose-500 to-red-400'
                       }`}
                       style={{ width: `${Math.min(planProgress, 100)}%` }}
                     />
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">
+                  <div className="text-xs text-slate-500 mt-2">
                     {planProgress >= 100
                       ? `План выполнен! Перевыполнение на ${(totalProduction - monthlyPlan).toFixed(1)} т`
                       : `До плана: ${(monthlyPlan - totalProduction).toFixed(1)} т`
@@ -286,53 +286,53 @@ export default function HomePage() {
           })()}
 
           {/* Отображение данных за месяц по суткам */}
-          <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
-            <h3 className="text-lg font-display text-gray-400 tracking-wider mb-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-lg font-display text-slate-700 tracking-wider mb-6">
               ДЕТАЛИЗАЦИЯ ПО СУТКАМ
-              <span className="text-xs text-gray-500 ml-3">(нажмите для подробной информации)</span>
+              <span className="text-xs text-slate-500 ml-3">(нажмите для подробной информации)</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {dailyGrouped.map((day, index) => (
                 <div
                   key={day.date}
                   onClick={() => setSelectedDay(day)}
-                  className={`bg-industrial-dark/50 rounded-lg p-3 border transition-all cursor-pointer ${
+                  className={`bg-slate-50 rounded-lg p-3 border transition-all cursor-pointer ${
                     index === dailyGrouped.length - 1
-                      ? 'border-industrial-accent/70 shadow-lg shadow-industrial-accent/20 hover:shadow-industrial-accent/40'
-                      : 'border-industrial-blue/20 hover:border-industrial-accent/50 hover:shadow-lg'
+                      ? 'border-blue-300 shadow-lg hover:shadow-xl'
+                      : 'border-slate-200 hover:border-blue-300 hover:shadow-lg'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs text-gray-400 font-mono">
+                    <div className="text-xs text-slate-600 font-mono">
                       {new Date(day.date).toLocaleDateString('ru-RU', {
                         day: '2-digit',
                         month: '2-digit',
                       })}
                     </div>
                     {index === dailyGrouped.length - 1 && (
-                      <span className="text-xs text-industrial-accent font-bold">СЕГОДНЯ</span>
+                      <span className="text-xs text-blue-600 font-bold">СЕГОДНЯ</span>
                     )}
                   </div>
-                  <div className="text-xl font-display font-bold text-industrial-accent mb-1">
+                  <div className="text-xl font-display font-bold text-blue-600 mb-1">
                     {day.stats.totalProduction.toFixed(0)} т
                   </div>
-                  <div className="text-xs text-gray-500 mb-1">
+                  <div className="text-xs text-slate-600 mb-1">
                     ⌀ {day.stats.averageSpeed.toFixed(1)} т/ч
                   </div>
-                  <div className="w-full bg-industrial-dark rounded-full h-1.5 mb-1">
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 mb-1">
                     <div
                       className={`h-1.5 rounded-full transition-all ${
-                        day.stats.progress >= 100 ? 'bg-industrial-success' :
-                        day.stats.progress >= 80 ? 'bg-industrial-warning' :
-                        'bg-industrial-danger'
+                        day.stats.progress >= 100 ? 'bg-emerald-500' :
+                        day.stats.progress >= 80 ? 'bg-amber-500' :
+                        'bg-rose-500'
                       }`}
                       style={{ width: `${Math.min(day.stats.progress, 100)}%` }}
                     />
                   </div>
                   <div className={`text-xs font-mono ${
-                    day.stats.progress >= 100 ? 'text-industrial-success' :
-                    day.stats.progress >= 80 ? 'text-industrial-warning' :
-                    'text-industrial-danger'
+                    day.stats.progress >= 100 ? 'text-emerald-500' :
+                    day.stats.progress >= 80 ? 'text-amber-500' :
+                    'text-rose-500'
                   }`}>
                     {day.stats.progress.toFixed(0)}%
                   </div>
@@ -350,31 +350,31 @@ export default function HomePage() {
 
             return (
               <div className={`rounded-xl p-5 border-2 ${
-                diffPercent > 5 ? 'bg-industrial-success/10 border-industrial-success/30' :
-                diffPercent < -5 ? 'bg-industrial-danger/10 border-industrial-danger/30' :
-                'bg-industrial-warning/10 border-industrial-warning/30'
+                diffPercent > 5 ? 'bg-emerald-50 border-emerald-200' :
+                diffPercent < -5 ? 'bg-rose-50 border-rose-200' :
+                'bg-amber-50 border-amber-200'
               }`}>
                 <div className="flex items-center gap-4">
                   <div className={`text-3xl ${
-                    diffPercent > 5 ? 'text-industrial-success' :
-                    diffPercent < -5 ? 'text-industrial-danger' :
-                    'text-industrial-warning'
+                    diffPercent > 5 ? 'text-emerald-500' :
+                    diffPercent < -5 ? 'text-rose-500' :
+                    'text-amber-500'
                   }`}>
                     {diffPercent > 5 ? '✓' : diffPercent < -5 ? '!' : '~'}
                   </div>
                   <div className="flex-1">
-                    <div className="text-base font-mono text-gray-300 mb-1">
+                    <div className="text-base font-mono text-slate-800 mb-1">
                       {diffPercent > 5 ? 'Производительность выше предыдущих суток' :
                        diffPercent < -5 ? 'Производительность ниже предыдущих суток' :
                        'Производительность на уровне предыдущих суток'}
                     </div>
-                    <div className="text-sm text-gray-400">
+                    <div className="text-sm text-slate-600">
                       {diffPercent > 5 ? 'Отличная работа! Продолжайте в том же духе.' :
                        diffPercent < -5 ? 'Требуется внимание. Проверьте причины снижения.' :
                        'Стабильная работа в пределах нормы.'}
                     </div>
                     <div className={`text-sm font-mono mt-2 ${
-                      diffPercent > 0 ? 'text-industrial-success' : 'text-industrial-danger'
+                      diffPercent > 0 ? 'text-emerald-500' : 'text-rose-500'
                     }`}>
                       {diffPercent > 0 ? '↑' : '↓'} {Math.abs(diff).toFixed(1)} т ({Math.abs(diffPercent).toFixed(1)}%)
                     </div>
@@ -386,14 +386,14 @@ export default function HomePage() {
         </div>
       </main>
 
-      <footer className="bg-industrial-darker/90 border-t border-industrial-blue/30 mt-16">
+      <footer className="bg-white border-t border-slate-200 mt-16">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-600">
             <div className="font-mono">
               © 2025 Маслозавод «Алтын Шығыс». Система мониторинга производства.
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-industrial-success animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-mono">Автообновление: каждые 5 минут</span>
             </div>
           </div>

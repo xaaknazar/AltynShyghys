@@ -126,8 +126,8 @@ export default function ShiftMasterPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen grid-background flex items-center justify-center">
-        <div className="text-2xl text-gray-400 font-display">Загрузка...</div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-2xl text-slate-700 font-display">Загрузка...</div>
       </div>
     );
   }
@@ -140,15 +140,15 @@ export default function ShiftMasterPage() {
   }));
 
   return (
-    <div className="min-h-screen grid-background">
-      <header className="bg-industrial-darker/90 backdrop-blur-md border-b border-industrial-blue/30 sticky top-0 z-50">
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-display font-bold text-industrial-accent">
+              <h1 className="text-3xl md:text-4xl font-display font-bold text-blue-600">
                 МАСТЕР СМЕНЫ
               </h1>
-              <p className="text-sm text-gray-400 font-mono mt-1">
+              <p className="text-sm text-slate-600 font-mono mt-1">
                 {currentShiftType === 'day' ? 'Дневная смена: 08:00-20:00' : 'Ночная смена: 20:00-08:00'}
                 {' • '}
                 {new Date(currentShiftDate).toLocaleDateString('ru-RU')}
@@ -158,25 +158,25 @@ export default function ShiftMasterPage() {
             <div className="flex items-center gap-4">
               <Link
                 href="/otk"
-                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-industrial-success/20 hover:bg-industrial-success/30 border border-industrial-success/40 rounded-lg transition-all"
+                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all"
               >
-                <svg className="w-4 h-4 text-industrial-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
-                <span className="text-sm font-medium text-industrial-success">ОТК</span>
+                <span className="text-sm font-medium text-emerald-700">ОТК</span>
               </Link>
               <Link
                 href="/"
-                className="px-4 py-2 bg-industrial-dark border border-industrial-blue/30 rounded-lg text-gray-300 hover:bg-industrial-blue/30 transition-all"
+                className="px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-800 hover:bg-slate-200 transition-all"
               >
                 ← На главную
               </Link>
               <button
                 onClick={fetchData}
-                className="p-3 bg-industrial-blue/30 hover:bg-industrial-blue/50 rounded-lg transition-colors"
+                className="p-3 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 title="Обновить данные"
               >
-                <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
@@ -210,7 +210,7 @@ export default function ShiftMasterPage() {
                 onSubmit={fetchShiftLogs}
               />
             )}
-            <div className="text-sm text-gray-400 font-mono">
+            <div className="text-sm text-slate-600 font-mono">
               Событий за смену: {shiftLogs.length}
             </div>
           </div>
@@ -223,13 +223,13 @@ export default function ShiftMasterPage() {
           />
 
           {/* История событий смены */}
-          <div className="bg-industrial-darker/80 backdrop-blur-sm rounded-2xl border border-industrial-blue/30 p-6">
-            <h3 className="text-lg font-display text-gray-400 tracking-wider mb-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-lg font-display text-slate-700 tracking-wider mb-6">
               ИСТОРИЯ СОБЫТИЙ СМЕНЫ
             </h3>
 
             {shiftLogs.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
+              <div className="text-center text-slate-600 py-8">
                 Событий за текущую смену пока нет
               </div>
             ) : (
@@ -239,16 +239,16 @@ export default function ShiftMasterPage() {
                   return (
                     <div
                       key={log.id}
-                      className="bg-industrial-dark/50 rounded-lg p-4 border border-industrial-blue/20 hover:border-industrial-accent/50 transition-all"
+                      className="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:border-blue-300 transition-all"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{eventType.icon}</span>
                           <div>
-                            <div className="text-sm font-bold text-industrial-accent">
+                            <div className="text-sm font-bold text-blue-600">
                               {eventType.label}
                             </div>
-                            <div className="text-xs text-gray-500 font-mono">
+                            <div className="text-xs text-slate-600 font-mono">
                               {new Date(log.event_time).toLocaleString('ru-RU', {
                                 day: '2-digit',
                                 month: '2-digit',
@@ -259,7 +259,7 @@ export default function ShiftMasterPage() {
                           </div>
                         </div>
                         {log.workshop && (
-                          <div className="text-xs bg-industrial-blue/20 px-3 py-1 rounded-full text-gray-300">
+                          <div className="text-xs bg-blue-50 px-3 py-1 rounded-full text-blue-700">
                             {log.workshop}
                           </div>
                         )}
@@ -267,33 +267,33 @@ export default function ShiftMasterPage() {
 
                       <div className="space-y-2">
                         <div>
-                          <div className="text-xs text-gray-400 mb-1">Описание:</div>
-                          <div className="text-sm text-gray-200">{log.description}</div>
+                          <div className="text-xs text-slate-600 mb-1">Описание:</div>
+                          <div className="text-sm text-slate-800">{log.description}</div>
                         </div>
 
                         {log.actions_taken && (
                           <div>
-                            <div className="text-xs text-gray-400 mb-1">Принятые меры:</div>
-                            <div className="text-sm text-gray-200">{log.actions_taken}</div>
+                            <div className="text-xs text-slate-600 mb-1">Принятые меры:</div>
+                            <div className="text-sm text-slate-800">{log.actions_taken}</div>
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between pt-2 border-t border-industrial-blue/20">
-                          <div className="flex items-center gap-4 text-xs text-gray-400">
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                          <div className="flex items-center gap-4 text-xs text-slate-600">
                             {log.speed_before !== null && (
                               <div>
-                                Скорость до: <span className="text-gray-300 font-mono">{log.speed_before} т/ч</span>
+                                Скорость до: <span className="text-slate-800 font-mono">{log.speed_before} т/ч</span>
                               </div>
                             )}
                             {log.speed_after !== null && (
                               <div>
-                                Скорость после: <span className="text-gray-300 font-mono">{log.speed_after} т/ч</span>
+                                Скорость после: <span className="text-slate-800 font-mono">{log.speed_after} т/ч</span>
                               </div>
                             )}
                           </div>
                           {log.master_name && (
-                            <div className="text-xs text-gray-400">
-                              Мастер: <span className="text-gray-300">{log.master_name}</span>
+                            <div className="text-xs text-slate-600">
+                              Мастер: <span className="text-slate-800">{log.master_name}</span>
                             </div>
                           )}
                         </div>
@@ -313,37 +313,37 @@ export default function ShiftMasterPage() {
             const maxSpeed = Math.max(...shiftData.map(d => d.speed));
 
             return (
-              <div className="bg-gradient-to-br from-industrial-darker/90 to-industrial-dark/90 backdrop-blur-sm rounded-2xl border-2 border-industrial-accent/40 p-8">
-                <h3 className="text-2xl font-display text-industrial-accent tracking-wider mb-6">
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+                <h3 className="text-2xl font-display text-blue-600 tracking-wider mb-6">
                   СТАТИСТИКА СМЕНЫ
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">Произведено</div>
-                    <div className="text-4xl font-display font-bold text-industrial-accent">
+                    <div className="text-sm text-slate-600 mb-2">Произведено</div>
+                    <div className="text-4xl font-display font-bold text-blue-600">
                       {totalProduction.toFixed(1)}
-                      <span className="text-xl ml-2 text-gray-500">т</span>
+                      <span className="text-xl ml-2 text-slate-500">т</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">Средняя скорость</div>
-                    <div className="text-4xl font-display font-bold text-blue-400">
+                    <div className="text-sm text-slate-600 mb-2">Средняя скорость</div>
+                    <div className="text-4xl font-display font-bold text-blue-500">
                       {avgSpeed.toFixed(1)}
-                      <span className="text-xl ml-2 text-gray-500">т/ч</span>
+                      <span className="text-xl ml-2 text-slate-500">т/ч</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">Мин. скорость</div>
-                    <div className="text-4xl font-display font-bold text-industrial-danger">
+                    <div className="text-sm text-slate-600 mb-2">Мин. скорость</div>
+                    <div className="text-4xl font-display font-bold text-rose-500">
                       {minSpeed.toFixed(1)}
-                      <span className="text-xl ml-2 text-gray-500">т/ч</span>
+                      <span className="text-xl ml-2 text-slate-500">т/ч</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-2">Макс. скорость</div>
-                    <div className="text-4xl font-display font-bold text-industrial-success">
+                    <div className="text-sm text-slate-600 mb-2">Макс. скорость</div>
+                    <div className="text-4xl font-display font-bold text-emerald-500">
                       {maxSpeed.toFixed(1)}
-                      <span className="text-xl ml-2 text-gray-500">т/ч</span>
+                      <span className="text-xl ml-2 text-slate-500">т/ч</span>
                     </div>
                   </div>
                 </div>
@@ -353,9 +353,9 @@ export default function ShiftMasterPage() {
         </div>
       </main>
 
-      <footer className="bg-industrial-darker/90 border-t border-industrial-blue/30 mt-16">
+      <footer className="bg-white border-t border-slate-200 mt-16">
         <div className="container mx-auto px-4 py-6">
-          <div className="text-center text-sm text-gray-500 font-mono">
+          <div className="text-center text-sm text-slate-600 font-mono">
             © 2025 Маслозавод «Алтын Шығыс». Система мониторинга смен.
           </div>
         </div>

@@ -96,23 +96,23 @@ export default function ShiftEventForm({
     <div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full md:w-auto bg-industrial-accent hover:bg-industrial-accent/80 text-industrial-darker font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-industrial-accent/50"
+        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg"
       >
         + Добавить событие смены
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-industrial-darker border-2 border-industrial-accent/50 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-industrial-darker/95 backdrop-blur-md border-b border-industrial-blue/30 p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-display font-bold text-industrial-accent">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white backdrop-blur-md border-b border-slate-200 p-6 flex items-center justify-between">
+              <h2 className="text-2xl font-display font-bold text-blue-600">
                 НОВОЕ СОБЫТИЕ СМЕНЫ
               </h2>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-industrial-blue/30 rounded-lg transition-colors"
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -121,7 +121,7 @@ export default function ShiftEventForm({
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Время события */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-800 mb-2">
                   Время события *
                 </label>
                 <input
@@ -129,13 +129,13 @@ export default function ShiftEventForm({
                   value={formData.event_time}
                   onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
                   required
-                  className="w-full bg-industrial-dark border border-industrial-blue/30 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-industrial-accent"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               {/* Тип события */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-800 mb-2">
                   Тип события *
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -146,12 +146,12 @@ export default function ShiftEventForm({
                       onClick={() => setFormData({ ...formData, event_type: type.value })}
                       className={`p-3 rounded-lg border-2 transition-all ${
                         formData.event_type === type.value
-                          ? 'border-industrial-accent bg-industrial-accent/20'
-                          : 'border-industrial-blue/30 hover:border-industrial-accent/50'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-slate-200 hover:border-blue-300'
                       }`}
                     >
                       <span className="text-2xl mb-1 block">{type.icon}</span>
-                      <span className="text-xs text-gray-300">{type.label}</span>
+                      <span className="text-xs text-slate-800">{type.label}</span>
                     </button>
                   ))}
                 </div>
@@ -159,13 +159,13 @@ export default function ShiftEventForm({
 
               {/* Цех */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-800 mb-2">
                   Цех
                 </label>
                 <select
                   value={formData.workshop}
                   onChange={(e) => setFormData({ ...formData, workshop: e.target.value })}
-                  className="w-full bg-industrial-dark border border-industrial-blue/30 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-industrial-accent"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Выберите цех...</option>
                   {workshops.map((workshop) => (
@@ -178,7 +178,7 @@ export default function ShiftEventForm({
 
               {/* Описание проблемы */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-800 mb-2">
                   Описание проблемы *
                 </label>
                 <textarea
@@ -187,13 +187,13 @@ export default function ShiftEventForm({
                   required
                   rows={3}
                   placeholder="Подробно опишите что произошло..."
-                  className="w-full bg-industrial-dark border border-industrial-blue/30 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-industrial-accent"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               {/* Принятые меры */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-800 mb-2">
                   Принятые меры
                 </label>
                 <textarea
@@ -201,14 +201,14 @@ export default function ShiftEventForm({
                   onChange={(e) => setFormData({ ...formData, actions_taken: e.target.value })}
                   rows={3}
                   placeholder="Что было сделано для решения проблемы..."
-                  className="w-full bg-industrial-dark border border-industrial-blue/30 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-industrial-accent"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               {/* Скорость до/после */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-800 mb-2">
                     Скорость до (т/ч)
                   </label>
                   <input
@@ -217,11 +217,11 @@ export default function ShiftEventForm({
                     value={formData.speed_before}
                     onChange={(e) => setFormData({ ...formData, speed_before: e.target.value })}
                     placeholder={`Текущая: ${currentSpeed.toFixed(1)}`}
-                    className="w-full bg-industrial-dark border border-industrial-blue/30 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-industrial-accent"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-800 mb-2">
                     Скорость после (т/ч)
                   </label>
                   <input
@@ -229,14 +229,14 @@ export default function ShiftEventForm({
                     step="0.1"
                     value={formData.speed_after}
                     onChange={(e) => setFormData({ ...formData, speed_after: e.target.value })}
-                    className="w-full bg-industrial-dark border border-industrial-blue/30 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-industrial-accent"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               {/* Имя мастера */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-800 mb-2">
                   Мастер смены
                 </label>
                 <input
@@ -244,7 +244,7 @@ export default function ShiftEventForm({
                   value={formData.master_name}
                   onChange={(e) => setFormData({ ...formData, master_name: e.target.value })}
                   placeholder="Введите ваше имя..."
-                  className="w-full bg-industrial-dark border border-industrial-blue/30 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-industrial-accent"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -253,14 +253,14 @@ export default function ShiftEventForm({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-industrial-accent hover:bg-industrial-accent/80 text-industrial-darker font-bold py-3 px-6 rounded-lg transition-all disabled:opacity-50"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all disabled:opacity-50"
                 >
                   {loading ? 'Сохранение...' : 'Сохранить событие'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="px-6 py-3 bg-industrial-dark border border-industrial-blue/30 rounded-lg text-gray-300 hover:bg-industrial-blue/30 transition-all"
+                  className="px-6 py-3 bg-slate-100 border border-slate-200 rounded-lg text-slate-800 hover:bg-slate-200 transition-all"
                 >
                   Отмена
                 </button>
