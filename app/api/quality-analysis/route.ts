@@ -152,6 +152,49 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Удалить анализ
+export async function DELETE(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Missing analysis ID' },
+        { status: 400 }
+      );
+    }
+
+    const { db } = await connectToDatabase();
+    const collection = db.collection('Quality_Analysis');
+
+    // Проверяем, существует ли анализ
+    const { ObjectId } = require('mongodb');
+    const analysis = await collection.findOne({ _id: new ObjectId(id) });
+
+    if (!analysis) {
+      return NextResponse.json(
+        { success: false, error: 'Analysis not found' },
+        { status: 404 }
+      );
+    }
+
+    // Удаляем анализ
+    await collection.deleteOne({ _id: new ObjectId(id) });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Analysis deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting quality analysis:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete quality analysis' },
+      { status: 500 }
+    );
+  }
+}
+
 // Функция группировки данных
 function groupAnalyses(analyses: any[], groupBy: 'shift' | 'day') {
   const grouped: any = {};

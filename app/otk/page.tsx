@@ -15,6 +15,7 @@ export default function OTKPage() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [recentAnalyses, setRecentAnalyses] = useState<any[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     // Автоопределение текущей смены
@@ -94,6 +95,33 @@ export default function OTKPage() {
       setMessage({ type: 'error', text: 'Ошибка при отправке данных' });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (analysisId: string) => {
+    if (!confirm('Вы уверены, что хотите удалить этот анализ?')) {
+      return;
+    }
+
+    setDeletingId(analysisId);
+    try {
+      const response = await fetch(`/api/quality-analysis?id=${analysisId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Анализ успешно удален!' });
+        fetchRecentAnalyses();
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Ошибка при удалении' });
+      }
+    } catch (error) {
+      console.error('Error deleting analysis:', error);
+      setMessage({ type: 'error', text: 'Ошибка при удалении анализа' });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -466,12 +494,23 @@ export default function OTKPage() {
                   recentAnalyses.map((analysis) => {
                     const conf = ANALYSIS_CONFIG[analysis.analysis_type as AnalysisType];
                     const stat = getAnalysisStatus(analysis.analysis_type, analysis.value);
+                    const isDeleting = deletingId === analysis.id;
                     return (
                       <div
                         key={analysis.id}
-                        className="bg-slate-50 rounded-lg p-3 border border-slate-200"
+                        className="bg-slate-50 rounded-lg p-3 border border-slate-200 relative group"
                       >
-                        <div className="flex items-center justify-between mb-1">
+                        <button
+                          onClick={() => handleDelete(analysis.id)}
+                          disabled={isDeleting}
+                          className="absolute top-2 right-2 p-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Удалить анализ"
+                        >
+                          <svg className="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        <div className="flex items-center justify-between mb-1 pr-8">
                           <div className="text-xs text-slate-600">
                             {new Date(analysis.sample_time).toLocaleTimeString('ru-RU', {
                               hour: '2-digit',
@@ -490,6 +529,11 @@ export default function OTKPage() {
                         <div className="text-lg font-mono font-bold text-blue-600">
                           {analysis.value.toFixed(2)}{conf.unit}
                         </div>
+                        {isDeleting && (
+                          <div className="absolute inset-0 bg-white bg-opacity-75 rounded-lg flex items-center justify-center">
+                            <div className="text-xs text-slate-600">Удаление...</div>
+                          </div>
+                        )}
                       </div>
                     );
                   })
