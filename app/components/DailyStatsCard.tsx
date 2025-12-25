@@ -163,20 +163,69 @@ export default function DailyStatsCard({ totalProduction, averageSpeed, progress
 
       <div className="grid grid-cols-2 gap-4 mt-6">
         <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-          <div className="text-xs text-slate-600 mb-1">Смена (12ч)</div>
+          <div className="text-xs text-slate-600 font-bold mb-1">Смена (12ч)</div>
           <div className="text-lg font-mono text-slate-800">{TARGETS.shift} т</div>
           <div className="text-xs text-blue-600 mt-1 font-mono">
             ⏱ Осталось: {timeLeft.shift}
           </div>
         </div>
         <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-          <div className="text-xs text-slate-600 mb-1">Сутки (24ч)</div>
+          <div className="text-xs text-slate-600 font-bold mb-1">Сутки (24ч)</div>
           <div className="text-lg font-mono text-slate-800">{TARGETS.daily} т</div>
           <div className="text-xs text-blue-600 mt-1 font-mono">
             ⏱ Осталось: {timeLeft.day}
           </div>
         </div>
       </div>
+
+      {/* Прогноз до конца суток */}
+      {(() => {
+        // Вычисляем прогноз на основе средней скорости и оставшегося времени
+        const hoursLeft = parseFloat(timeLeft.day.split('ч')[0]) + parseFloat(timeLeft.day.split('ч ')[1]) / 60;
+        const projectedProduction = totalProduction + (averageSpeed * hoursLeft);
+        const projectedProgress = (projectedProduction / TARGETS.daily) * 100;
+        const projectedDiff = projectedProduction - TARGETS.daily;
+
+        return (
+          <div className={`mt-4 rounded-xl p-4 border-2 ${
+            projectedProgress >= 100 ? 'bg-emerald-50 border-emerald-200' :
+            projectedProgress >= 90 ? 'bg-amber-50 border-amber-200' :
+            'bg-rose-50 border-rose-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`text-2xl ${
+                projectedProgress >= 100 ? 'text-emerald-500' :
+                projectedProgress >= 90 ? 'text-amber-500' :
+                'text-rose-500'
+              }`}>
+                📊
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-bold text-slate-700 mb-1">
+                  Прогноз до конца суток
+                </div>
+                <div className="text-xs text-slate-600 mb-2">
+                  При средней скорости {formatNumber(averageSpeed, 1)} т/ч за оставшиеся {timeLeft.day}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <span className="text-xl font-display font-bold text-blue-600">
+                      {formatNumber(projectedProduction, 1)}
+                    </span>
+                    <span className="text-sm text-slate-500 ml-1">т</span>
+                  </div>
+                  <div className={`text-sm font-mono font-bold ${
+                    projectedDiff >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                  }`}>
+                    {projectedDiff >= 0 ? '↑' : '↓'} {formatNumber(Math.abs(projectedDiff), 1)} т
+                    ({projectedDiff >= 0 ? '+' : ''}{formatNumber(projectedDiff, 0)} т от плана)
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

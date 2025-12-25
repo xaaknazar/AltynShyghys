@@ -57,6 +57,58 @@ export default function AnalysisPage() {
     }
   };
 
+  const exportToExcel = () => {
+    // Подготовка данных для экспорта
+    const exportData = analyses.map(analysis => {
+      const config = ANALYSIS_CONFIG[analysis.analysis_type as AnalysisType];
+      const status = getAnalysisStatus(analysis.analysis_type, analysis.value);
+      const date = new Date(analysis.sample_time);
+
+      return {
+        'Дата': date.toLocaleDateString('ru-RU'),
+        'Время': date.toLocaleTimeString('ru-RU'),
+        'Тип анализа': config?.label || analysis.analysis_type,
+        'Смена': analysis.shift_type === 'day' ? 'Дневная' : 'Ночная',
+        'Значение': analysis.value.toFixed(2),
+        'Единица': config?.unit || '',
+        'Минимум': config?.min || '',
+        'Максимум': config?.max || '',
+        'Статус': status === 'normal' ? 'В норме' : status === 'warning' ? 'Близко к норме' : 'Вне нормы',
+        'Комментарий': analysis.comment || '',
+        'Ответственный': analysis.responsible || '',
+      };
+    });
+
+    // Создание CSV строки
+    const headers = Object.keys(exportData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map(row =>
+        headers.map(header => {
+          const value = row[header as keyof typeof row];
+          // Экранируем значения с запятыми и кавычками
+          return typeof value === 'string' && (value.includes(',') || value.includes('"'))
+            ? `"${value.replace(/"/g, '""')}"`
+            : value;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Добавляем BOM для корректного отображения кириллицы в Excel
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    const fileName = `Анализы_качества_${startDate}_${endDate}.csv`;
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Данные для отображения
   const displayData = viewMode === 'all' ? analyses : groupedData;
 
@@ -129,7 +181,23 @@ export default function AnalysisPage() {
       <main className="container mx-auto px-4 py-8">
         {/* Фильтры */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-8 shadow-sm">
-          <h3 className="text-lg font-display text-slate-700 mb-4">ФИЛЬТРЫ</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-display font-bold text-slate-700">ФИЛЬТРЫ</h3>
+            {analyses.length > 0 && (
+              <button
+                onClick={exportToExcel}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all"
+              >
+                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-sm font-bold text-emerald-700">Экспорт в Excel</span>
+                <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
+                  {analyses.length}
+                </span>
+              </button>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
