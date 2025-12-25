@@ -165,7 +165,7 @@ export default function DayDetailModal({ dayData, onClose }: DayDetailModalProps
                   };
                 });
 
-                const linePath = points.map((point, index) => {
+                const linePath = points.map((point: typeof points[0], index: number) => {
                   const command = index === 0 ? 'M' : 'L';
                   return `${command} ${point.x} ${point.y}`;
                 }).join(' ');
@@ -204,7 +204,7 @@ export default function DayDetailModal({ dayData, onClose }: DayDetailModalProps
 
                     {/* Точки */}
                     <div className="relative h-80">
-                      {points.map((point, index) => (
+                      {points.map((point: typeof points[0], index: number) => (
                         <div
                           key={index} className="absolute group"
                           style={{ left: `${point.x}%`, top: `${point.y}%`, transform: 'translate(-50%, -50%)' }}

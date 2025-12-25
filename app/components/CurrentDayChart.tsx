@@ -97,7 +97,7 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
 
         {/* Точки */}
         <div className="relative h-80">
-          {points.map((point, index) => (
+          {points.map((point: typeof points[0], index: number) => (
             <div
               key={index}
               className="absolute group"

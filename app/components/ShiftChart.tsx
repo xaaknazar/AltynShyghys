@@ -117,7 +117,7 @@ export default function ShiftChart({ data, shiftType, events = [] }: ShiftChartP
             });
 
             // Создаем SVG путь для линии
-            const linePath = points.map((p, index) => {
+            const linePath = points.map((p: typeof points[0], index: number) => {
               const command = index === 0 ? 'M' : 'L';
               return `${command} ${p.x} ${p.y}`;
             }).join(' ');
@@ -136,7 +136,7 @@ export default function ShiftChart({ data, shiftType, events = [] }: ShiftChartP
                 </svg>
 
                 {/* Точки с интерактивностью */}
-                {points.map((p, index) => (
+                {points.map((p: typeof points[0], index: number) => (
                   <div
                     key={p.interval.timestamp}
                     className="absolute group"

@@ -171,7 +171,7 @@ export default function LineChart({
           />
 
           {/* Точки */}
-          {points.map((point, index) => {
+          {points.map((point: typeof points[0], index: number) => {
             const status = getPointStatus(point.value);
             const color = getStatusColor(status);
 
