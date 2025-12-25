@@ -163,12 +163,12 @@ export function getAnalysisStatus(type: AnalysisType, value: number): AnalysisSt
   const config = ANALYSIS_CONFIG[type];
 
   // Для анализов с min = 0 (только max) - типа "до X%"
-  const onlyMaxTypes = [
+  const onlyMaxTypes: readonly AnalysisType[] = [
     ANALYSIS_TYPES.OIL_CONTENT_MEAL,
     ANALYSIS_TYPES.FAT_HUSK,
     ANALYSIS_TYPES.KERNEL_LOSS_HUSK,
     ANALYSIS_TYPES.MOISTURE_CRUSHED,
-  ];
+  ] as const;
 
   if (onlyMaxTypes.includes(type)) {
     if (value <= config.max - config.warningThreshold) return 'normal';
