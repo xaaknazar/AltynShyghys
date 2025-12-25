@@ -186,24 +186,180 @@ export default function OTKPage() {
                 {/* Тип анализа */}
                 <div>
                   <label className="block text-sm text-slate-800 mb-3 font-semibold">Тип анализа</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {Object.entries(ANALYSIS_CONFIG).map(([type, conf]) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setSelectedType(type as AnalysisType)}
-                        className={`p-4 rounded-lg border-2 transition-all text-left ${
-                          selectedType === type
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-slate-200 bg-white hover:border-blue-300'
-                        }`}
-                      >
-                        <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
-                        <div className="text-xs text-slate-600 mt-1">
-                          Норма: {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
-                        </div>
-                      </button>
-                    ))}
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {/* Входящее сырье */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Входящее сырье
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL, ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setSelectedType(type)}
+                              className={`p-3 rounded-lg border-2 transition-all text-left ${
+                                selectedType === type
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
+                              <div className="text-xs text-slate-600 mt-1">
+                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Лузга */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Лузга
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_HUSK, ANALYSIS_TYPES.FAT_HUSK, ANALYSIS_TYPES.KERNEL_LOSS_HUSK].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setSelectedType(type)}
+                              className={`p-3 rounded-lg border-2 transition-all text-left ${
+                                selectedType === type
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
+                              <div className="text-xs text-slate-600 mt-1">
+                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Рушанка */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Рушанка
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_CRUSHED, ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setSelectedType(type)}
+                              className={`p-3 rounded-lg border-2 transition-all text-left ${
+                                selectedType === type
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
+                              <div className="text-xs text-slate-600 mt-1">
+                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Мезга с жаровни */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Мезга с жаровни
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_ROASTER_1, ANALYSIS_TYPES.MOISTURE_ROASTER_2].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setSelectedType(type)}
+                              className={`p-3 rounded-lg border-2 transition-all text-left ${
+                                selectedType === type
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
+                              <div className="text-xs text-slate-600 mt-1">
+                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Жмых с пресса */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Жмых с пресса
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_PRESS_1, ANALYSIS_TYPES.MOISTURE_PRESS_2, ANALYSIS_TYPES.FAT_PRESS_1, ANALYSIS_TYPES.FAT_PRESS_2].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setSelectedType(type)}
+                              className={`p-3 rounded-lg border-2 transition-all text-left ${
+                                selectedType === type
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
+                              <div className="text-xs text-slate-600 mt-1">
+                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Шрот */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Шрот
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL, ANALYSIS_TYPES.OIL_CONTENT_MEAL].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setSelectedType(type)}
+                              className={`p-3 rounded-lg border-2 transition-all text-left ${
+                                selectedType === type
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
+                              <div className="text-xs text-slate-600 mt-1">
+                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
