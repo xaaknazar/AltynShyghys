@@ -218,44 +218,44 @@ export default function HomePage() {
 
             return (
               <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-                <h3 className="text-2xl font-display text-blue-600 tracking-wider mb-6">
+                <h3 className="text-2xl font-display font-bold text-blue-600 tracking-wider mb-6">
                   ИТОГИ ЗА МЕСЯЦ
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                   <div className="text-center">
-                    <div className="text-sm text-slate-600 mb-2">Общее производство</div>
+                    <div className="text-sm text-slate-600 font-bold mb-2">Общее производство</div>
                     <div className="text-5xl font-display font-bold text-blue-600">
                       {totalProduction.toFixed(1)}
                       <span className="text-2xl ml-2 text-slate-500">т</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-slate-600 mb-2">Прошедших дней</div>
+                    <div className="text-sm text-slate-600 font-bold mb-2">Прошедших дней</div>
                     <div className="text-5xl font-display font-bold text-blue-500">
                       {dailyGrouped.length}
                       <span className="text-2xl ml-2 text-slate-500">дн</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-slate-600 mb-2">Среднее за сутки</div>
+                    <div className="text-sm text-slate-600 font-bold mb-2">Среднее за сутки</div>
                     <div className="text-5xl font-display font-bold text-emerald-500">
                       {(totalProduction / dailyGrouped.length).toFixed(1)}
                       <span className="text-2xl ml-2 text-slate-500">т</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-slate-600 mb-2">План (прошедшие дни)</div>
+                    <div className="text-sm text-slate-600 font-bold mb-2">План (прошедшие дни)</div>
                     <div className="text-5xl font-display font-bold text-slate-600">
                       {monthlyPlan.toLocaleString('ru-RU')}
                       <span className="text-2xl ml-2 text-slate-500">т</span>
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">{dailyGrouped.length} дн × 1200 т</div>
+                    <div className="text-xs text-slate-500 font-semibold mt-1">{dailyGrouped.length} дн × 1200 т</div>
                   </div>
                 </div>
 
                 <div className="bg-slate-50 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-slate-600 font-mono">Выполнение плана месяца</span>
+                    <span className="text-sm text-slate-600 font-bold">Выполнение плана месяца</span>
                     <span className={`text-lg font-mono font-bold ${
                       planProgress >= 100 ? 'text-emerald-500' :
                       planProgress >= 80 ? 'text-amber-500' :
@@ -287,9 +287,9 @@ export default function HomePage() {
 
           {/* Отображение данных за месяц по суткам */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-lg font-display text-slate-700 tracking-wider mb-6">
+            <h3 className="text-lg font-display font-bold text-slate-700 tracking-wider mb-6">
               ДЕТАЛИЗАЦИЯ ПО СУТКАМ
-              <span className="text-xs text-slate-500 ml-3">(нажмите для подробной информации)</span>
+              <span className="text-xs text-slate-500 font-normal ml-3">(нажмите для подробной информации)</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {dailyGrouped.map((day, index) => (

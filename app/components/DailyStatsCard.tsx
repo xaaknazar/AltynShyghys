@@ -13,6 +13,7 @@ interface DailyStatsProps {
 
 export default function DailyStatsCard({ totalProduction, averageSpeed, progress, periodStart, periodEnd }: DailyStatsProps) {
   const [timeLeft, setTimeLeft] = useState({ shift: '', day: '' });
+  const [currentShift, setCurrentShift] = useState<'day' | 'night'>('day');
 
   useEffect(() => {
     const updateTimeLeft = () => {
@@ -23,6 +24,10 @@ export default function DailyStatsCard({ totalProduction, averageSpeed, progress
       const localTime = new Date(utcNow.getTime() + 5 * 60 * 60 * 1000);
       const localHour = localTime.getUTCHours();
       const localMinute = localTime.getUTCMinutes();
+
+      // Определяем текущую смену: дневная 08:00-20:00, ночная 20:00-08:00
+      const isDayShift = localHour >= 8 && localHour < 20;
+      setCurrentShift(isDayShift ? 'day' : 'night');
 
       // Конец суток: следующий день в 20:00
       const dayEnd = new Date(localTime);
@@ -80,39 +85,55 @@ export default function DailyStatsCard({ totalProduction, averageSpeed, progress
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
       <div className="mb-6">
-        <h3 className="text-lg font-display text-slate-700 tracking-wider mb-2">
-          ПРОИЗВОДСТВО ЗА СУТКИ
-        </h3>
-        <div className="text-sm text-slate-600 font-mono">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-display font-bold text-slate-700 tracking-wider">
+            ПРОИЗВОДСТВО ЗА СУТКИ
+          </h3>
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
+            currentShift === 'day'
+              ? 'bg-amber-50 border-amber-200'
+              : 'bg-indigo-50 border-indigo-200'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              currentShift === 'day' ? 'bg-amber-500' : 'bg-indigo-500'
+            }`} />
+            <span className={`text-sm font-bold ${
+              currentShift === 'day' ? 'text-amber-700' : 'text-indigo-700'
+            }`}>
+              {currentShift === 'day' ? 'Дневная смена' : 'Ночная смена'}
+            </span>
+          </div>
+        </div>
+        <div className="text-sm text-slate-600 font-mono font-semibold">
           {formatTime(periodStart)} → {formatTime(periodEnd)}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="space-y-2">
-          <div className="text-sm text-slate-600 font-mono">Произведено</div>
+          <div className="text-sm text-slate-600 font-bold">Произведено</div>
           <div className="text-4xl font-display font-bold text-blue-600">
             {formatNumber(totalProduction, 1)}
             <span className="text-xl ml-1 text-slate-500">т</span>
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 font-semibold">
             из {TARGETS.daily} т (план)
           </div>
         </div>
 
         <div className="space-y-2">
-          <div className="text-sm text-slate-600 font-mono">Средняя скорость</div>
+          <div className="text-sm text-slate-600 font-bold">Средняя скорость</div>
           <div className="text-4xl font-display font-bold text-blue-500">
             {formatNumber(averageSpeed, 1)}
             <span className="text-xl ml-1 text-slate-500">т/ч</span>
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 font-semibold">
             норма {TARGETS.hourly} т/ч
           </div>
         </div>
 
         <div className="space-y-2">
-          <div className="text-sm text-slate-600 font-mono">Выполнение плана</div>
+          <div className="text-sm text-slate-600 font-bold">Выполнение плана</div>
           <div className={`text-4xl font-display font-bold ${
             progress >= 100 ? 'text-emerald-500' :
             progress >= 80 ? 'text-amber-500' :
@@ -121,7 +142,7 @@ export default function DailyStatsCard({ totalProduction, averageSpeed, progress
             {formatNumber(progress, 1)}
             <span className="text-xl ml-1 text-slate-500">%</span>
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 font-semibold">
             {progress >= 100 ? 'План выполнен' : `До плана ${formatNumber(TARGETS.daily - totalProduction, 0)} т`}
           </div>
         </div>
