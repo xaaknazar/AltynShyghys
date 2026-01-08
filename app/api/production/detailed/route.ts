@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
     const { db } = await connectToDatabase();
     const collection = db.collection('Rvo_Production_Job');
 
-    // Конвертируем дату в UTC для запроса
-    // Начало: YYYY-MM-DD 20:00 местного времени = YYYY-MM-DD 15:00 UTC
+    // Производственный день начинается в 20:00 предыдущего дня (ночная смена)
     const startDateTime = new Date(`${date}T20:00:00`);
+    startDateTime.setDate(startDateTime.getDate() - 1); // Вычитаем день для захвата ночной смены
     const startUTC = new Date(startDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
     // Конец: следующий день в 20:00 местного времени

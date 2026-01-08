@@ -102,8 +102,9 @@ export async function GET(request: NextRequest) {
     const { db } = await connectToDatabase();
     const coll = db.collection(collection);
 
-    // Получаем данные за производственные сутки (20:00 - 20:00)
+    // Производственный день начинается в 20:00 предыдущего дня (ночная смена)
     const startDateTime = new Date(`${date}T20:00:00`);
+    startDateTime.setDate(startDateTime.getDate() - 1); // Вычитаем день для захвата ночной смены
     const startUTC = new Date(startDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
     const endDate = new Date(date);
