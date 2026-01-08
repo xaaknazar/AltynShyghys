@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db';
+import { connectToDatabase } from '@/lib/mongodb';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const TIMEZONE_OFFSET = 5; // UTC+5
 
