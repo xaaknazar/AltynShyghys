@@ -167,8 +167,27 @@ export default function ProductionAnalysisPage() {
 
           if (metricData.length === 0) return null;
 
-          const maxValue = Math.max(...metricData.map((d: any) => d[metric.title] || 0), 1) * 1.2;
-          const minValue = Math.min(...metricData.map((d: any) => d[metric.title] || 0), 0) * (maxValue > 0 ? 0.8 : 1.2);
+          // Получаем все значения метрики
+          const values = metricData.map((d: any) => d[metric.title]);
+          const dataMin = Math.min(...values);
+          const dataMax = Math.max(...values);
+
+          // Правильная обработка для отрицательных значений (например, вакуум)
+          let minValue, maxValue;
+          if (dataMax <= 0) {
+            // Все значения отрицательные или ноль (например, вакуум)
+            minValue = dataMin * 1.2; // Расширяем диапазон вниз
+            maxValue = dataMax * 0.8; // Немного выше максимума (ближе к 0)
+          } else if (dataMin >= 0) {
+            // Все значения положительные
+            minValue = dataMin * 0.8;
+            maxValue = dataMax * 1.2;
+          } else {
+            // Смешанные значения (и положительные, и отрицательные)
+            minValue = dataMin < 0 ? dataMin * 1.2 : dataMin * 0.8;
+            maxValue = dataMax * 1.2;
+          }
+
           const valueRange = maxValue - minValue;
 
           const points = metricData.map((point: any, index: number) => {
