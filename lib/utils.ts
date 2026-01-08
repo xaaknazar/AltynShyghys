@@ -94,8 +94,12 @@ export function calculateDailyStats(data: ProductionData[]): DailyStats {
     (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
   );
 
-  // Считаем производство как сумму всех difference за период
-  const totalProduction = data.reduce((sum, d) => sum + (d.difference || 0), 0);
+  // Считаем производство как сумму всех положительных difference за период
+  // Игнорируем отрицательные значения (сброс счетчика, ошибки)
+  const totalProduction = data.reduce((sum, d) => {
+    const diff = d.difference || 0;
+    return sum + (diff > 0 ? diff : 0);
+  }, 0);
 
   // Рассчитываем среднюю скорость на основе общего производства и времени
   const firstTime = new Date(sortedData[0].datetime).getTime();
@@ -288,7 +292,9 @@ export function aggregateToThirtyMinutes(data: ProductionData[]): ThirtyMinuteDa
 
     const interval = intervals.get(intervalTimestamp)!;
     interval.speeds.push(item.speed);
-    interval.production += item.difference || 0;
+    // Добавляем только положительные значения difference (игнорируем сброс счетчика)
+    const diff = item.difference || 0;
+    interval.production += diff > 0 ? diff : 0;
     interval.count++;
   });
 

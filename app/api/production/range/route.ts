@@ -92,8 +92,15 @@ export async function GET(request: NextRequest) {
         return hour < 8 || hour >= 20;
       });
 
-      const dayShiftProduction = dayShiftData.reduce((sum, d) => sum + (d.difference || 0), 0);
-      const nightShiftProduction = nightShiftData.reduce((sum, d) => sum + (d.difference || 0), 0);
+      // Суммируем только положительные значения difference (игнорируем отрицательные - сброс счетчика)
+      const dayShiftProduction = dayShiftData.reduce((sum, d) => {
+        const diff = d.difference || 0;
+        return sum + (diff > 0 ? diff : 0);
+      }, 0);
+      const nightShiftProduction = nightShiftData.reduce((sum, d) => {
+        const diff = d.difference || 0;
+        return sum + (diff > 0 ? diff : 0);
+      }, 0);
 
       return {
         date: day.date,
