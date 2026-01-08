@@ -17,6 +17,7 @@ export default function ProductionAnalysisPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [techData, setTechData] = useState<{[key: string]: any}>({});
   const [techMetrics, setTechMetrics] = useState<{[key: string]: any[]}>({});
+  const [selectedMetrics, setSelectedMetrics] = useState<{[collectionName: string]: string[]}>({});
 
   const techCollections = [
     { name: 'Extractor_TechData_Job', title: 'Экстрактор - Технические данные' },
@@ -150,6 +151,20 @@ export default function ProductionAnalysisPage() {
     return colors[index % colors.length];
   };
 
+  const toggleMetricSelection = (collectionName: string, metricTitle: string) => {
+    setSelectedMetrics(prev => {
+      const current = prev[collectionName] || [];
+      const isSelected = current.includes(metricTitle);
+
+      return {
+        ...prev,
+        [collectionName]: isSelected
+          ? current.filter(m => m !== metricTitle)
+          : [...current, metricTitle]
+      };
+    });
+  };
+
   const renderTechnicalChart = (collectionName: string, title: string) => {
     const data = techData[collectionName] || [];
     const metrics = techMetrics[collectionName] || [];
@@ -158,113 +173,171 @@ export default function ProductionAnalysisPage() {
       return null;
     }
 
+    const selected = selectedMetrics[collectionName] || [];
+    const selectedMetricsData = metrics.filter((m: any) => selected.includes(m.title));
+
     return (
       <div key={collectionName} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h3 className="text-lg font-display font-bold text-slate-700 mb-4">{title}</h3>
 
-        {metrics.map((metric: any, metricIndex: number) => {
-          const metricData = data.filter((d: any) => d[metric.title] !== undefined);
+        {/* Чекбоксы для выбора метрик */}
+        <div className="mb-6 flex flex-wrap gap-3">
+          {metrics.map((metric: any, metricIndex: number) => {
+            const isSelected = selected.includes(metric.title);
+            const color = getMetricColor(metricIndex);
 
-          if (metricData.length === 0) return null;
+            return (
+              <label
+                key={metric.title}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 cursor-pointer transition-all ${
+                  isSelected
+                    ? 'bg-slate-50 border-slate-400'
+                    : 'bg-white border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleMetricSelection(collectionName, metric.title)}
+                  className="w-4 h-4 cursor-pointer"
+                  style={{ accentColor: color }}
+                />
+                <span className="text-sm font-medium text-slate-700">{metric.title}</span>
+                <span className="text-xs text-slate-500 font-mono">({metric.unit})</span>
+              </label>
+            );
+          })}
+        </div>
 
-          // Получаем все значения метрики
-          const values = metricData.map((d: any) => d[metric.title]);
-          const dataMin = Math.min(...values);
-          const dataMax = Math.max(...values);
+        {/* Объединенный график */}
+        {selectedMetricsData.length > 0 && (
+          <div>
+            {/* Легенда */}
+            <div className="mb-4 flex flex-wrap gap-4">
+              {selectedMetricsData.map((metric: any, idx: number) => {
+                const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
+                const color = getMetricColor(metricIndex);
 
-          // Правильная обработка для отрицательных значений (например, вакуум)
-          let minValue, maxValue;
-          if (dataMax <= 0) {
-            // Все значения отрицательные или ноль (например, вакуум)
-            minValue = dataMin * 1.2; // Расширяем диапазон вниз
-            maxValue = dataMax * 0.8; // Немного выше максимума (ближе к 0)
-          } else if (dataMin >= 0) {
-            // Все значения положительные
-            minValue = dataMin * 0.8;
-            maxValue = dataMax * 1.2;
-          } else {
-            // Смешанные значения (и положительные, и отрицательные)
-            minValue = dataMin < 0 ? dataMin * 1.2 : dataMin * 0.8;
-            maxValue = dataMax * 1.2;
-          }
-
-          const valueRange = maxValue - minValue;
-
-          const points = metricData.map((point: any, index: number) => {
-            const x = (index / (metricData.length - 1 || 1)) * 100;
-            const normalizedValue = valueRange !== 0 ? ((point[metric.title] - minValue) / valueRange) : 0.5;
-            const y = 100 - (normalizedValue * 100);
-            return { x, y, point, value: point[metric.title] };
-          });
-
-          const linePath = points.map((p: any, index: number) => {
-            const command = index === 0 ? 'M' : 'L';
-            return `${command} ${p.x} ${p.y}`;
-          }).join(' ');
-
-          const color = getMetricColor(metricIndex);
-
-          return (
-            <div key={metric.title} className="mb-8 last:mb-0">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-base font-semibold text-slate-700">
-                  {metric.title}
-                </h4>
-                <span className="text-sm text-slate-600 font-mono">{metric.unit}</span>
-              </div>
-
-              <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-                <div className="relative h-64 overflow-x-auto">
-                  {/* SVG для линии */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path
-                      d={linePath}
-                      fill="none"
-                      stroke={color}
-                      strokeWidth="0.5"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </svg>
-
-                  {/* Точки */}
-                  {points.map((p: any, index: number) => (
+                return (
+                  <div key={metric.title} className="flex items-center gap-2">
                     <div
-                      key={index}
-                      className="absolute group"
-                      style={{
-                        left: `${p.x}%`,
-                        bottom: `${100 - p.y}%`,
-                        transform: 'translate(-50%, 50%)'
-                      }}
-                    >
-                      <div
-                        className="w-2 h-2 rounded-full cursor-pointer transition-all duration-200 hover:scale-150"
-                        style={{ backgroundColor: color }}
-                      ></div>
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: color }}
+                    ></div>
+                    <span className="text-sm font-medium text-slate-700">
+                      {metric.title} ({metric.unit})
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
 
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                        <div className="bg-white border border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
-                          <div className="text-xs text-slate-600 mb-1 font-mono">
-                            {p.point.time}
-                          </div>
-                          <div className="text-base font-bold" style={{ color }}>
-                            {p.value?.toFixed(2)} {metric.unit}
-                          </div>
-                        </div>
-                      </div>
+            <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
+              <div className="relative h-80 overflow-x-auto">
+                {selectedMetricsData.map((metric: any) => {
+                  const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
+                  const metricData = data.filter((d: any) => d[metric.title] !== undefined);
 
-                      {index % Math.max(1, Math.floor(metricData.length / 10)) === 0 && (
-                        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
-                          {p.point.time}
+                  if (metricData.length === 0) return null;
+
+                  // Получаем все значения метрики
+                  const values = metricData.map((d: any) => d[metric.title]);
+                  const dataMin = Math.min(...values);
+                  const dataMax = Math.max(...values);
+
+                  // Правильная обработка для отрицательных значений
+                  let minValue, maxValue;
+                  if (dataMax <= 0) {
+                    minValue = dataMin * 1.2;
+                    maxValue = dataMax * 0.8;
+                  } else if (dataMin >= 0) {
+                    minValue = dataMin * 0.8;
+                    maxValue = dataMax * 1.2;
+                  } else {
+                    minValue = dataMin < 0 ? dataMin * 1.2 : dataMin * 0.8;
+                    maxValue = dataMax * 1.2;
+                  }
+
+                  const valueRange = maxValue - minValue;
+
+                  const points = metricData.map((point: any, index: number) => {
+                    const x = (index / (metricData.length - 1 || 1)) * 100;
+                    const normalizedValue = valueRange !== 0 ? ((point[metric.title] - minValue) / valueRange) : 0.5;
+                    const y = 100 - (normalizedValue * 100);
+                    return { x, y, point, value: point[metric.title] };
+                  });
+
+                  const linePath = points.map((p: any, index: number) => {
+                    const command = index === 0 ? 'M' : 'L';
+                    return `${command} ${p.x} ${p.y}`;
+                  }).join(' ');
+
+                  const color = getMetricColor(metricIndex);
+
+                  return (
+                    <div key={metric.title}>
+                      {/* SVG для линии */}
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <path
+                          d={linePath}
+                          fill="none"
+                          stroke={color}
+                          strokeWidth="0.8"
+                          vectorEffect="non-scaling-stroke"
+                          opacity="0.8"
+                        />
+                      </svg>
+
+                      {/* Точки */}
+                      {points.map((p: any, index: number) => (
+                        <div
+                          key={`${metric.title}-${index}`}
+                          className="absolute group"
+                          style={{
+                            left: `${p.x}%`,
+                            bottom: `${100 - p.y}%`,
+                            transform: 'translate(-50%, 50%)'
+                          }}
+                        >
+                          <div
+                            className="w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"
+                            style={{ backgroundColor: color }}
+                          ></div>
+
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
+                            <div className="bg-white border-2 rounded-lg p-3 shadow-xl whitespace-nowrap" style={{ borderColor: color }}>
+                              <div className="text-xs text-slate-600 mb-1 font-mono">
+                                {p.point.time}
+                              </div>
+                              <div className="text-sm font-medium text-slate-700 mb-1">
+                                {metric.title}
+                              </div>
+                              <div className="text-lg font-bold" style={{ color }}>
+                                {p.value?.toFixed(2)} {metric.unit}
+                              </div>
+                            </div>
+                          </div>
+
+                          {index % Math.max(1, Math.floor(metricData.length / 12)) === 0 && (
+                            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
+                              {p.point.time}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
-          );
-        })}
+          </div>
+        )}
+
+        {selectedMetricsData.length === 0 && (
+          <div className="text-center py-8 text-slate-500">
+            Выберите метрики для отображения графика
+          </div>
+        )}
       </div>
     );
   };

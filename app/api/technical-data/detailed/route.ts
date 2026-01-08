@@ -152,9 +152,20 @@ export async function GET(request: NextRequest) {
       });
     });
 
+    const cleanUnit = (unit: string): string => {
+      return unit
+        .replace(/Celsius/gi, '°C')
+        .replace(/А ампер/gi, 'A')
+        .replace(/A ампер/gi, 'A')
+        .replace(/ампер/gi, 'A')
+        .replace(/% процент/gi, '%')
+        .replace(/процент/gi, '%')
+        .trim();
+    };
+
     const metrics = Array.from(metricsSet).map((title) => ({
       title,
-      unit: metricsUnits.get(title) || '',
+      unit: cleanUnit(metricsUnits.get(title) || ''),
     }));
 
     return NextResponse.json({
