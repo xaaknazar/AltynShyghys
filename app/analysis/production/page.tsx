@@ -23,9 +23,15 @@ export default function ProductionAnalysisPage() {
     { name: 'Extractor_TechData_Job', title: 'Экстрактор - Технические данные' },
     { name: 'Press_1_Job', title: 'Пресс 1' },
     { name: 'Press_2_Job', title: 'Пресс 2' },
-    { name: 'Press_Extractor_Job', title: 'Экстрактор пресса' },
     { name: 'Press_Jarovnia_Mezga', title: 'Жаровня и Мезга' },
   ];
+
+  // Нормы для метрик
+  const metricNorms: {[key: string]: number} = {
+    'Вакуум': -900,
+    'Мезга Жаровня 2': 105,
+    'Жаровня 1': 105,
+  };
 
   useEffect(() => {
     // Установка дат по умолчанию: последняя неделя
@@ -274,6 +280,14 @@ export default function ProductionAnalysisPage() {
 
                   const color = getMetricColor(metricIndex);
 
+                  // Проверяем есть ли норма для этой метрики
+                  const normValue = metricNorms[metric.title];
+                  let normY: number | null = null;
+                  if (normValue !== undefined && valueRange !== 0) {
+                    const normalizedNorm = (normValue - minValue) / valueRange;
+                    normY = 100 - (normalizedNorm * 100);
+                  }
+
                   return (
                     <div key={metric.title}>
                       {/* SVG для линии */}
@@ -286,7 +300,38 @@ export default function ProductionAnalysisPage() {
                           vectorEffect="non-scaling-stroke"
                           opacity="0.8"
                         />
+                        {/* Линия нормы */}
+                        {normY !== null && (
+                          <>
+                            <line
+                              x1="0"
+                              y1={normY}
+                              x2="100"
+                              y2={normY}
+                              stroke="#ef4444"
+                              strokeWidth="0.5"
+                              strokeDasharray="2,2"
+                              vectorEffect="non-scaling-stroke"
+                              opacity="0.7"
+                            />
+                          </>
+                        )}
                       </svg>
+
+                      {/* Метка нормы */}
+                      {normY !== null && (
+                        <div
+                          className="absolute left-1 pointer-events-none"
+                          style={{
+                            top: `${normY}%`,
+                            transform: 'translateY(-50%)'
+                          }}
+                        >
+                          <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                            Норма: {normValue}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Точки */}
                       {points.map((p: any, index: number) => (
