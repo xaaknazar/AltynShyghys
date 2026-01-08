@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-type QuickPeriod = 'week' | 'month' | 'custom';
+type QuickPeriod = 'week' | 'month' | 'year' | 'all' | 'custom';
 type ViewMode = 'daily' | 'detailed';
 
 export default function ProductionAnalysisPage() {
@@ -18,6 +18,9 @@ export default function ProductionAnalysisPage() {
   const [techData, setTechData] = useState<{[key: string]: any}>({});
   const [techMetrics, setTechMetrics] = useState<{[key: string]: any[]}>({});
   const [selectedMetrics, setSelectedMetrics] = useState<{[collectionName: string]: string[]}>({});
+  const [showShiftsOnChart, setShowShiftsOnChart] = useState(false);
+
+  const DAILY_TARGET = 1200; // Целевое производство в сутки (тонн)
 
   const techCollections = [
     { name: 'Extractor_TechData_Job', title: 'Экстрактор' },
@@ -48,6 +51,10 @@ export default function ProductionAnalysisPage() {
       start.setDate(start.getDate() - 7);
     } else if (period === 'month') {
       start.setDate(1); // Начало текущего месяца
+    } else if (period === 'year') {
+      start.setMonth(0, 1); // Начало текущего года (1 января)
+    } else if (period === 'all') {
+      start.setFullYear(2025, 8, 1); // 1 сентября 2025
     }
 
     setStartDate(start.toISOString().split('T')[0]);
@@ -518,6 +525,26 @@ export default function ProductionAnalysisPage() {
                 С начала месяца
               </button>
               <button
+                onClick={() => applyQuickPeriod('year')}
+                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                  quickPeriod === 'year'
+                    ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold'
+                    : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                }`}
+              >
+                С начала года
+              </button>
+              <button
+                onClick={() => applyQuickPeriod('all')}
+                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                  quickPeriod === 'all'
+                    ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold'
+                    : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                }`}
+              >
+                За весь период
+              </button>
+              <button
                 onClick={() => setQuickPeriod('custom')}
                 className={`px-4 py-2 rounded-lg border-2 transition-all ${
                   quickPeriod === 'custom'
@@ -638,72 +665,324 @@ export default function ProductionAnalysisPage() {
 
           {/* График */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-lg font-display text-blue-600 mb-6">
-              ДИНАМИКА ПРОИЗВОДСТВА
-            </h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-display text-blue-600">
+                ДИНАМИКА ПРОИЗВОДСТВА
+              </h3>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showShiftsOnChart}
+                  onChange={(e) => setShowShiftsOnChart(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer accent-blue-600"
+                />
+                <span className="text-sm text-slate-700">Показать смены</span>
+              </label>
+            </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-80 overflow-x-auto">
+              <div className="relative h-96 overflow-x-auto pl-12">
                 {(() => {
-                  const maxValue = Math.max(...productionData.map(d => d.total), 120) * 1.2;
-                  const points = productionData.map((point, index) => {
-                    const x = (index / (productionData.length - 1 || 1)) * 100;
-                    const y = 100 - Math.max((point.total / maxValue) * 100, 0);
-                    return { x, y, point };
-                  });
+                  const maxValue = Math.max(...productionData.map(d => d.total), DAILY_TARGET) * 1.15;
+                  const minValue = 0;
+                  const valueRange = maxValue - minValue;
 
-                  const linePath = points.map((p, index) => {
-                    const command = index === 0 ? 'M' : 'L';
-                    return `${command} ${p.x} ${p.y}`;
-                  }).join(' ');
+                  // Линия нормы
+                  const normY = 100 - ((DAILY_TARGET - minValue) / valueRange) * 100;
+
+                  // Метки оси Y
+                  const yAxisMarks = [
+                    { value: 0, label: '0' },
+                    { value: 400, label: '400' },
+                    { value: 800, label: '800' },
+                    { value: DAILY_TARGET, label: '1200', highlight: true },
+                    { value: 1600, label: '1600' },
+                  ].filter(mark => mark.value <= maxValue);
 
                   return (
                     <>
-                      {/* SVG для линии */}
-                      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <path
-                          d={linePath}
-                          fill="none"
-                          stroke="#3b82f6"
-                          strokeWidth="0.5"
+                      {/* Ось Y с метками */}
+                      <div className="absolute left-0 top-0 bottom-0 w-10 flex flex-col justify-between py-2">
+                        {yAxisMarks.map((mark) => {
+                          const y = 100 - ((mark.value - minValue) / valueRange) * 100;
+                          return (
+                            <div
+                              key={mark.value}
+                              className={`text-xs font-mono ${mark.highlight ? 'text-red-600 font-bold' : 'text-slate-500'}`}
+                              style={{
+                                position: 'absolute',
+                                top: `${y}%`,
+                                transform: 'translateY(-50%)',
+                              }}
+                            >
+                              {mark.label}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* SVG для линий и графика */}
+                      <svg className="absolute inset-0 left-12 w-[calc(100%-3rem)] h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        {/* Линия нормы */}
+                        <line
+                          x1="0"
+                          y1={normY}
+                          x2="100"
+                          y2={normY}
+                          stroke="#ef4444"
+                          strokeWidth="0.4"
+                          strokeDasharray="2,2"
                           vectorEffect="non-scaling-stroke"
+                          opacity="0.7"
                         />
+
+                        {!showShiftsOnChart ? (
+                          // Общая линия производства
+                          (() => {
+                            const points = productionData.map((point, index) => {
+                              const x = (index / (productionData.length - 1 || 1)) * 100;
+                              const y = 100 - ((point.total - minValue) / valueRange) * 100;
+                              return { x, y, point };
+                            });
+
+                            const linePath = points.map((p, index) => {
+                              const command = index === 0 ? 'M' : 'L';
+                              return `${command} ${p.x} ${p.y}`;
+                            }).join(' ');
+
+                            return (
+                              <path
+                                d={linePath}
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="1"
+                                vectorEffect="non-scaling-stroke"
+                                opacity="0.9"
+                              />
+                            );
+                          })()
+                        ) : (
+                          // Линии по сменам
+                          <>
+                            {/* Дневная смена */}
+                            {(() => {
+                              const points = productionData.map((point, index) => {
+                                const x = (index / (productionData.length - 1 || 1)) * 100;
+                                const y = 100 - ((point.dayShift - minValue) / valueRange) * 100;
+                                return { x, y };
+                              });
+
+                              const linePath = points.map((p, index) => {
+                                const command = index === 0 ? 'M' : 'L';
+                                return `${command} ${p.x} ${p.y}`;
+                              }).join(' ');
+
+                              return (
+                                <path
+                                  d={linePath}
+                                  fill="none"
+                                  stroke="#f59e0b"
+                                  strokeWidth="1"
+                                  vectorEffect="non-scaling-stroke"
+                                  opacity="0.8"
+                                />
+                              );
+                            })()}
+
+                            {/* Ночная смена */}
+                            {(() => {
+                              const points = productionData.map((point, index) => {
+                                const x = (index / (productionData.length - 1 || 1)) * 100;
+                                const y = 100 - ((point.nightShift - minValue) / valueRange) * 100;
+                                return { x, y };
+                              });
+
+                              const linePath = points.map((p, index) => {
+                                const command = index === 0 ? 'M' : 'L';
+                                return `${command} ${p.x} ${p.y}`;
+                              }).join(' ');
+
+                              return (
+                                <path
+                                  d={linePath}
+                                  fill="none"
+                                  stroke="#8b5cf6"
+                                  strokeWidth="1"
+                                  vectorEffect="non-scaling-stroke"
+                                  opacity="0.8"
+                                />
+                              );
+                            })()}
+                          </>
+                        )}
                       </svg>
 
-                      {/* Точки */}
-                      {points.map((p, index) => (
-                        <div
-                          key={index}
-                          className="absolute group"
-                          style={{
-                            left: `${p.x}%`,
-                            bottom: `${100 - p.y}%`,
-                            transform: 'translate(-50%, 50%)'
-                          }}
-                        >
-                          <div className="w-3 h-3 rounded-full bg-blue-600 cursor-pointer transition-all duration-200 hover:scale-150"></div>
+                      {/* Метка нормы */}
+                      <div
+                        className="absolute left-14 pointer-events-none"
+                        style={{
+                          top: `${normY}%`,
+                          transform: 'translateY(-50%)'
+                        }}
+                      >
+                        <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                          Норма: {DAILY_TARGET} т
+                        </div>
+                      </div>
 
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                            <div className="bg-white border border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
-                              <div className="text-xs text-slate-600 mb-1 font-mono">
-                                {p.point.date}
-                              </div>
-                              <div className="text-base font-bold text-blue-600">
-                                {p.point.total?.toFixed(2)} т
-                              </div>
+                      {/* Легенда при показе смен */}
+                      {showShiftsOnChart && (
+                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg border border-slate-200 p-3 shadow-md">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-0.5 bg-amber-500"></div>
+                              <span className="text-xs font-medium text-slate-700">Дневная смена (08:00-20:00)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-0.5 bg-purple-500"></div>
+                              <span className="text-xs font-medium text-slate-700">Ночная смена (20:00-08:00)</span>
                             </div>
                           </div>
-
-                          {index % Math.max(1, Math.floor(productionData.length / 10)) === 0 && (
-                            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
-                              {new Date(p.point.date).toLocaleDateString('ru-RU', {
-                                day: '2-digit',
-                                month: '2-digit',
-                              })}
-                            </div>
-                          )}
                         </div>
-                      ))}
+                      )}
+
+                      {/* Точки */}
+                      {productionData.map((point, index) => {
+                        const x = (index / (productionData.length - 1 || 1)) * 100;
+                        const yTotal = 100 - ((point.total - minValue) / valueRange) * 100;
+                        const yDay = 100 - ((point.dayShift - minValue) / valueRange) * 100;
+                        const yNight = 100 - ((point.nightShift - minValue) / valueRange) * 100;
+
+                        // Цвет точки в зависимости от выполнения нормы
+                        const isAboveTarget = point.total >= DAILY_TARGET;
+                        const pointColor = isAboveTarget ? '#10b981' : '#ef4444';
+
+                        return (
+                          <div key={index}>
+                            {!showShiftsOnChart ? (
+                              // Точка общего производства
+                              <div
+                                className="absolute group"
+                                style={{
+                                  left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
+                                  bottom: `${100 - yTotal}%`,
+                                  transform: 'translate(-50%, 50%)'
+                                }}
+                              >
+                                <div
+                                  className="w-3.5 h-3.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-md"
+                                  style={{ backgroundColor: pointColor }}
+                                ></div>
+
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
+                                  <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
+                                    <div className="text-xs text-slate-600 mb-2 font-mono">
+                                      {new Date(point.date).toLocaleDateString('ru-RU', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                      })}
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-xs text-amber-600">
+                                        <span className="font-medium">День:</span> {point.dayShift?.toFixed(2)} т
+                                      </div>
+                                      <div className="text-xs text-purple-600">
+                                        <span className="font-medium">Ночь:</span> {point.nightShift?.toFixed(2)} т
+                                      </div>
+                                      <div className="text-sm font-bold pt-1 border-t border-slate-200" style={{ color: pointColor }}>
+                                        Всего: {point.total?.toFixed(2)} т
+                                      </div>
+                                      {point.total < DAILY_TARGET && (
+                                        <div className="text-xs text-red-600 pt-1">
+                                          Ниже нормы на {(DAILY_TARGET - point.total).toFixed(2)} т
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {index % Math.max(1, Math.floor(productionData.length / 12)) === 0 && (
+                                  <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
+                                    {new Date(point.date).toLocaleDateString('ru-RU', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              // Точки для смен
+                              <>
+                                {/* Точка дневной смены */}
+                                <div
+                                  className="absolute group"
+                                  style={{
+                                    left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
+                                    bottom: `${100 - yDay}%`,
+                                    transform: 'translate(-50%, 50%)'
+                                  }}
+                                >
+                                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"></div>
+                                </div>
+
+                                {/* Точка ночной смены */}
+                                <div
+                                  className="absolute group"
+                                  style={{
+                                    left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
+                                    bottom: `${100 - yNight}%`,
+                                    transform: 'translate(-50%, 50%)'
+                                  }}
+                                >
+                                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"></div>
+
+                                  {/* Tooltip для режима смен (показываем на ночной точке) */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
+                                    <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
+                                      <div className="text-xs text-slate-600 mb-2 font-mono">
+                                        {new Date(point.date).toLocaleDateString('ru-RU', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: 'numeric',
+                                        })}
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="text-xs text-amber-600">
+                                          <span className="font-medium">День:</span> {point.dayShift?.toFixed(2)} т
+                                        </div>
+                                        <div className="text-xs text-purple-600">
+                                          <span className="font-medium">Ночь:</span> {point.nightShift?.toFixed(2)} т
+                                        </div>
+                                        <div className="text-sm font-bold pt-1 border-t border-slate-200" style={{ color: pointColor }}>
+                                          Всего: {point.total?.toFixed(2)} т
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {index % Math.max(1, Math.floor(productionData.length / 12)) === 0 && (
+                                  <div
+                                    className="absolute text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap"
+                                    style={{
+                                      left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
+                                      top: '100%',
+                                      marginTop: '0.5rem',
+                                      transform: 'translate(-50%, 0) rotate(-45deg)',
+                                    }}
+                                  >
+                                    {new Date(point.date).toLocaleDateString('ru-RU', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                    })}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
                     </>
                   );
                 })()}
