@@ -20,15 +20,16 @@ export default function ProductionAnalysisPage() {
   const [selectedMetrics, setSelectedMetrics] = useState<{[collectionName: string]: string[]}>({});
 
   const techCollections = [
-    { name: 'Extractor_TechData_Job', title: 'Экстрактор - Технические данные' },
+    { name: 'Extractor_TechData_Job', title: 'Экстрактор' },
     { name: 'Press_1_Job', title: 'Пресс 1' },
     { name: 'Press_2_Job', title: 'Пресс 2' },
     { name: 'Press_Jarovnia_Mezga', title: 'Жаровня и Мезга' },
   ];
 
-  // Нормы для метрик
-  const metricNorms: {[key: string]: number} = {
+  // Нормы для метрик (одно значение или диапазон [min, max])
+  const metricNorms: {[key: string]: number | [number, number]} = {
     'Вакуум': -900,
+    'Температура масла': [105, 110],
     'Мезга Жаровня 2': 105,
     'Жаровня 1': 105,
   };
@@ -283,9 +284,23 @@ export default function ProductionAnalysisPage() {
                   // Проверяем есть ли норма для этой метрики
                   const normValue = metricNorms[metric.title];
                   let normY: number | null = null;
+                  let normMinY: number | null = null;
+                  let normMaxY: number | null = null;
+                  let isRange = false;
+
                   if (normValue !== undefined && valueRange !== 0) {
-                    const normalizedNorm = (normValue - minValue) / valueRange;
-                    normY = 100 - (normalizedNorm * 100);
+                    if (Array.isArray(normValue)) {
+                      // Диапазон норм [min, max]
+                      isRange = true;
+                      const normalizedMin = (normValue[0] - minValue) / valueRange;
+                      const normalizedMax = (normValue[1] - minValue) / valueRange;
+                      normMinY = 100 - (normalizedMin * 100);
+                      normMaxY = 100 - (normalizedMax * 100);
+                    } else {
+                      // Одно значение нормы
+                      const normalizedNorm = (normValue - minValue) / valueRange;
+                      normY = 100 - (normalizedNorm * 100);
+                    }
                   }
 
                   return (
@@ -300,25 +315,59 @@ export default function ProductionAnalysisPage() {
                           vectorEffect="non-scaling-stroke"
                           opacity="0.8"
                         />
-                        {/* Линия нормы */}
+                        {/* Линия нормы (одно значение) */}
                         {normY !== null && (
+                          <line
+                            x1="0"
+                            y1={normY}
+                            x2="100"
+                            y2={normY}
+                            stroke="#ef4444"
+                            strokeWidth="0.5"
+                            strokeDasharray="2,2"
+                            vectorEffect="non-scaling-stroke"
+                            opacity="0.7"
+                          />
+                        )}
+                        {/* Линии норм (диапазон) */}
+                        {isRange && normMinY !== null && normMaxY !== null && (
                           <>
                             <line
                               x1="0"
-                              y1={normY}
+                              y1={normMinY}
                               x2="100"
-                              y2={normY}
-                              stroke="#ef4444"
+                              y2={normMinY}
+                              stroke="#10b981"
                               strokeWidth="0.5"
                               strokeDasharray="2,2"
                               vectorEffect="non-scaling-stroke"
                               opacity="0.7"
                             />
+                            <line
+                              x1="0"
+                              y1={normMaxY}
+                              x2="100"
+                              y2={normMaxY}
+                              stroke="#10b981"
+                              strokeWidth="0.5"
+                              strokeDasharray="2,2"
+                              vectorEffect="non-scaling-stroke"
+                              opacity="0.7"
+                            />
+                            {/* Заливка между линиями норм */}
+                            <rect
+                              x="0"
+                              y={normMaxY}
+                              width="100"
+                              height={normMinY - normMaxY}
+                              fill="#10b981"
+                              opacity="0.1"
+                            />
                           </>
                         )}
                       </svg>
 
-                      {/* Метка нормы */}
+                      {/* Метка нормы (одно значение) */}
                       {normY !== null && (
                         <div
                           className="absolute left-1 pointer-events-none"
@@ -328,9 +377,36 @@ export default function ProductionAnalysisPage() {
                           }}
                         >
                           <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
-                            Норма: {normValue}
+                            Норма: {normValue as number}
                           </div>
                         </div>
+                      )}
+                      {/* Метки норм (диапазон) */}
+                      {isRange && normMinY !== null && normMaxY !== null && (
+                        <>
+                          <div
+                            className="absolute left-1 pointer-events-none"
+                            style={{
+                              top: `${normMinY}%`,
+                              transform: 'translateY(-50%)'
+                            }}
+                          >
+                            <div className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                              Мин: {(normValue as [number, number])[0]}
+                            </div>
+                          </div>
+                          <div
+                            className="absolute left-1 pointer-events-none"
+                            style={{
+                              top: `${normMaxY}%`,
+                              transform: 'translateY(-50%)'
+                            }}
+                          >
+                            <div className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                              Макс: {(normValue as [number, number])[1]}
+                            </div>
+                          </div>
+                        </>
                       )}
 
                       {/* Точки */}
