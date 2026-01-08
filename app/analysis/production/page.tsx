@@ -15,6 +15,16 @@ export default function ProductionAnalysisPage() {
   const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('week');
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [techData, setTechData] = useState<{[key: string]: any}>({});
+  const [techMetrics, setTechMetrics] = useState<{[key: string]: any[]}>({});
+
+  const techCollections = [
+    { name: 'Extractor_TechData_Job', title: 'Экстрактор - Технические данные' },
+    { name: 'Press_1_Job', title: 'Пресс 1' },
+    { name: 'Press_2_Job', title: 'Пресс 2' },
+    { name: 'Press_Extractor_Job', title: 'Экстрактор пресса' },
+    { name: 'Press_Jarovnia_Mezga', title: 'Жаровня и Мезга' },
+  ];
 
   useEffect(() => {
     // Установка дат по умолчанию: последняя неделя
@@ -48,6 +58,7 @@ export default function ProductionAnalysisPage() {
   useEffect(() => {
     if (viewMode === 'detailed' && selectedDate) {
       fetchDetailedData(selectedDate);
+      fetchTechnicalData(selectedDate);
     }
   }, [selectedDate, viewMode]);
 
@@ -97,8 +108,147 @@ export default function ProductionAnalysisPage() {
     }
   };
 
+  const fetchTechnicalData = async (date: string) => {
+    try {
+      const promises = techCollections.map(async (collection) => {
+        const params = new URLSearchParams({
+          date: date,
+          collection: collection.name,
+        });
+
+        const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
+        const data = await response.json();
+
+        if (data.success) {
+          return { name: collection.name, data: data.data || [], metrics: data.metrics || [] };
+        }
+        return { name: collection.name, data: [], metrics: [] };
+      });
+
+      const results = await Promise.all(promises);
+
+      const newTechData: {[key: string]: any} = {};
+      const newTechMetrics: {[key: string]: any[]} = {};
+
+      results.forEach((result) => {
+        newTechData[result.name] = result.data;
+        newTechMetrics[result.name] = result.metrics;
+      });
+
+      setTechData(newTechData);
+      setTechMetrics(newTechMetrics);
+    } catch (error) {
+      console.error('Error fetching technical data:', error);
+    }
+  };
+
   const totalProduction = productionData.reduce((sum, item) => sum + (item.total || 0), 0);
   const averageDaily = productionData.length > 0 ? totalProduction / productionData.length : 0;
+
+  const getMetricColor = (index: number) => {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+    return colors[index % colors.length];
+  };
+
+  const renderTechnicalChart = (collectionName: string, title: string) => {
+    const data = techData[collectionName] || [];
+    const metrics = techMetrics[collectionName] || [];
+
+    if (data.length === 0 || metrics.length === 0) {
+      return null;
+    }
+
+    return (
+      <div key={collectionName} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <h3 className="text-lg font-display font-bold text-slate-700 mb-4">{title}</h3>
+
+        {metrics.map((metric: any, metricIndex: number) => {
+          const metricData = data.filter((d: any) => d[metric.title] !== undefined);
+
+          if (metricData.length === 0) return null;
+
+          const maxValue = Math.max(...metricData.map((d: any) => d[metric.title] || 0), 1) * 1.2;
+          const minValue = Math.min(...metricData.map((d: any) => d[metric.title] || 0), 0) * (maxValue > 0 ? 0.8 : 1.2);
+          const valueRange = maxValue - minValue;
+
+          const points = metricData.map((point: any, index: number) => {
+            const x = (index / (metricData.length - 1 || 1)) * 100;
+            const normalizedValue = valueRange !== 0 ? ((point[metric.title] - minValue) / valueRange) : 0.5;
+            const y = 100 - (normalizedValue * 100);
+            return { x, y, point, value: point[metric.title] };
+          });
+
+          const linePath = points.map((p: any, index: number) => {
+            const command = index === 0 ? 'M' : 'L';
+            return `${command} ${p.x} ${p.y}`;
+          }).join(' ');
+
+          const color = getMetricColor(metricIndex);
+
+          return (
+            <div key={metric.title} className="mb-8 last:mb-0">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-slate-700">
+                  {metric.title}
+                </h4>
+                <span className="text-sm text-slate-600 font-mono">{metric.unit}</span>
+              </div>
+
+              <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
+                <div className="relative h-64 overflow-x-auto">
+                  {/* SVG для линии */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path
+                      d={linePath}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth="0.5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+
+                  {/* Точки */}
+                  {points.map((p: any, index: number) => (
+                    <div
+                      key={index}
+                      className="absolute group"
+                      style={{
+                        left: `${p.x}%`,
+                        bottom: `${100 - p.y}%`,
+                        transform: 'translate(-50%, 50%)'
+                      }}
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full cursor-pointer transition-all duration-200 hover:scale-150"
+                        style={{ backgroundColor: color }}
+                      ></div>
+
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                        <div className="bg-white border border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
+                          <div className="text-xs text-slate-600 mb-1 font-mono">
+                            {p.point.time}
+                          </div>
+                          <div className="text-base font-bold" style={{ color }}>
+                            {p.value?.toFixed(2)} {metric.unit}
+                          </div>
+                        </div>
+                      </div>
+
+                      {index % Math.max(1, Math.floor(metricData.length / 10)) === 0 && (
+                        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
+                          {p.point.time}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -504,6 +654,18 @@ export default function ProductionAnalysisPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              {/* Технические данные */}
+              <div className="mt-8">
+                <h2 className="text-2xl font-display font-bold text-slate-700 mb-6">
+                  ТЕХНИЧЕСКИЕ ПАРАМЕТРЫ ОБОРУДОВАНИЯ
+                </h2>
+                <div className="space-y-6">
+                  {techCollections.map((collection) =>
+                    renderTechnicalChart(collection.name, collection.title)
+                  )}
                 </div>
               </div>
             </>
