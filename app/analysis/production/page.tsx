@@ -246,7 +246,7 @@ export default function ProductionAnalysisPage() {
                   const dataMax = Math.max(...values);
 
                   // Правильная обработка для отрицательных значений
-                  let minValue, maxValue;
+                  let minValue: number, maxValue: number;
                   if (dataMax <= 0) {
                     minValue = dataMin * 1.2;
                     maxValue = dataMax * 0.8;
