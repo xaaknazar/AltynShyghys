@@ -169,6 +169,66 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Created ${dailyGrouped.length} daily groups from shift reports`);
 
+    // Добавляем ТЕКУЩИЕ производственные сутки из сырых данных (если их нет в shift_report)
+    const now = new Date();
+    const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const localHour = localNow.getUTCHours();
+
+    // Определяем дату текущих производственных суток
+    const currentProductionDate = new Date(localNow);
+    if (localHour < 8) {
+      // Если до 08:00, сутки начались вчера
+      currentProductionDate.setUTCDate(currentProductionDate.getUTCDate() - 1);
+    }
+    const currentDateKey = currentProductionDate.toISOString().split('T')[0];
+
+    console.log(`🕐 Current production day: ${currentDateKey} (local hour: ${localHour})`);
+
+    // Проверяем есть ли текущие сутки в shift_report данных
+    const currentDayExists = dailyGrouped.find(d => d.date === currentDateKey);
+
+    if (!currentDayExists && rawDataByDay.has(currentDateKey)) {
+      console.log(`⚡ Adding current day ${currentDateKey} from raw data (shift reports not complete yet)`);
+
+      const currentDayRawData = rawDataByDay.get(currentDateKey)!;
+
+      // Рассчитываем производство из сырых данных (только положительные difference)
+      const totalProduction = currentDayRawData.reduce((sum, d) => {
+        const diff = d.difference || 0;
+        return sum + (diff > 0 ? diff : 0);
+      }, 0);
+
+      // Средняя и текущая скорость
+      const speeds = currentDayRawData.map(d => d.speed).filter(s => s > 0);
+      const averageSpeed = speeds.length > 0
+        ? speeds.reduce((sum, s) => sum + s, 0) / speeds.length
+        : 0;
+      const currentSpeed = currentDayRawData.length > 0
+        ? currentDayRawData[currentDayRawData.length - 1].speed
+        : 0;
+
+      const progress = (totalProduction / TARGETS.daily) * 100;
+
+      const stats: DailyStats = {
+        totalProduction,
+        averageSpeed,
+        currentSpeed,
+        progress,
+        status: progress >= 100 ? 'normal' : progress >= 80 ? 'warning' : 'danger',
+      };
+
+      dailyGrouped.push({
+        date: currentDateKey,
+        data: currentDayRawData,
+        stats,
+      });
+
+      // Пересортируем после добавления
+      dailyGrouped.sort((a, b) => a.date.localeCompare(b.date));
+
+      console.log(`✅ Added current day: ${currentDateKey}, production: ${totalProduction.toFixed(1)}t`);
+    }
+
     const response = NextResponse.json({
       success: true,
       data: formattedRawData,
