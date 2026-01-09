@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
         averageSpeed,
         currentSpeed,
         progress,
-        status: progress >= 100 ? 'success' : progress >= 80 ? 'warning' : 'danger',
+        status: progress >= 100 ? 'normal' : progress >= 80 ? 'warning' : 'danger',
       };
 
       dailyGrouped.push({
