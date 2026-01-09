@@ -29,15 +29,15 @@ export default function DailyStatsCard({ totalProduction, averageSpeed, progress
       const isDayShift = localHour >= 8 && localHour < 20;
       setCurrentShift(isDayShift ? 'day' : 'night');
 
-      // Конец суток: следующий день в 20:00
+      // Конец суток: следующий день в 08:00 (производственные сутки 08:00-08:00)
       const dayEnd = new Date(localTime);
-      if (localHour < 20) {
-        // Если до 20:00, конец суток сегодня в 20:00
-        dayEnd.setUTCHours(20, 0, 0, 0);
+      if (localHour < 8) {
+        // Если до 08:00, конец суток сегодня в 08:00
+        dayEnd.setUTCHours(8, 0, 0, 0);
       } else {
-        // Если после 20:00, конец суток завтра в 20:00
+        // Если после 08:00, конец суток завтра в 08:00
         dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-        dayEnd.setUTCHours(20, 0, 0, 0);
+        dayEnd.setUTCHours(8, 0, 0, 0);
       }
 
       // Конец смены: ближайшие 08:00 или 20:00
