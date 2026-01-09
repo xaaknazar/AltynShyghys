@@ -197,12 +197,12 @@ export function groupDataByProductionDays(data: ProductionData[]): DailyGroupedD
     const localHour = localTime.getUTCHours();
     const localDate = new Date(localTime);
 
-    // Если >= 20:00 местного времени, это относится к производственному дню,
-    // который закончится завтра в 20:00 (это ночная смена следующего дня)
-    if (localHour >= 20) {
-      localDate.setUTCDate(localDate.getUTCDate() + 1);
+    // Производственные сутки начинаются в 08:00
+    // Если время < 08:00 (с 00:00 до 07:59), это относится к предыдущему производственному дню
+    if (localHour < 8) {
+      localDate.setUTCDate(localDate.getUTCDate() - 1);
     }
-    // Если < 20:00, это относится к текущему производственному дню
+    // Если >= 08:00, это относится к текущему производственному дню
 
     // Форматируем местную дату
     const dayKey = format(localDate, 'yyyy-MM-dd');

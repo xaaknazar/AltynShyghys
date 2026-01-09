@@ -102,15 +102,14 @@ export async function GET(request: NextRequest) {
     const { db } = await connectToDatabase();
     const coll = db.collection(collection);
 
-    // Производственный день начинается в 20:00 предыдущего дня (ночная смена)
-    const startDateTime = new Date(`${date}T20:00:00`);
-    startDateTime.setDate(startDateTime.getDate() - 1); // Вычитаем день для захвата ночной смены
+    // Производственный день начинается в 08:00 текущего дня (дневная смена)
+    const startDateTime = new Date(`${date}T08:00:00`);
     const startUTC = new Date(startDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
     const endDate = new Date(date);
     endDate.setDate(endDate.getDate() + 1);
     const endDateStr = endDate.toISOString().split('T')[0];
-    const endDateTime = new Date(`${endDateStr}T20:00:00`);
+    const endDateTime = new Date(`${endDateStr}T08:00:00`);
     const endUTC = new Date(endDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
     const data = await coll
