@@ -154,6 +154,47 @@ export async function GET(request: NextRequest) {
     // Сортируем по дате
     result.sort((a, b) => a.date.localeCompare(b.date));
 
+    // Добавляем ТЕКУЩИЕ производственные сутки (если они еще не завершены)
+    const now = new Date();
+    const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const localHour = localNow.getUTCHours();
+
+    // Определяем дату текущих производственных суток
+    const currentProductionDate = new Date(localNow);
+    if (localHour < 8) {
+      currentProductionDate.setUTCDate(currentProductionDate.getUTCDate() - 1);
+    }
+    const currentDateKey = currentProductionDate.toISOString().split('T')[0];
+    const currentDateObj = new Date(currentDateKey);
+
+    console.log(`🕐 Current production day: ${currentDateKey} (local hour: ${localHour})`);
+
+    // Проверяем находится ли текущая дата в запрошенном диапазоне
+    if (currentDateObj >= startDateObj && currentDateObj <= endDateObj) {
+      // Проверяем есть ли уже текущие сутки в результатах
+      const currentDayExists = result.find(r => r.date === currentDateKey);
+
+      if (!currentDayExists) {
+        console.log(`⚡ Adding current day ${currentDateKey} from shift_report (may be incomplete)`);
+
+        // Текущие сутки могут иметь только дневную смену (если сейчас день) или обе смены неполные
+        const currentDayData = productionDays.get(currentDateKey);
+
+        if (currentDayData) {
+          result.push({
+            date: currentDateKey,
+            dayShift: currentDayData.dayShift,
+            nightShift: currentDayData.nightShift,
+            total: currentDayData.dayShift + currentDayData.nightShift,
+          });
+          console.log(`✅ Added current day: ${currentDateKey}, day: ${currentDayData.dayShift.toFixed(1)}t, night: ${currentDayData.nightShift.toFixed(1)}t`);
+        }
+
+        // Пересортируем после добавления
+        result.sort((a, b) => a.date.localeCompare(b.date));
+      }
+    }
+
     // Фильтруем по типу смены если указан
     let filteredResult = result;
     if (shiftType === 'day') {
