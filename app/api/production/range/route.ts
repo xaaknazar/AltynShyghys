@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { groupDataByProductionDays, TIMEZONE_OFFSET } from '@/lib/utils';
+import { TIMEZONE_OFFSET } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Получить данные производства за период
+// Получить данные производства за период из shift_report (как в Telegram боте)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -21,29 +21,32 @@ export async function GET(request: NextRequest) {
     }
 
     const { db } = await connectToDatabase();
-    const collection = db.collection('Rvo_Production_Job');
+    const collection = db.collection('Rvo_Production_Job_shift_report');
 
-    // Конвертируем даты в UTC для запроса
-    // Производственный день "01.01" начинается 01.01 в 08:00 (дневная смена)
-    const startDateTime = new Date(`${startDate}T08:00:00`);
+    // Получаем shift_report документы за период
+    // Производственный день "08.01" включает:
+    //   - Дневная смена: документ около 08.01 20:00
+    //   - Ночная смена: документ около 09.01 08:00
+    // Поэтому нужно захватить документы начиная с startDate и до дня после endDate
+
+    const startDateTime = new Date(`${startDate}T00:00:00`);
     const startUTC = new Date(startDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
-    // Конец: следующий день после endDate в 08:00 местного времени
     const endDateTime = new Date(endDate);
-    endDateTime.setDate(endDateTime.getDate() + 1);
+    endDateTime.setDate(endDateTime.getDate() + 2); // +2 дня чтобы захватить ночную смену последнего дня
     const endDateTimeStr = endDateTime.toISOString().split('T')[0];
-    const endDateTimeFull = new Date(`${endDateTimeStr}T08:00:00`);
+    const endDateTimeFull = new Date(`${endDateTimeStr}T00:00:00`);
     const endUTC = new Date(endDateTimeFull.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
-    console.log('🔍 Fetching production data:', {
+    console.log('🔍 Fetching shift_report data:', {
       startDate,
       endDate,
       startUTC: startUTC.toISOString(),
       endUTC: endUTC.toISOString(),
     });
 
-    // Получаем данные за период
-    const data = await collection
+    // Получаем все shift_report документы за период
+    const shiftReports = await collection
       .find({
         datetime: {
           $gte: startUTC,
@@ -53,9 +56,9 @@ export async function GET(request: NextRequest) {
       .sort({ datetime: 1 })
       .toArray();
 
-    console.log(`✅ Found ${data.length} records`);
+    console.log(`✅ Found ${shiftReports.length} shift reports`);
 
-    if (data.length === 0) {
+    if (shiftReports.length === 0) {
       return NextResponse.json({
         success: true,
         data: [],
@@ -63,52 +66,93 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const formattedData = data.map((doc) => ({
-      _id: doc._id.toString(),
-      datetime: doc.datetime.toISOString(),
-      value: doc.value,
-      difference: doc.difference || 0,
-      speed: doc.speed,
-      metric_unit: doc.metric_unit || 'тонна',
-    }));
+    // Группируем shift_report документы по производственным дням
+    // Производственный день определяется по времени окончания смены:
+    //   - Дневная смена (заканчивается ~20:00) → относится к текущему дню
+    //   - Ночная смена (заканчивается ~08:00) → относится к предыдущему дню
 
-    // Группируем данные по суткам (20:00-20:00)
-    const dailyGrouped = groupDataByProductionDays(formattedData);
+    const productionDays = new Map<string, {
+      dayShift: number;
+      nightShift: number;
+      dayShiftDoc?: any;
+      nightShiftDoc?: any;
+    }>();
 
-    // Преобразуем в нужный формат с разделением на смены
-    const result = dailyGrouped.map((day) => {
-      // Разделяем на дневную (08:00-20:00) и ночную (20:00-08:00) смены
-      const dayShiftData = day.data.filter((item) => {
-        const itemDate = new Date(item.datetime);
-        const localTime = new Date(itemDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
-        const hour = localTime.getUTCHours();
-        return hour >= 8 && hour < 20;
-      });
+    shiftReports.forEach((doc) => {
+      const docDate = new Date(doc.datetime);
+      const localTime = new Date(docDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+      const hour = localTime.getUTCHours();
+      const difference = doc.difference || 0;
 
-      const nightShiftData = day.data.filter((item) => {
-        const itemDate = new Date(item.datetime);
-        const localTime = new Date(itemDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
-        const hour = localTime.getUTCHours();
-        return hour < 8 || hour >= 20;
-      });
+      // Определяем к какому производственному дню относится документ
+      let productionDate: Date;
+      let isNightShift = false;
 
-      // Суммируем только положительные значения difference (игнорируем отрицательные - сброс счетчика)
-      const dayShiftProduction = dayShiftData.reduce((sum, d) => {
-        const diff = d.difference || 0;
-        return sum + (diff > 0 ? diff : 0);
-      }, 0);
-      const nightShiftProduction = nightShiftData.reduce((sum, d) => {
-        const diff = d.difference || 0;
-        return sum + (diff > 0 ? diff : 0);
-      }, 0);
+      // Ночная смена (заканчивается около 08:00) → относится к предыдущему дню
+      if (hour >= 6 && hour <= 10) {
+        isNightShift = true;
+        productionDate = new Date(localTime);
+        productionDate.setUTCDate(productionDate.getUTCDate() - 1); // Вычитаем день
+      }
+      // Дневная смена (заканчивается около 20:00) → относится к текущему дню
+      else if (hour >= 18 && hour <= 22) {
+        isNightShift = false;
+        productionDate = new Date(localTime);
+      } else {
+        // Документ вне стандартного времени смены - пропускаем
+        console.warn(`⚠️ Документ вне времени смены: ${doc.datetime.toISOString()} (час: ${hour})`);
+        return;
+      }
 
-      return {
-        date: day.date,
-        dayShift: dayShiftProduction,
-        nightShift: nightShiftProduction,
-        total: day.stats.totalProduction,
-      };
+      const dateKey = productionDate.toISOString().split('T')[0];
+
+      if (!productionDays.has(dateKey)) {
+        productionDays.set(dateKey, {
+          dayShift: 0,
+          nightShift: 0,
+        });
+      }
+
+      const dayData = productionDays.get(dateKey)!;
+
+      if (isNightShift) {
+        dayData.nightShift = difference;
+        dayData.nightShiftDoc = doc;
+      } else {
+        dayData.dayShift = difference;
+        dayData.dayShiftDoc = doc;
+      }
+
+      console.log(`📊 ${dateKey} (${isNightShift ? 'Ночная' : 'Дневная'}): ${difference.toFixed(1)} тонн (час: ${hour})`);
     });
+
+    // Преобразуем в массив и фильтруем по диапазону дат
+    const result: Array<{
+      date: string;
+      dayShift: number;
+      nightShift: number;
+      total: number;
+    }> = [];
+
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+
+    productionDays.forEach((data, dateKey) => {
+      const dateObj = new Date(dateKey);
+
+      // Проверяем что дата в запрошенном диапазоне
+      if (dateObj >= startDateObj && dateObj <= endDateObj) {
+        result.push({
+          date: dateKey,
+          dayShift: data.dayShift,
+          nightShift: data.nightShift,
+          total: data.dayShift + data.nightShift,
+        });
+      }
+    });
+
+    // Сортируем по дате
+    result.sort((a, b) => a.date.localeCompare(b.date));
 
     // Фильтруем по типу смены если указан
     let filteredResult = result;
@@ -117,6 +161,8 @@ export async function GET(request: NextRequest) {
     } else if (shiftType === 'night') {
       filteredResult = result.map(r => ({ ...r, dayShift: 0, total: r.nightShift }));
     }
+
+    console.log('📈 Production summary:', filteredResult);
 
     const response = NextResponse.json({
       success: true,

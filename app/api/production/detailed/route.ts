@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 // Получить детальные данные производства за сутки (30-минутные интервалы)
+// Используется для графиков - берем сырые данные из Rvo_Production_Job
+// Для точных цифр производства используйте /api/production/range с shift_report
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -32,13 +34,13 @@ export async function GET(request: NextRequest) {
     const endDateTime = new Date(`${endDateStr}T08:00:00`);
     const endUTC = new Date(endDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
-    console.log('🔍 Fetching detailed production data:', {
+    console.log('🔍 Fetching detailed production data (raw):', {
       date,
       startUTC: startUTC.toISOString(),
       endUTC: endUTC.toISOString(),
     });
 
-    // Получаем данные за сутки
+    // Получаем сырые данные за сутки для графиков
     const data = await collection
       .find({
         datetime: {
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
       metric_unit: doc.metric_unit || 'тонна',
     }));
 
-    // Группируем данные по 30-минутным интервалам
+    // Группируем данные по 30-минутным интервалам для графика
     const thirtyMinuteData = aggregateToThirtyMinutes(formattedData);
 
     const response = NextResponse.json({
