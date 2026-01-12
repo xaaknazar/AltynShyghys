@@ -27,7 +27,7 @@ export default function OverviewPage() {
         setCurrentDate(lastCompletedDate);
 
         // Fetch quality analyses for that date
-        const qualityResponse = await fetch(`/api/quality-analysis?shift_date=${lastCompletedDate}`, { cache: 'no-store' });
+        const qualityResponse = await fetch(`/api/quality-analysis?start_date=${lastCompletedDate}&end_date=${lastCompletedDate}`, { cache: 'no-store' });
         const qualityDataResult = await qualityResponse.json();
 
         // Fetch shift events for that date
@@ -53,7 +53,7 @@ export default function OverviewPage() {
       const prodData = await prodResponse.json();
 
       // Fetch quality analyses
-      const qualityResponse = await fetch(`/api/quality-analysis?shift_date=${date}`, { cache: 'no-store' });
+      const qualityResponse = await fetch(`/api/quality-analysis?start_date=${date}&end_date=${date}`, { cache: 'no-store' });
       const qualityDataResult = await qualityResponse.json();
 
       // Fetch shift events
