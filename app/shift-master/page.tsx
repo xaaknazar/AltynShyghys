@@ -192,8 +192,8 @@ export default function ShiftMasterPage() {
             <SpeedIndicator
               currentSpeed={latestData.speed}
               status={
-                latestData.speed >= 45 ? 'normal' :
-                latestData.speed >= 40 ? 'warning' :
+                latestData.speed >= 50 ? 'normal' :
+                latestData.speed >= 45 ? 'warning' :
                 'danger'
               }
               lastUpdate={latestData.datetime}
