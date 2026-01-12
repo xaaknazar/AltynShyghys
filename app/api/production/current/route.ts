@@ -1,82 +1,125 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getProductionDayBounds } from '@/lib/utils';
+import { TIMEZONE_OFFSET } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const requestedDate = searchParams.get('date'); // YYYY-MM-DD (опционально)
+
     const { db } = await connectToDatabase();
-    const collection = db.collection('Rvo_Production_Job');
+    const shiftReportCollection = db.collection('Rvo_Production_Job_shift_report');
 
-    const { start, end } = getProductionDayBounds();
+    let targetDate: string;
 
-    console.log('🔍 Searching for data between:', {
-      start: start.toISOString(),
-      end: end.toISOString(),
-    });
+    if (requestedDate) {
+      // Если дата указана явно - используем её
+      targetDate = requestedDate;
+    } else {
+      // Определяем последние ЗАВЕРШЕННЫЕ производственные сутки
+      const now = new Date();
+      const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+      const localHour = localNow.getUTCHours();
 
-    // Ищем данные за производственные сутки (08:00-08:00 местного времени)
-    const data = await collection
+      // Последние завершенные сутки = вчерашний день (так как сутки заканчиваются в 08:00)
+      const lastCompletedDay = new Date(localNow);
+      if (localHour >= 8) {
+        // Если сейчас после 08:00, то вчерашние сутки точно завершены
+        lastCompletedDay.setUTCDate(lastCompletedDay.getUTCDate() - 1);
+      } else {
+        // Если до 08:00, то позавчерашние сутки последние завершенные
+        lastCompletedDay.setUTCDate(lastCompletedDay.getUTCDate() - 2);
+      }
+
+      targetDate = lastCompletedDay.toISOString().split('T')[0];
+    }
+
+    console.log('🔍 Fetching production data for:', targetDate);
+
+    // Получаем shift_report документы для этого дня
+    // Производственный день "08.01" включает:
+    //   - Дневная смена: документ около 08.01 20:00:30
+    //   - Ночная смена: документ около 09.01 08:00:30
+
+    const startDateTime = new Date(`${targetDate}T00:00:00`);
+    startDateTime.setDate(startDateTime.getDate() - 1); // За день до
+    const startUTC = new Date(startDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
+
+    const endDateTime = new Date(targetDate);
+    endDateTime.setDate(endDateTime.getDate() + 2); // +2 дня после
+    const endDateTimeStr = endDateTime.toISOString().split('T')[0];
+    const endDateTimeFull = new Date(`${endDateTimeStr}T00:00:00`);
+    const endUTC = new Date(endDateTimeFull.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
+
+    const shiftReports = await shiftReportCollection
       .find({
         datetime: {
-          $gte: start,
-          $lt: end,
+          $gte: startUTC,
+          $lt: endUTC,
         },
       })
       .sort({ datetime: 1 })
       .toArray();
 
-    console.log(`✅ Found ${data.length} records for current production day`);
+    console.log(`✅ Found ${shiftReports.length} shift reports`);
 
-    // Если данных нет - берем последние 288 записей
-    if (data.length === 0) {
-      console.log('⚠️ No data for current period, fetching latest 288 records...');
-      
-      const latestData = await collection
-        .find({})
-        .sort({ datetime: -1 })
-        .limit(288)
-        .toArray();
-      
-      const sortedLatest = latestData.reverse();
-      
-      const formattedLatest = sortedLatest.map((doc) => ({
-        _id: doc._id.toString(),
-        datetime: doc.datetime.toISOString(),
-        value: doc.value,
-        difference: doc.difference || 0,
-        speed: doc.speed,
-        metric_unit: doc.metric_unit || 'тонна',
-      }));
+    let dayShift = 0;
+    let nightShift = 0;
 
-      return NextResponse.json({
-        success: true,
-        data: formattedLatest,
-        period: {
-          start: formattedLatest[0]?.datetime || start.toISOString(),
-          end: formattedLatest[formattedLatest.length - 1]?.datetime || end.toISOString(),
-        },
-        count: formattedLatest.length,
-        isLatest: true,
-      });
-    }
+    // Группируем по производственным дням
+    shiftReports.forEach((doc) => {
+      const docDate = new Date(doc.datetime);
+      const localTime = new Date(docDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+      const hour = localTime.getUTCHours();
+      const difference = doc.difference || 0;
 
-    const formattedData = data.map((doc) => ({
-      _id: doc._id.toString(),
-      datetime: doc.datetime.toISOString(),
-      value: doc.value,
-      difference: doc.difference || 0,
-      speed: doc.speed,
-      metric_unit: doc.metric_unit || 'тонна',
-    }));
+      let productionDate: Date;
+      let isNightShift = false;
+
+      // Ночная смена (заканчивается около 08:00) → относится к предыдущему дню
+      if (hour >= 6 && hour <= 10) {
+        isNightShift = true;
+        productionDate = new Date(localTime);
+        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
+      }
+      // Дневная смена (заканчивается около 20:00) → относится к текущему дню
+      else if (hour >= 18 && hour <= 22) {
+        isNightShift = false;
+        productionDate = new Date(localTime);
+      } else {
+        return;
+      }
+
+      const dateKey = productionDate.toISOString().split('T')[0];
+
+      if (dateKey === targetDate) {
+        if (isNightShift) {
+          nightShift = difference;
+        } else {
+          dayShift = difference;
+        }
+      }
+    });
+
+    const totalProduction = dayShift + nightShift;
+    const dailyTarget = 1200; // тонн
+    const planPercentage = (totalProduction / dailyTarget) * 100;
+
+    console.log(`📊 Production for ${targetDate}:`, {
+      dayShift,
+      nightShift,
+      total: totalProduction,
+      planPercentage: planPercentage.toFixed(1)
+    });
 
     return NextResponse.json({
       success: true,
-      data: formattedData,
-      period: {
-        start: start.toISOString(),
-        end: end.toISOString(),
-      },
-      count: formattedData.length,
+      date: targetDate,
+      dayShift,
+      nightShift,
+      totalProduction,
+      planPercentage,
+      dailyTarget,
     });
   } catch (error: any) {
     console.error('❌ Error fetching current data:', error);
