@@ -681,7 +681,7 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-96 overflow-x-auto pl-12">
+              <div className="relative h-96 overflow-x-auto">
                 {(() => {
                   const maxValue = Math.max(...productionData.map(d => d.total), DAILY_TARGET) * 1.15;
                   const minValue = 0;
@@ -702,7 +702,7 @@ export default function ProductionAnalysisPage() {
                   return (
                     <>
                       {/* Ось Y с метками */}
-                      <div className="absolute left-0 top-0 bottom-0 w-10 flex flex-col justify-between py-2">
+                      <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-between py-2">
                         {yAxisMarks.map((mark) => {
                           const y = 100 - ((mark.value - minValue) / valueRange) * 100;
                           return (
@@ -722,7 +722,7 @@ export default function ProductionAnalysisPage() {
                       </div>
 
                       {/* SVG для линий и графика */}
-                      <svg className="absolute inset-0 left-12 w-[calc(100%-3rem)] h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <svg className="absolute left-12 top-0 w-[calc(100%-3rem)] h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                         {/* Линия нормы */}
                         <line
                           x1="0"
@@ -864,7 +864,7 @@ export default function ProductionAnalysisPage() {
                               <div
                                 className="absolute group"
                                 style={{
-                                  left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
+                                  left: `calc(3rem + (100% - 3rem) * ${x} / 100)`,
                                   top: `${yTotal}%`,
                                   transform: 'translate(-50%, -50%)'
                                 }}
@@ -918,7 +918,7 @@ export default function ProductionAnalysisPage() {
                                 <div
                                   className="absolute group"
                                   style={{
-                                    left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
+                                    left: `calc(3rem + (100% - 3rem) * ${x} / 100)`,
                                     top: `${yDay}%`,
                                     transform: 'translate(-50%, -50%)'
                                   }}
@@ -930,7 +930,7 @@ export default function ProductionAnalysisPage() {
                                 <div
                                   className="absolute group"
                                   style={{
-                                    left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
+                                    left: `calc(3rem + (100% - 3rem) * ${x} / 100)`,
                                     top: `${yNight}%`,
                                     transform: 'translate(-50%, -50%)'
                                   }}
