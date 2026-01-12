@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ANALYSIS_CONFIG, type AnalysisType } from '@/lib/quality-types';
 
 export default function OverviewPage() {
   const [currentDate, setCurrentDate] = useState<string>('');
@@ -142,47 +143,50 @@ export default function OverviewPage() {
               КАЧЕСТВЕННЫЙ АНАЛИЗ
             </h3>
             {qualityData.length > 0 ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-semibold text-slate-700">Всего анализов</span>
-                    <span className="text-2xl font-display font-bold text-blue-600">
-                      {qualityData.length}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="text-xs text-slate-600 mb-1">Дневная смена</div>
-                    <div className="text-lg font-mono font-bold text-slate-800">
-                      {qualityData.filter(a => a.shift_type === 'day').length}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="text-xs text-slate-600 mb-1">Ночная смена</div>
-                    <div className="text-lg font-mono font-bold text-slate-800">
-                      {qualityData.filter(a => a.shift_type === 'night').length}
-                    </div>
-                  </div>
-                </div>
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  <div className="text-xs font-semibold text-slate-600 mb-2">Последние анализы:</div>
-                  {qualityData.slice(0, 5).map((analysis, idx) => (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                {(() => {
+                  // Группировка по типам анализов и расчет средних
+                  const grouped: Record<string, { values: number[]; count: number }> = {};
+
+                  qualityData.forEach((analysis) => {
+                    const type = analysis.analysis_type;
+                    if (!grouped[type]) {
+                      grouped[type] = { values: [], count: 0 };
+                    }
+                    grouped[type].values.push(analysis.value);
+                    grouped[type].count++;
+                  });
+
+                  // Расчет средних значений
+                  const averages = Object.entries(grouped).map(([type, data]) => {
+                    const average = data.values.reduce((sum, v) => sum + v, 0) / data.count;
+                    const config = ANALYSIS_CONFIG[type as AnalysisType];
+                    return {
+                      type: type as AnalysisType,
+                      average: average,
+                      count: data.count,
+                      label: config?.label || type,
+                      unit: config?.unit || '',
+                    };
+                  });
+
+                  // Сортировка по типу анализа
+                  averages.sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+
+                  return averages.map((item, idx) => (
                     <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="flex justify-between items-start">
-                        <div className="text-sm text-slate-700 flex-1">
-                          {analysis.analysis_type}
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold text-slate-700">{item.label}</div>
+                          <div className="text-xs text-slate-500 mt-1">Среднее за сутки ({item.count} измер.)</div>
                         </div>
-                        <div className="text-xs text-slate-600">
-                          {new Date(analysis.sample_time).toLocaleTimeString('ru-RU', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                        <div className="text-lg font-mono font-bold text-blue-600">
+                          {item.average.toFixed(2)} {item.unit}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  ));
+                })()}
               </div>
             ) : (
               <div className="text-center py-8 text-slate-600">
