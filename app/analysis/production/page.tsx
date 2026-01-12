@@ -865,8 +865,8 @@ export default function ProductionAnalysisPage() {
                                 className="absolute group"
                                 style={{
                                   left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
-                                  bottom: `${100 - yTotal}%`,
-                                  transform: 'translate(-50%, 50%)'
+                                  top: `${yTotal}%`,
+                                  transform: 'translate(-50%, -50%)'
                                 }}
                               >
                                 <div
@@ -919,8 +919,8 @@ export default function ProductionAnalysisPage() {
                                   className="absolute group"
                                   style={{
                                     left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
-                                    bottom: `${100 - yDay}%`,
-                                    transform: 'translate(-50%, 50%)'
+                                    top: `${yDay}%`,
+                                    transform: 'translate(-50%, -50%)'
                                   }}
                                 >
                                   <div className="w-2.5 h-2.5 rounded-full bg-amber-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"></div>
@@ -931,8 +931,8 @@ export default function ProductionAnalysisPage() {
                                   className="absolute group"
                                   style={{
                                     left: `calc(3rem + ${x}% * (100% - 3rem) / 100)`,
-                                    bottom: `${100 - yNight}%`,
-                                    transform: 'translate(-50%, 50%)'
+                                    top: `${yNight}%`,
+                                    transform: 'translate(-50%, -50%)'
                                   }}
                                 >
                                   <div className="w-2.5 h-2.5 rounded-full bg-purple-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"></div>

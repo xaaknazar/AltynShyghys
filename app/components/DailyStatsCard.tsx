@@ -87,7 +87,7 @@ export default function DailyStatsCard({ totalProduction, averageSpeed, progress
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-display font-bold text-slate-700 tracking-wider">
-            ПРОИЗВОДСТВО ЗА СУТКИ
+            ПРОИЗВОДСТВО ЗА СЕГОДНЯШНИЕ СУТКИ
           </h3>
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
             currentShift === 'day'

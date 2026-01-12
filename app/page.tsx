@@ -117,7 +117,7 @@ export default function HomePage() {
             <div className="flex items-center gap-6">
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-blue-600">
-                  МАСЛОЗАВОД «АЛТЫН ШЫҒЫС»
+                  МАСЛОЗАВОД «Altyn Shyghys»
                 </h1>
                 <p className="text-xs text-slate-600 font-mono mt-1">
                   Производственная панель мониторинга
@@ -131,16 +131,16 @@ export default function HomePage() {
                     Текущая подача
                   </div>
                   <div className={`text-2xl font-display font-bold ${
-                    latestData.speed >= 45 ? 'text-emerald-500' :
-                    latestData.speed >= 40 ? 'text-amber-500' :
+                    latestData.speed >= 50 ? 'text-emerald-500' :
+                    latestData.speed >= 45 ? 'text-amber-500' :
                     'text-rose-500'
                   }`}>
                     {latestData.speed.toFixed(1)}
                     <span className="text-sm ml-1 text-slate-500">т/ч</span>
                   </div>
                   <div className={`w-2 h-2 rounded-full animate-pulse ${
-                    latestData.speed >= 45 ? 'bg-emerald-500' :
-                    latestData.speed >= 40 ? 'bg-amber-500' :
+                    latestData.speed >= 50 ? 'bg-emerald-500' :
+                    latestData.speed >= 45 ? 'bg-amber-500' :
                     'bg-rose-500'
                   }`} />
                 </div>
@@ -162,14 +162,14 @@ export default function HomePage() {
                 </div>
               </div>
               <a
-                href="/otk"
+                href="/analysis"
                 className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all"
-                title="Лабораторный контроль"
+                title="Анализ данных"
               >
                 <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="text-sm font-medium text-emerald-700">ОТК</span>
+                <span className="text-sm font-medium text-emerald-700">Анализ данных</span>
               </a>
               <a
                 href="/shift-master"
@@ -213,7 +213,9 @@ export default function HomePage() {
           {/* Общий итог за месяц */}
           {dailyGrouped.length > 0 && (() => {
             const totalProduction = dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0);
-            const monthlyPlan = dailyGrouped.length * 1200; // План по прошедшим дням × 1200 т/день
+            // Исключаем 2 января (ППР) из плана
+            const daysWithoutPPR = dailyGrouped.filter(day => day.date !== '2026-01-02').length;
+            const monthlyPlan = daysWithoutPPR * 1200; // План по прошедшим дням × 1200 т/день (без ППР)
             const planProgress = (totalProduction / monthlyPlan) * 100;
 
             return (
