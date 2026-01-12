@@ -35,12 +35,15 @@ export async function GET(request: NextRequest) {
         shift_date: log.shift_date,
         shift_type: log.shift_type,
         event_time: log.event_time,
+        start_time: log.start_time || log.event_time,
+        end_time: log.end_time,
         event_type: log.event_type,
         workshop: log.workshop,
         description: log.description,
         actions_taken: log.actions_taken,
         speed_before: log.speed_before,
         speed_after: log.speed_after,
+        reduced_speed: log.reduced_speed,
         master_name: log.master_name,
         created_at: log.created_at,
       })),
@@ -70,17 +73,20 @@ export async function POST(request: NextRequest) {
       shift_date,
       shift_type,
       event_time,
+      start_time,
+      end_time,
       event_type,
       workshop,
       description,
       actions_taken,
       speed_before,
       speed_after,
+      reduced_speed,
       master_name,
     } = body;
 
     // Валидация
-    if (!shift_date || !shift_type || !event_time || !event_type || !description) {
+    if (!shift_date || !shift_type || !event_type || !description) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
@@ -93,13 +99,16 @@ export async function POST(request: NextRequest) {
     const newLog = {
       shift_date,
       shift_type,
-      event_time: new Date(event_time),
+      event_time: new Date(start_time || event_time), // для обратной совместимости
+      start_time: start_time ? new Date(start_time) : new Date(event_time),
+      end_time: end_time ? new Date(end_time) : null,
       event_type,
       workshop: workshop || null,
       description,
       actions_taken: actions_taken || null,
       speed_before: speed_before || null,
       speed_after: speed_after || null,
+      reduced_speed: reduced_speed || null,
       master_name: master_name || null,
       created_at: new Date(),
     };

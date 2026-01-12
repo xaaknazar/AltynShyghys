@@ -20,33 +20,22 @@ export default function ShiftEventForm({
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    event_time: new Date().toISOString().slice(0, 16),
-    event_type: 'production_issue',
+    start_time: new Date().toISOString().slice(0, 16),
+    end_time: '',
+    event_type: 'reduction', // 'reduction' или 'stoppage'
     workshop: '',
-    description: '',
-    actions_taken: '',
-    speed_before: '',
-    speed_after: '',
+    reason: '',
+    reduced_speed: '', // для снижений - до какой скорости
     master_name: masterName,
   });
 
-  const eventTypes = [
-    { value: 'production_issue', label: 'Проблема производства', icon: '⚠️' },
-    { value: 'equipment_failure', label: 'Поломка оборудования', icon: '🔧' },
-    { value: 'material_shortage', label: 'Нехватка сырья', icon: '📦' },
-    { value: 'maintenance', label: 'Профилактика', icon: '🛠️' },
-    { value: 'quality_issue', label: 'Проблема качества', icon: '🔍' },
-    { value: 'speed_change', label: 'Изменение скорости', icon: '📊' },
-    { value: 'other', label: 'Другое', icon: '📝' },
-  ];
-
   const workshops = [
-    'Цех прессования',
-    'Цех рафинации',
-    'Цех фильтрации',
-    'Цех розлива',
-    'Котельная',
-    'Другое',
+    'РВО',
+    'Прессовый цех',
+    'Экстракция',
+    'Грануляция',
+    'СГП',
+    'Котельный цех',
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,21 +51,27 @@ export default function ShiftEventForm({
         body: JSON.stringify({
           shift_date: shiftDate,
           shift_type: shiftType,
-          ...formData,
-          speed_before: formData.speed_before ? parseFloat(formData.speed_before) : null,
-          speed_after: formData.speed_after ? parseFloat(formData.speed_after) : null,
+          event_time: formData.start_time, // для обратной совместимости
+          start_time: formData.start_time,
+          end_time: formData.end_time || null,
+          event_type: formData.event_type,
+          workshop: formData.workshop,
+          description: formData.reason, // причина
+          reduced_speed: formData.event_type === 'reduction' && formData.reduced_speed
+            ? parseFloat(formData.reduced_speed)
+            : null,
+          master_name: formData.master_name,
         }),
       });
 
       if (response.ok) {
         setFormData({
-          event_time: new Date().toISOString().slice(0, 16),
-          event_type: 'production_issue',
+          start_time: new Date().toISOString().slice(0, 16),
+          end_time: '',
+          event_type: 'reduction',
           workshop: '',
-          description: '',
-          actions_taken: '',
-          speed_before: '',
-          speed_after: '',
+          reason: '',
+          reduced_speed: '',
           master_name: masterName,
         });
         setIsOpen(false);
@@ -98,15 +93,15 @@ export default function ShiftEventForm({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg"
       >
-        + Добавить событие смены
+        + Зафиксировать снижение/остановку
       </button>
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white backdrop-blur-md border-b border-slate-200 p-6 flex items-center justify-between">
               <h2 className="text-2xl font-display font-bold text-blue-600">
-                НОВОЕ СОБЫТИЕ СМЕНЫ
+                СНИЖЕНИЕ / ОСТАНОВКА
               </h2>
               <button
                 onClick={() => setIsOpen(false)}
@@ -119,53 +114,79 @@ export default function ShiftEventForm({
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Время события */}
+              {/* Тип события */}
+              <div>
+                <label className="block text-sm font-medium text-slate-800 mb-3">
+                  Тип события *
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, event_type: 'reduction' })}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      formData.event_type === 'reduction'
+                        ? 'border-amber-500 bg-amber-50'
+                        : 'border-slate-200 hover:border-amber-300'
+                    }`}
+                  >
+                    <span className="text-3xl mb-2 block">📉</span>
+                    <span className="text-sm font-semibold text-slate-800">Снижение</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, event_type: 'stoppage' })}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      formData.event_type === 'stoppage'
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-slate-200 hover:border-red-300'
+                    }`}
+                  >
+                    <span className="text-3xl mb-2 block">⛔</span>
+                    <span className="text-sm font-semibold text-slate-800">Остановка</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Время начала */}
               <div>
                 <label className="block text-sm font-medium text-slate-800 mb-2">
-                  Время события *
+                  Время начала *
                 </label>
                 <input
                   type="datetime-local"
-                  value={formData.event_time}
-                  onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
+                  value={formData.start_time}
+                  onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
                   required
-                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              {/* Тип события */}
+              {/* Время окончания */}
               <div>
                 <label className="block text-sm font-medium text-slate-800 mb-2">
-                  Тип события *
+                  Время окончания (когда вернули на прежнее значение)
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {eventTypes.map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, event_type: type.value })}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        formData.event_type === type.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-slate-200 hover:border-blue-300'
-                      }`}
-                    >
-                      <span className="text-2xl mb-1 block">{type.icon}</span>
-                      <span className="text-xs text-slate-800">{type.label}</span>
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="datetime-local"
+                  value={formData.end_time}
+                  onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Оставьте пустым если еще не восстановлено
+                </p>
               </div>
 
               {/* Цех */}
               <div>
                 <label className="block text-sm font-medium text-slate-800 mb-2">
-                  Цех
+                  Цех *
                 </label>
                 <select
                   value={formData.workshop}
                   onChange={(e) => setFormData({ ...formData, workshop: e.target.value })}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Выберите цех...</option>
                   {workshops.map((workshop) => (
@@ -176,75 +197,54 @@ export default function ShiftEventForm({
                 </select>
               </div>
 
-              {/* Описание проблемы */}
+              {/* Снижение до какой скорости (только для снижений) */}
+              {formData.event_type === 'reduction' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-800 mb-2">
+                    Снижена до (т/ч) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={formData.reduced_speed}
+                    onChange={(e) => setFormData({ ...formData, reduced_speed: e.target.value })}
+                    required
+                    placeholder="До какой скорости снизили"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Текущая скорость: {currentSpeed.toFixed(1)} т/ч
+                  </p>
+                </div>
+              )}
+
+              {/* Причина */}
               <div>
                 <label className="block text-sm font-medium text-slate-800 mb-2">
-                  Описание проблемы *
+                  Причина *
                 </label>
                 <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  value={formData.reason}
+                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                   required
                   rows={3}
-                  placeholder="Подробно опишите что произошло..."
-                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Опишите причину снижения или остановки..."
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              {/* Принятые меры */}
+              {/* ФИО Мастера смены */}
               <div>
                 <label className="block text-sm font-medium text-slate-800 mb-2">
-                  Принятые меры
-                </label>
-                <textarea
-                  value={formData.actions_taken}
-                  onChange={(e) => setFormData({ ...formData, actions_taken: e.target.value })}
-                  rows={3}
-                  placeholder="Что было сделано для решения проблемы..."
-                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Скорость до/после */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-2">
-                    Скорость до (т/ч)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.speed_before}
-                    onChange={(e) => setFormData({ ...formData, speed_before: e.target.value })}
-                    placeholder={`Текущая: ${currentSpeed.toFixed(1)}`}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-2">
-                    Скорость после (т/ч)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.speed_after}
-                    onChange={(e) => setFormData({ ...formData, speed_after: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Имя мастера */}
-              <div>
-                <label className="block text-sm font-medium text-slate-800 mb-2">
-                  Мастер смены
+                  ФИО Мастера смены *
                 </label>
                 <input
                   type="text"
                   value={formData.master_name}
                   onChange={(e) => setFormData({ ...formData, master_name: e.target.value })}
-                  placeholder="Введите ваше имя..."
-                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  placeholder="Введите ваше ФИО..."
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -255,7 +255,7 @@ export default function ShiftEventForm({
                   disabled={loading}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all disabled:opacity-50"
                 >
-                  {loading ? 'Сохранение...' : 'Сохранить событие'}
+                  {loading ? 'Сохранение...' : 'Сохранить'}
                 </button>
                 <button
                   type="button"
