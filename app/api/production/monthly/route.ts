@@ -201,10 +201,12 @@ export async function GET(request: NextRequest) {
     console.log(`🕐 Current production day: ${currentDateKey} (local hour: ${localHour})`);
 
     // Проверяем есть ли текущие сутки в shift_report данных
-    const currentDayExists = dailyGrouped.find(d => d.date === currentDateKey);
+    const currentDayIndex = dailyGrouped.findIndex(d => d.date === currentDateKey);
 
-    if (!currentDayExists && rawDataByDay.has(currentDateKey)) {
-      console.log(`⚡ Adding current day ${currentDateKey} from raw data (shift reports not complete yet)`);
+    // Для текущего дня ВСЕГДА используем сырые данные (real-time),
+    // так как смены могут быть не завершены
+    if (rawDataByDay.has(currentDateKey)) {
+      console.log(`⚡ Using real-time data for current day ${currentDateKey} (shift in progress)`);
 
       const currentDayRawData = rawDataByDay.get(currentDateKey)!;
 
@@ -239,16 +241,23 @@ export async function GET(request: NextRequest) {
         status: progress >= 100 ? 'normal' : progress >= 80 ? 'warning' : 'danger',
       };
 
-      dailyGrouped.push({
+      const currentDayData = {
         date: currentDateKey,
         data: currentDayRawData,
         stats,
-      });
+      };
 
-      // Пересортируем после добавления
-      dailyGrouped.sort((a, b) => a.date.localeCompare(b.date));
-
-      console.log(`✅ Added current day: ${currentDateKey}, production: ${totalProduction.toFixed(1)}t`);
+      // Если день уже существует (из shift_report), заменяем его real-time данными
+      // Иначе добавляем новый день
+      if (currentDayIndex !== -1) {
+        dailyGrouped[currentDayIndex] = currentDayData;
+        console.log(`✅ Updated current day with real-time data: ${currentDateKey}, production: ${totalProduction.toFixed(1)}t`);
+      } else {
+        dailyGrouped.push(currentDayData);
+        // Пересортируем после добавления
+        dailyGrouped.sort((a, b) => a.date.localeCompare(b.date));
+        console.log(`✅ Added current day: ${currentDateKey}, production: ${totalProduction.toFixed(1)}t`);
+      }
     }
 
     const response = NextResponse.json({
