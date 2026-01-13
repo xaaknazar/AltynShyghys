@@ -52,14 +52,15 @@ export async function GET(request: NextRequest) {
       let productionDate: Date;
       let isNightShift = false;
 
+      // Производственные сутки: 20:00 - 20:00
       // Ночная смена (заканчивается около 08:00) → относится к предыдущему дню
       if (hour >= 6 && hour <= 10) {
         isNightShift = true;
         productionDate = new Date(localTime);
         productionDate.setUTCDate(productionDate.getUTCDate() - 1);
       }
-      // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню!
-      // Потому что производственные сутки начинаются в 20:00 предыдущего дня
+      // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню
+      // так как сутки начинаются в 20:00 предыдущего дня
       else if (hour >= 18 && hour <= 22) {
         isNightShift = false;
         productionDate = new Date(localTime);
