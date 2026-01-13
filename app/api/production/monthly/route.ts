@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       const speed = doc.speed || 0;
 
       // Определяем к какому производственному дню относится документ
+      // Производственные сутки: 20:00 - 20:00
       let productionDate: Date;
       let isNightShift = false;
 
@@ -57,10 +58,12 @@ export async function GET(request: NextRequest) {
         productionDate = new Date(localTime);
         productionDate.setUTCDate(productionDate.getUTCDate() - 1);
       }
-      // Дневная смена (заканчивается около 20:00) → относится к текущему дню
+      // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню!
+      // Потому что производственные сутки начинаются в 20:00 предыдущего дня
       else if (hour >= 18 && hour <= 22) {
         isNightShift = false;
         productionDate = new Date(localTime);
+        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
       } else {
         console.warn(`⚠️ Документ вне времени смены: ${doc.datetime.toISOString()} (час: ${hour})`);
         return;
@@ -203,8 +206,7 @@ export async function GET(request: NextRequest) {
     // Проверяем есть ли текущие сутки в shift_report данных
     const currentDayIndex = dailyGrouped.findIndex(d => d.date === currentDateKey);
 
-    // Для текущего дня ВСЕГДА используем сырые данные (real-time),
-    // так как смены могут быть не завершены
+    // Для текущего дня используем real-time данные (они содержат ВСЕ данные за сутки)
     if (rawDataByDay.has(currentDateKey)) {
       console.log(`⚡ Using real-time data for current day ${currentDateKey} (shift in progress)`);
 

@@ -82,10 +82,12 @@ export async function GET(request: NextRequest) {
         productionDate = new Date(localTime);
         productionDate.setUTCDate(productionDate.getUTCDate() - 1);
       }
-      // Дневная смена (заканчивается около 20:00) → относится к текущему дню
+      // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню!
+      // Потому что производственные сутки начинаются в 20:00 предыдущего дня
       else if (hour >= 18 && hour <= 22) {
         isNightShift = false;
         productionDate = new Date(localTime);
+        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
       } else {
         return;
       }

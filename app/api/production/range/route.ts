@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
       const difference = doc.difference || 0;
 
       // Определяем к какому производственному дню относится документ
+      // Производственные сутки: 20:00 - 20:00
       let productionDate: Date;
       let isNightShift = false;
 
@@ -97,10 +98,12 @@ export async function GET(request: NextRequest) {
         productionDate = new Date(localTime);
         productionDate.setUTCDate(productionDate.getUTCDate() - 1); // Вычитаем день
       }
-      // Дневная смена (заканчивается около 20:00) → относится к текущему дню
+      // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню!
+      // Потому что производственные сутки начинаются в 20:00 предыдущего дня
       else if (hour >= 18 && hour <= 22) {
         isNightShift = false;
         productionDate = new Date(localTime);
+        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
       } else {
         // Документ вне стандартного времени смены - пропускаем
         console.warn(`⚠️ Документ вне времени смены: ${doc.datetime.toISOString()} (час: ${hour})`);
