@@ -137,11 +137,26 @@ export async function GET(request: NextRequest) {
 
     productionDaysMap.forEach((shiftData, dateKey) => {
       const totalProduction = shiftData.dayShift + shiftData.nightShift;
-      // Правильный расчет средней скорости: производство / 24 часа
-      const averageSpeed = totalProduction / 24;
 
       // Берем сырые данные для этого дня (для графиков)
       const dayRawData = rawDataByDay.get(dateKey) || [];
+
+      // Рассчитываем среднюю скорость на основе фактического времени работы
+      let averageSpeed = 0;
+      if (dayRawData.length > 0) {
+        const sortedData = [...dayRawData].sort(
+          (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+        );
+        const firstTime = new Date(sortedData[0].datetime).getTime();
+        const lastTime = new Date(sortedData[sortedData.length - 1].datetime).getTime();
+        const hoursElapsed = (lastTime - firstTime) / (1000 * 60 * 60);
+
+        // Средняя скорость = производство / фактическое время работы
+        averageSpeed = hoursElapsed > 0 ? totalProduction / hoursElapsed : totalProduction / 24;
+      } else {
+        // Если нет сырых данных, используем 24 часа как fallback
+        averageSpeed = totalProduction / 24;
+      }
 
       // Текущая скорость - последняя запись дня
       const currentSpeed = dayRawData.length > 0
