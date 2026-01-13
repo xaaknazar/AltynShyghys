@@ -53,37 +53,43 @@ export default function SpeedIndicator({ currentSpeed, status, lastUpdate }: Spe
 
   return (
     <div className="relative">
-      <div className="relative bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+      <div className="relative bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 md:p-8 shadow-sm">
         {/* Заголовок */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-display text-slate-700 tracking-wider">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+          <h2 className="text-sm sm:text-base md:text-lg font-display text-slate-700 tracking-wider">
             ТЕКУЩАЯ ПОДАЧА
           </h2>
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${colors.text.replace('text-', 'bg-')} animate-pulse`} />
+            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${colors.text.replace('text-', 'bg-')} animate-pulse`} />
             <span className="text-xs text-slate-600 font-mono">
-              {new Date(lastUpdate).toLocaleTimeString('ru-RU', {
+              {new Date(lastUpdate).toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                second: '2-digit'
               })}
             </span>
           </div>
         </div>
 
         {/* Основное значение - центрировано */}
-        <div className="text-center mb-6">
-          <div className={`text-7xl font-display font-bold ${colors.text} inline-block`}>
+        <div className="text-center mb-4 sm:mb-6">
+          <div className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold ${colors.text} inline-block`}>
             {formatNumber(currentSpeed, 1)}
           </div>
-          <span className="text-3xl ml-3 text-slate-500 font-display">т/ч</span>
-          <div className="text-sm text-slate-600 font-mono mt-3">
-            Норма: {TARGETS.hourly} т/ч • Выполнение: <span className={`font-bold ${colors.text}`}>{formatNumber(percentage, 0)}%</span>
+          <span className="text-xl sm:text-2xl md:text-3xl ml-2 sm:ml-3 text-slate-500 font-display">т/ч</span>
+          <div className="text-xs sm:text-sm text-slate-600 font-mono mt-2 sm:mt-3">
+            <span className="block sm:inline">Норма: {TARGETS.hourly} т/ч</span>
+            <span className="hidden sm:inline"> • </span>
+            <span className="block sm:inline">Выполнение: <span className={`font-bold ${colors.text}`}>{formatNumber(percentage, 0)}%</span></span>
           </div>
         </div>
 
         {/* Прогресс-бар */}
         <div className="relative">
-          <div className="h-4 bg-slate-200 rounded-full overflow-hidden border border-slate-300">
+          <div className="h-3 sm:h-4 bg-slate-200 rounded-full overflow-hidden border border-slate-300">
             <div
               className={`h-full transition-all duration-1000 ease-out ${colors.gradient}`}
               style={{ width: `${Math.min(percentage, 100)}%` }}
@@ -93,8 +99,8 @@ export default function SpeedIndicator({ currentSpeed, status, lastUpdate }: Spe
           </div>
 
           {/* Маркер нормы на прогресс-баре */}
-          <div className="absolute top-0 h-6 w-0.5 bg-slate-400 -mt-1" style={{ left: '100%' }}>
-            <div className="absolute -top-1 -left-2 w-5 h-5 border-2 border-slate-400 rounded-full bg-white" />
+          <div className="absolute top-0 h-5 sm:h-6 w-0.5 bg-slate-400 -mt-1" style={{ left: '100%' }}>
+            <div className="absolute -top-1 -left-1.5 sm:-left-2 w-4 h-4 sm:w-5 sm:h-5 border-2 border-slate-400 rounded-full bg-white" />
           </div>
         </div>
       </div>
