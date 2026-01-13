@@ -97,10 +97,10 @@ export default function ShiftEventForm({
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white backdrop-blur-md border-b border-slate-200 p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-display font-bold text-blue-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
+          <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white backdrop-blur-md border-b border-slate-200 p-4 sm:p-6 flex items-center justify-between">
+              <h2 className="text-lg sm:text-2xl font-display font-bold text-blue-600">
                 СНИЖЕНИЕ / ОСТАНОВКА
               </h2>
               <button
@@ -113,7 +113,7 @@ export default function ShiftEventForm({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Тип события */}
               <div>
                 <label className="block text-sm font-medium text-slate-800 mb-3">
@@ -249,18 +249,18 @@ export default function ShiftEventForm({
               </div>
 
               {/* Кнопки */}
-              <div className="flex gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all disabled:opacity-50"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 sm:px-6 rounded-lg transition-all disabled:opacity-50"
                 >
                   {loading ? 'Сохранение...' : 'Сохранить'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="px-6 py-3 bg-slate-100 border border-slate-200 rounded-lg text-slate-800 hover:bg-slate-200 transition-all"
+                  className="px-4 sm:px-6 py-3 bg-slate-100 border border-slate-200 rounded-lg text-slate-800 hover:bg-slate-200 transition-all"
                 >
                   Отмена
                 </button>

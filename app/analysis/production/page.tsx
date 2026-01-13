@@ -471,16 +471,16 @@ export default function ProductionAnalysisPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* Фильтры */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="text-lg font-display font-bold text-slate-700 mb-4">ФИЛЬТРЫ</h3>
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
+        <h3 className="text-base sm:text-lg font-display font-bold text-slate-700 mb-3 sm:mb-4">ФИЛЬТРЫ</h3>
 
         {/* Переключатель режима просмотра */}
-        <div className="flex flex-wrap gap-3 mb-6">
+        <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
           <button
             onClick={() => setViewMode('daily')}
-            className={`px-4 py-2 rounded-lg border-2 transition-all ${
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
               viewMode === 'daily'
                 ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-semibold'
                 : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
@@ -490,7 +490,7 @@ export default function ProductionAnalysisPage() {
           </button>
           <button
             onClick={() => setViewMode('detailed')}
-            className={`px-4 py-2 rounded-lg border-2 transition-all ${
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
               viewMode === 'detailed'
                 ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-semibold'
                 : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
@@ -503,7 +503,7 @@ export default function ProductionAnalysisPage() {
         {viewMode === 'daily' && (
           <>
             {/* Быстрые кнопки */}
-            <div className="flex flex-wrap gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
               <button
                 onClick={() => applyQuickPeriod('week')}
                 className={`px-4 py-2 rounded-lg border-2 transition-all ${

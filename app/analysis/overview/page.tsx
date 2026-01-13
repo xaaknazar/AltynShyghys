@@ -78,14 +78,14 @@ export default function OverviewPage() {
   return (
     <div className="space-y-8">
       {/* Выбор даты */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-display font-bold text-slate-700">ИТОГИ СУТОК</h3>
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+          <h3 className="text-base sm:text-lg font-display font-bold text-slate-700">ИТОГИ СУТОК</h3>
           <input
             type="date"
             value={currentDate}
             onChange={(e) => handleDateChange(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
       </div>
@@ -95,51 +95,51 @@ export default function OverviewPage() {
           <div className="text-2xl text-slate-700 font-display">Загрузка данных...</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
           {/* Количественный анализ (производство) */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-xl font-display font-bold text-blue-600 mb-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-lg sm:text-xl font-display font-bold text-blue-600 mb-4 sm:mb-6">
               КОЛИЧЕСТВЕННЫЙ АНАЛИЗ
             </h3>
             {productionData && productionData.success ? (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <span className="text-sm font-semibold text-slate-700">Общее производство</span>
-                  <span className="text-2xl font-display font-bold text-blue-600">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex justify-between items-center p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <span className="text-xs sm:text-sm font-semibold text-slate-700">Общее производство</span>
+                  <span className="text-lg sm:text-2xl font-display font-bold text-blue-600">
                     {productionData.totalProduction?.toFixed(2) || '0.00'} т
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="text-xs text-slate-600 mb-1">Дневная смена</div>
-                    <div className="text-lg font-mono font-bold text-slate-800">
+                    <div className="text-base sm:text-lg font-mono font-bold text-slate-800">
                       {productionData.dayShift?.toFixed(2) || '0.00'} т
                     </div>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="text-xs text-slate-600 mb-1">Ночная смена</div>
-                    <div className="text-lg font-mono font-bold text-slate-800">
+                    <div className="text-base sm:text-lg font-mono font-bold text-slate-800">
                       {productionData.nightShift?.toFixed(2) || '0.00'} т
                     </div>
                   </div>
                 </div>
-                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="p-3 sm:p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                   <div className="text-xs text-emerald-700 mb-1">Процент выполнения плана</div>
-                  <div className="text-2xl font-display font-bold text-emerald-600">
+                  <div className="text-lg sm:text-2xl font-display font-bold text-emerald-600">
                     {productionData.planPercentage?.toFixed(1) || '0.0'}%
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8 text-slate-600">
+              <div className="text-center py-8 text-sm sm:text-base text-slate-600">
                 Нет данных о производстве за эту дату
               </div>
             )}
           </div>
 
           {/* Качественный анализ */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-xl font-display font-bold text-blue-600 mb-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-lg sm:text-xl font-display font-bold text-blue-600 mb-4 sm:mb-6">
               КАЧЕСТВЕННЫЙ АНАЛИЗ
             </h3>
             {qualityData.length > 0 ? (
@@ -199,8 +199,8 @@ export default function OverviewPage() {
 
       {/* Shift Events Section */}
       {!loading && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="text-xl font-display font-bold text-blue-600 mb-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
+          <h3 className="text-lg sm:text-xl font-display font-bold text-blue-600 mb-4 sm:mb-6">
             ПРОИСШЕСТВИЯ ЗА СУТКИ
           </h3>
           {shiftEvents.length > 0 ? (

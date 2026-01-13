@@ -223,8 +223,8 @@ export default function ShiftMasterPage() {
           />
 
           {/* История событий смены */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-lg font-display text-slate-700 tracking-wider mb-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base sm:text-lg font-display text-slate-700 tracking-wider mb-4 sm:mb-6">
               ИСТОРИЯ СОБЫТИЙ СМЕНЫ
             </h3>
 
@@ -313,37 +313,37 @@ export default function ShiftMasterPage() {
             const maxSpeed = Math.max(...shiftData.map(d => d.speed));
 
             return (
-              <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-                <h3 className="text-2xl font-display text-blue-600 tracking-wider mb-6">
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-8 shadow-sm">
+                <h3 className="text-lg sm:text-2xl font-display text-blue-600 tracking-wider mb-4 sm:mb-6">
                   СТАТИСТИКА СМЕНЫ
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
                   <div className="text-center">
-                    <div className="text-sm text-slate-600 mb-2">Произведено</div>
-                    <div className="text-4xl font-display font-bold text-blue-600">
+                    <div className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Произведено</div>
+                    <div className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-blue-600">
                       {totalProduction.toFixed(1)}
-                      <span className="text-xl ml-2 text-slate-500">т</span>
+                      <span className="text-sm sm:text-xl ml-1 sm:ml-2 text-slate-500">т</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-slate-600 mb-2">Средняя скорость</div>
-                    <div className="text-4xl font-display font-bold text-blue-500">
+                    <div className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Средняя скорость</div>
+                    <div className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-blue-500">
                       {avgSpeed.toFixed(1)}
-                      <span className="text-xl ml-2 text-slate-500">т/ч</span>
+                      <span className="text-sm sm:text-xl ml-1 sm:ml-2 text-slate-500">т/ч</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-slate-600 mb-2">Мин. скорость</div>
-                    <div className="text-4xl font-display font-bold text-rose-500">
+                    <div className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Мин. скорость</div>
+                    <div className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-rose-500">
                       {minSpeed.toFixed(1)}
-                      <span className="text-xl ml-2 text-slate-500">т/ч</span>
+                      <span className="text-sm sm:text-xl ml-1 sm:ml-2 text-slate-500">т/ч</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-slate-600 mb-2">Макс. скорость</div>
-                    <div className="text-4xl font-display font-bold text-emerald-500">
+                    <div className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Макс. скорость</div>
+                    <div className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-emerald-500">
                       {maxSpeed.toFixed(1)}
-                      <span className="text-xl ml-2 text-slate-500">т/ч</span>
+                      <span className="text-sm sm:text-xl ml-1 sm:ml-2 text-slate-500">т/ч</span>
                     </div>
                   </div>
                 </div>
