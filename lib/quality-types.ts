@@ -26,6 +26,9 @@ export const ANALYSIS_TYPES = {
   // Шрот
   MOISTURE_TOASTED_MEAL: 'moisture_toasted_meal',
   OIL_CONTENT_MEAL: 'oil_content_meal',
+
+  // Мисцелла (экстракция)
+  MISCELLA_CONCENTRATION: 'miscella_concentration',
 } as const;
 
 export type AnalysisType = typeof ANALYSIS_TYPES[keyof typeof ANALYSIS_TYPES];
@@ -153,6 +156,15 @@ export const ANALYSIS_CONFIG: Record<AnalysisType, {
     min: 0,
     max: 1,
     warningThreshold: 0.1,
+  },
+
+  // Мисцелла (экстракция)
+  [ANALYSIS_TYPES.MISCELLA_CONCENTRATION]: {
+    label: 'Концентрация мисцеллы',
+    unit: '%',
+    min: 25,
+    max: 30,
+    warningThreshold: 1,
   },
 };
 
