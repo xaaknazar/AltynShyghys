@@ -235,9 +235,6 @@ export default function OTKPage() {
                               }`}
                             >
                               <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
-                              <div className="text-xs text-slate-600 mt-1">
-                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
-                              </div>
                             </button>
                           );
                         })}
@@ -264,9 +261,6 @@ export default function OTKPage() {
                               }`}
                             >
                               <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
-                              <div className="text-xs text-slate-600 mt-1">
-                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
-                              </div>
                             </button>
                           );
                         })}
@@ -293,9 +287,6 @@ export default function OTKPage() {
                               }`}
                             >
                               <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
-                              <div className="text-xs text-slate-600 mt-1">
-                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
-                              </div>
                             </button>
                           );
                         })}
@@ -322,9 +313,6 @@ export default function OTKPage() {
                               }`}
                             >
                               <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
-                              <div className="text-xs text-slate-600 mt-1">
-                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
-                              </div>
                             </button>
                           );
                         })}
@@ -351,9 +339,6 @@ export default function OTKPage() {
                               }`}
                             >
                               <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
-                              <div className="text-xs text-slate-600 mt-1">
-                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
-                              </div>
                             </button>
                           );
                         })}
@@ -380,9 +365,32 @@ export default function OTKPage() {
                               }`}
                             >
                               <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
-                              <div className="text-xs text-slate-600 mt-1">
-                                {conf.min === 0 ? `до ${conf.max}` : `${conf.min}-${conf.max}`}{conf.unit}
-                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Мисцелла */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Мисцелла
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MISCELLA_CONCENTRATION].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setSelectedType(type)}
+                              className={`p-3 rounded-lg border-2 transition-all text-left ${
+                                selectedType === type
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="text-sm font-semibold text-slate-800">{conf.label}</div>
                             </button>
                           );
                         })}
@@ -408,7 +416,7 @@ export default function OTKPage() {
                         status === 'danger' ? 'border-rose-500' :
                         'border-slate-300 focus:border-blue-500'
                       }`}
-                      placeholder={`Введите значение (${config.min === 0 ? `до ${config.max}` : `${config.min}-${config.max}`})`}
+                      placeholder={`Введите значение...`}
                       required
                     />
                     {status && (
