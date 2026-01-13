@@ -76,12 +76,14 @@ export default function SpeedIndicator({ currentSpeed, status, lastUpdate }: Spe
 
         {/* Основное значение - центрировано */}
         <div className="text-center mb-4 sm:mb-6">
-          <div className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold ${colors.text} inline-block`}>
-            {formatNumber(currentSpeed, 1)}
+          <div className="whitespace-nowrap">
+            <span className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold ${colors.text}`}>
+              {formatNumber(currentSpeed, 1)}
+            </span>
+            <span className="text-xl sm:text-2xl md:text-3xl ml-2 sm:ml-3 text-slate-500 font-display">т/ч</span>
           </div>
-          <span className="text-xl sm:text-2xl md:text-3xl ml-2 sm:ml-3 text-slate-500 font-display">т/ч</span>
           <div className="text-xs sm:text-sm text-slate-600 font-mono mt-2 sm:mt-3">
-            <span className="block sm:inline">Норма: {TARGETS.hourly} т/ч</span>
+            <span className="block sm:inline whitespace-nowrap">Норма: {TARGETS.hourly} т/ч</span>
             <span className="hidden sm:inline"> • </span>
             <span className="block sm:inline">Выполнение: <span className={`font-bold ${colors.text}`}>{formatNumber(percentage, 0)}%</span></span>
           </div>

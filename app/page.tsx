@@ -117,7 +117,7 @@ export default function HomePage() {
             <div className="flex items-center gap-6">
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-blue-600">
-                  МАСЛОЗАВОД «Altyn Shyghys»
+                  Altyn Shyghys
                 </h1>
                 <p className="text-xs text-slate-600 font-mono mt-1">
                   Производственная панель мониторинга
@@ -127,10 +127,10 @@ export default function HomePage() {
               {/* Компактный индикатор текущей подачи */}
               {latestData && (
                 <div className="hidden lg:flex items-center gap-3 bg-slate-100 rounded-lg px-4 py-2.5 border border-slate-200">
-                  <div className="text-xs text-slate-600 uppercase tracking-wide font-semibold">
+                  <div className="text-xs text-slate-600 uppercase tracking-wide font-semibold whitespace-nowrap">
                     Текущая подача
                   </div>
-                  <div className={`text-2xl font-display font-bold ${
+                  <div className={`text-2xl font-display font-bold whitespace-nowrap ${
                     latestData.speed >= 50 ? 'text-emerald-500' :
                     latestData.speed >= 45 ? 'text-amber-500' :
                     'text-rose-500'
