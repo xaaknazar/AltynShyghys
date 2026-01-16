@@ -42,12 +42,15 @@ export default function ProductionAnalysisPage() {
     'Мезга Жаровня 2': 105,
     'Жаровня 1': 105,
     // Data_Extractor_Cooking метрики (реальные названия из базы)
+    'Верх.Темп. Мезги Жаровни 1': [100, 110],
     'Нижн.Темп. Мезги Жаровня 1': [80, 90],
+    'Верх.Темп. Мезги Жаровни 2': [100, 120],
     'Нижн.Темп. Мезги Жаровня 2': [80, 90],
     ' Температура Тостера': [100, 110],
     'Коэффициент Экстрактора': [100, 120],
     'Подача в Экстрактор': [40, 60],
-    'Процентаж Экстрактора': [50, 60],
+    'Процентаж Экстрактора': [45, 55],
+    'Подача Чистого Гексана': [0, 100],
   };
 
   useEffect(() => {
@@ -686,29 +689,15 @@ export default function ProductionAnalysisPage() {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
               >
-                {(() => {
-                  // Добавляем сегодняшнюю дату, если ее нет в productionData
-                  const today = new Date().toISOString().split('T')[0];
-                  const dates = [...productionData];
-
-                  // Проверяем, есть ли сегодняшняя дата в данных
-                  const hasTodayData = dates.some(d => d.date === today);
-
-                  // Если нет, добавляем сегодняшнюю дату в начало списка
-                  if (!hasTodayData) {
-                    dates.unshift({ date: today, total: 0 });
-                  }
-
-                  return dates.map((day) => (
-                    <option key={day.date} value={day.date}>
-                      {new Date(day.date).toLocaleDateString('ru-RU', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      })}{day.total > 0 ? ` - ${day.total.toFixed(2)} т` : ' - текущая смена'}
-                    </option>
-                  ));
-                })()}
+                {productionData.map((day) => (
+                  <option key={day.date} value={day.date}>
+                    {new Date(day.date).toLocaleDateString('ru-RU', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })} - {day.total.toFixed(2)} т
+                  </option>
+                ))}
               </select>
             </div>
           </div>

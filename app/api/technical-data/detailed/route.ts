@@ -102,9 +102,8 @@ export async function GET(request: NextRequest) {
 
     const { client } = await connectToDatabase();
 
-    // Для Data_Extractor_Cooking используем базу SchedulerSyncPro, для остальных - scheduler-sync-pro
-    const dbName = collection === 'Data_Extractor_Cooking' ? 'SchedulerSyncPro' : 'scheduler-sync-pro';
-    const db = client.db(dbName);
+    // Все коллекции используют базу scheduler-sync-pro
+    const db = client.db('scheduler-sync-pro');
     const coll = db.collection(collection);
 
     // Производственный день начинается в 08:00 текущего дня (дневная смена)
