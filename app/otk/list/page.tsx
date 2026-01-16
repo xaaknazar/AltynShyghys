@@ -25,6 +25,26 @@ export default function OTKListPage() {
     setFilterEndDate(endDate.toISOString().split('T')[0]);
   }, []);
 
+  const handleShowAll = () => {
+    // Показать все анализы с 2020 года по текущую дату + 1 год
+    const startDate = new Date('2020-01-01');
+    const endDate = new Date();
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    setFilterStartDate(startDate.toISOString().split('T')[0]);
+    setFilterEndDate(endDate.toISOString().split('T')[0]);
+  };
+
+  const handleResetFilters = () => {
+    // Сброс на последние 7 дней
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    setFilterStartDate(startDate.toISOString().split('T')[0]);
+    setFilterEndDate(endDate.toISOString().split('T')[0]);
+    setFilterAnalysisType('all');
+    setFilterShiftType('all');
+  };
+
   useEffect(() => {
     if (filterStartDate && filterEndDate) {
       fetchAllAnalyses();
@@ -194,6 +214,22 @@ export default function OTKListPage() {
               <option value="night">Ночная</option>
             </select>
           </div>
+        </div>
+
+        {/* Кнопки быстрых действий */}
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={handleShowAll}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all shadow-sm"
+          >
+            📋 Показать все анализы
+          </button>
+          <button
+            onClick={handleResetFilters}
+            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-lg font-semibold transition-all"
+          >
+            🔄 Сбросить фильтры
+          </button>
         </div>
       </div>
 

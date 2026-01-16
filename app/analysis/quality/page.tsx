@@ -302,7 +302,7 @@ export default function AnalysisPage() {
                   </h3>
 
                   {/* График */}
-                  <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
+                  <div className="relative bg-slate-50 rounded-lg p-8 border border-slate-200">
                     {/* Линии норм */}
                     <div
                       className="absolute left-0 right-0 flex items-center"
@@ -327,7 +327,7 @@ export default function AnalysisPage() {
                     )}
 
                     {/* Линейный график с точками */}
-                    <div className="relative h-80 overflow-x-auto pb-2">
+                    <div className="relative h-80 pb-2 overflow-visible">
                       {(() => {
                         // Вычисляем позиции точек с padding по краям
                         const paddingPercent = 5; // 5% padding с каждой стороны
@@ -382,19 +382,27 @@ export default function AnalysisPage() {
                                   style={{ backgroundColor: p.color }}
                                 ></div>
 
-                                {/* Tooltip - динамическое позиционирование */}
-                                <div className={`absolute hidden group-hover:block z-20 ${
-                                  // Позиционирование по горизонтали
-                                  p.x < 50
-                                    ? 'left-full ml-2' // Точка слева - показываем справа
-                                    : 'right-full mr-2' // Точка справа - показываем слева
+                                {/* Tooltip - улучшенное позиционирование */}
+                                <div className={`absolute hidden group-hover:block z-30 ${
+                                  // Позиционирование по горизонтали с улучшенной логикой
+                                  p.x < 20
+                                    ? 'left-full ml-3' // Точка у левого края - показываем справа с отступом
+                                    : p.x > 80
+                                    ? 'right-full mr-3' // Точка у правого края - показываем слева с отступом
+                                    : p.x < 50
+                                    ? 'left-full ml-2' // Точка слева центра - показываем справа
+                                    : 'right-full mr-2' // Точка справа центра - показываем слева
                                 } ${
-                                  // Позиционирование по вертикали
-                                  p.y < 30
-                                    ? 'top-0' // Точка вверху - выравниваем по верху
-                                    : 'bottom-0' // Точка внизу - выравниваем по низу
+                                  // Позиционирование по вертикали с учетом положения точки
+                                  p.y < 20
+                                    ? 'top-0' // Точка у верха - выравниваем по верху
+                                    : p.y > 80
+                                    ? 'bottom-0' // Точка у низа - выравниваем по низу
+                                    : p.y < 50
+                                    ? 'top-0' // Точка выше центра - выравниваем по верху
+                                    : 'bottom-0' // Точка ниже центра - выравниваем по низу
                                 }`}>
-                                  <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-2xl whitespace-nowrap">
+                                  <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-2xl whitespace-nowrap max-w-xs">
                                     <div className="text-xs text-slate-600 mb-1 font-mono">
                                       {viewMode === 'all'
                                         ? new Date(p.point.time).toLocaleString('ru-RU', {

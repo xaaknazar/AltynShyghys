@@ -8,23 +8,39 @@ export default function OTKAddPage() {
   const [value, setValue] = useState<string>('');
   const [technicianName, setTechnicianName] = useState<string>('');
   const [comments, setComments] = useState<string>('');
-  const [shiftDate, setShiftDate] = useState<string>('');
-  const [shiftType, setShiftType] = useState<ShiftType>('day');
   const [sampleTime, setSampleTime] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    // Автоопределение текущей смены
-    const currentShift = getCurrentShift();
-    setShiftDate(currentShift.date);
-    setShiftType(currentShift.type);
-
     // Установка текущего времени
     const now = new Date();
     const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000); // UTC+5
     setSampleTime(localTime.toISOString().slice(0, 16));
   }, []);
+
+  // Функция для определения смены из времени отбора
+  const getShiftFromSampleTime = (sampleTimeStr: string): { date: string; type: ShiftType } => {
+    const sampleDate = new Date(sampleTimeStr);
+    const localTime = new Date(sampleDate.getTime() + 5 * 60 * 60 * 1000); // UTC+5
+    const hour = localTime.getUTCHours();
+
+    // Дневная смена: 08:00-20:00, Ночная смена: 20:00-08:00
+    const isDayShift = hour >= 8 && hour < 20;
+    const shiftType: ShiftType = isDayShift ? 'day' : 'night';
+
+    // Дата смены
+    const shiftDate = new Date(localTime);
+    if (hour < 8) {
+      // Если до 8 утра, это ночная смена предыдущего дня
+      shiftDate.setUTCDate(shiftDate.getUTCDate() - 1);
+    }
+
+    return {
+      date: shiftDate.toISOString().split('T')[0],
+      type: shiftType,
+    };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,12 +55,15 @@ export default function OTKAddPage() {
         return;
       }
 
+      // Автоматически определяем смену из времени отбора
+      const shift = getShiftFromSampleTime(sampleTime);
+
       const response = await fetch('/api/quality-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          shift_date: shiftDate,
-          shift_type: shiftType,
+          shift_date: shift.date,
+          shift_type: shift.type,
           sample_time: sampleTime,
           analysis_type: selectedType,
           value: numValue,
@@ -83,41 +102,20 @@ export default function OTKAddPage() {
     <div className="space-y-8">
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Информация о смене */}
+          {/* Время отбора пробы */}
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs text-slate-600 mb-2">Дата смены</label>
-                <input
-                  type="date"
-                  value={shiftDate}
-                  onChange={(e) => setShiftDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-600 mb-2">Смена</label>
-                <select
-                  value={shiftType}
-                  onChange={(e) => setShiftType(e.target.value as ShiftType)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
-                  required
-                >
-                  <option value="day">Дневная (08:00-20:00)</option>
-                  <option value="night">Ночная (20:00-08:00)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-600 mb-2">Время отбора</label>
-                <input
-                  type="datetime-local"
-                  value={sampleTime}
-                  onChange={(e) => setSampleTime(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
-                  required
-                />
-              </div>
+            <div>
+              <label className="block text-xs text-slate-600 mb-2">Время отбора пробы</label>
+              <input
+                type="datetime-local"
+                value={sampleTime}
+                onChange={(e) => setSampleTime(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
+                required
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Смена определяется автоматически из времени отбора
+              </p>
             </div>
           </div>
 
