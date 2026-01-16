@@ -382,9 +382,19 @@ export default function AnalysisPage() {
                                   style={{ backgroundColor: p.color }}
                                 ></div>
 
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                                  <div className="bg-white border border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
+                                {/* Tooltip - динамическое позиционирование */}
+                                <div className={`absolute hidden group-hover:block z-20 ${
+                                  // Позиционирование по горизонтали
+                                  p.x < 50
+                                    ? 'left-full ml-2' // Точка слева - показываем справа
+                                    : 'right-full mr-2' // Точка справа - показываем слева
+                                } ${
+                                  // Позиционирование по вертикали
+                                  p.y < 30
+                                    ? 'top-0' // Точка вверху - выравниваем по верху
+                                    : 'bottom-0' // Точка внизу - выравниваем по низу
+                                }`}>
+                                  <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-2xl whitespace-nowrap">
                                     <div className="text-xs text-slate-600 mb-1 font-mono">
                                       {viewMode === 'all'
                                         ? new Date(p.point.time).toLocaleString('ru-RU', {

@@ -22,6 +22,12 @@ export default function OTKPage() {
   const [loadingList, setLoadingList] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Фильтры для списка анализов
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
+  const [filterAnalysisType, setFilterAnalysisType] = useState<string>('all');
+  const [filterShiftType, setFilterShiftType] = useState<string>('all');
+
   useEffect(() => {
     // Автоопределение текущей смены
     const currentShift = getCurrentShift();
@@ -32,27 +38,29 @@ export default function OTKPage() {
     const now = new Date();
     const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000); // UTC+5
     setSampleTime(localTime.toISOString().slice(0, 16));
+
+    // Установка фильтров по умолчанию: последние 7 дней
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    setFilterStartDate(startDate.toISOString().split('T')[0]);
+    setFilterEndDate(endDate.toISOString().split('T')[0]);
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'list') {
+    if (activeTab === 'list' && filterStartDate && filterEndDate) {
       fetchAllAnalyses();
     }
-  }, [activeTab]);
+  }, [activeTab, filterStartDate, filterEndDate, filterAnalysisType, filterShiftType]);
 
   const fetchAllAnalyses = async () => {
     setLoadingList(true);
     try {
-      // Загружаем все анализы за последний месяц
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
-
       const params = new URLSearchParams({
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        shift_type: 'all',
-        analysis_type: 'all',
+        start_date: filterStartDate,
+        end_date: filterEndDate,
+        shift_type: filterShiftType,
+        analysis_type: filterAnalysisType,
         group_by: 'none',
       });
 
@@ -590,16 +598,96 @@ export default function OTKPage() {
               </div>
             </div>
           ) : (
-            // Список всех анализов
+            // Список всех анализов с фильтрами
             <div className="max-w-6xl">
+              {/* Фильтры */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6 shadow-sm">
+                <h3 className="text-lg font-display font-bold text-slate-700 mb-4">ФИЛЬТРЫ</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-600 mb-2">Начало периода</label>
+                    <input
+                      type="date"
+                      value={filterStartDate}
+                      onChange={(e) => setFilterStartDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-600 mb-2">Конец периода</label>
+                    <input
+                      type="date"
+                      value={filterEndDate}
+                      onChange={(e) => setFilterEndDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-600 mb-2">Тип анализа</label>
+                    <select
+                      value={filterAnalysisType}
+                      onChange={(e) => setFilterAnalysisType(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-sm focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="all">Все анализы</option>
+                      <optgroup label="Входящее сырье">
+                        <option value={ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL].label}</option>
+                        <option value={ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL].label}</option>
+                      </optgroup>
+                      <optgroup label="Лузга">
+                        <option value={ANALYSIS_TYPES.MOISTURE_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_HUSK].label}</option>
+                        <option value={ANALYSIS_TYPES.FAT_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_HUSK].label}</option>
+                        <option value={ANALYSIS_TYPES.KERNEL_LOSS_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.KERNEL_LOSS_HUSK].label}</option>
+                      </optgroup>
+                      <optgroup label="Рушанка">
+                        <option value={ANALYSIS_TYPES.MOISTURE_CRUSHED}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_CRUSHED].label}</option>
+                        <option value={ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED].label}</option>
+                      </optgroup>
+                      <optgroup label="Мезга с жаровни">
+                        <option value={ANALYSIS_TYPES.MOISTURE_ROASTER_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_ROASTER_1].label}</option>
+                        <option value={ANALYSIS_TYPES.MOISTURE_ROASTER_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_ROASTER_2].label}</option>
+                      </optgroup>
+                      <optgroup label="Жмых с пресса">
+                        <option value={ANALYSIS_TYPES.MOISTURE_PRESS_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_PRESS_1].label}</option>
+                        <option value={ANALYSIS_TYPES.MOISTURE_PRESS_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_PRESS_2].label}</option>
+                        <option value={ANALYSIS_TYPES.FAT_PRESS_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_PRESS_1].label}</option>
+                        <option value={ANALYSIS_TYPES.FAT_PRESS_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_PRESS_2].label}</option>
+                      </optgroup>
+                      <optgroup label="Шрот">
+                        <option value={ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL].label}</option>
+                        <option value={ANALYSIS_TYPES.OIL_CONTENT_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_MEAL].label}</option>
+                      </optgroup>
+                      <optgroup label="Мисцелла">
+                        <option value={ANALYSIS_TYPES.MISCELLA_CONCENTRATION}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MISCELLA_CONCENTRATION].label}</option>
+                      </optgroup>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-600 mb-2">Смена</label>
+                    <select
+                      value={filterShiftType}
+                      onChange={(e) => setFilterShiftType(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="all">Все смены</option>
+                      <option value="day">Дневная</option>
+                      <option value="night">Ночная</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               {loadingList ? (
                 <div className="text-center py-16">
                   <div className="text-2xl text-slate-700 font-display">Загрузка анализов...</div>
                 </div>
               ) : Object.keys(groupedByDay).length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
-                  <div className="text-slate-700 text-lg mb-2">Нет анализов за последний месяц</div>
-                  <div className="text-slate-600 text-sm">Добавьте новые анализы на вкладке "Добавить анализ"</div>
+                  <div className="text-slate-700 text-lg mb-2">Нет анализов за выбранный период</div>
+                  <div className="text-slate-600 text-sm">Измените фильтры или добавьте новые анализы</div>
                 </div>
               ) : (
                 <div className="space-y-6">
