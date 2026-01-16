@@ -123,11 +123,30 @@ export async function GET(request: NextRequest) {
       .sort({ datetime: 1 })
       .toArray();
 
+    // Debug логирование для Data_extractor_cooking
+    if (collection === 'Data_extractor_cooking') {
+      console.log('=== DEBUG Data_extractor_cooking ===');
+      console.log('Запрошенная дата:', date);
+      console.log('Диапазон времени UTC:', { start: startUTC, end: endUTC });
+      console.log('Найдено документов:', data.length);
+      if (data.length > 0) {
+        console.log('Первый документ:', JSON.stringify(data[0], null, 2));
+      }
+      console.log('===================================');
+    }
+
     if (!data || data.length === 0) {
       return NextResponse.json({
         success: true,
         data: [],
         metrics: [],
+        debug: collection === 'Data_extractor_cooking' ? {
+          collection,
+          date,
+          startUTC: startUTC.toISOString(),
+          endUTC: endUTC.toISOString(),
+          count: 0
+        } : undefined
       });
     }
 
