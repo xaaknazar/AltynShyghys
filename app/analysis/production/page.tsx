@@ -695,10 +695,11 @@ export default function ProductionAnalysisPage() {
                   const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000);
                   const localHour = localTime.getUTCHours();
 
-                  // Если сейчас 20:00 или позже по местному времени, текущая смена - это завтрашний день
+                  // Если сейчас до 20:00, текущая смена началась вчера в 20:00 (сутки вчерашнего дня)
+                  // Если 20:00 или позже, текущая смена началась сегодня в 20:00 (сутки сегодняшнего дня)
                   let currentShiftDate = new Date(localTime);
-                  if (localHour >= 20) {
-                    currentShiftDate.setDate(currentShiftDate.getDate() + 1);
+                  if (localHour < 20) {
+                    currentShiftDate.setDate(currentShiftDate.getDate() - 1);
                   }
                   const today = currentShiftDate.toISOString().split('T')[0];
                   const dates = [...productionData];
