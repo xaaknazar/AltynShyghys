@@ -217,8 +217,14 @@ export default function ProductionAnalysisPage() {
         const data = await response.json();
 
         if (data.success && data.data.length > 0) {
-          // Находим нужную метрику
-          const metricData = data.data.filter((d: any) => d.title === metric);
+          // Извлекаем данные для этой метрики из агрегированных данных
+          const metricData = data.data
+            .map((timePoint: any) => ({
+              time: timePoint.time,
+              value: timePoint[metric]
+            }))
+            .filter((d: any) => d.value !== undefined && d.value !== null);
+
           if (metricData.length > 0) {
             allData.push({
               collection,
