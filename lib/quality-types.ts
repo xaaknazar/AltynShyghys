@@ -154,8 +154,8 @@ export const ANALYSIS_CONFIG: Record<AnalysisType, {
     label: 'Масличность шрота',
     unit: '%',
     min: 0,
-    max: 1,
-    warningThreshold: 0.1,
+    max: 1.3,
+    warningThreshold: 0.3,
   },
 
   // Мисцелла (экстракция)
