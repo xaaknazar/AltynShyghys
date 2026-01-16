@@ -89,7 +89,8 @@ export async function GET(request: NextRequest) {
       'Press_1_Job',
       'Press_2_Job',
       'Press_Extractor_Job',
-      'Press_Jarovnia_Mezga'
+      'Press_Jarovnia_Mezga',
+      'Data_extractor_cooking'
     ];
 
     if (!validCollections.includes(collection)) {
