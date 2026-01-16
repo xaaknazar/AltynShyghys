@@ -6,7 +6,7 @@ import { ANALYSIS_TYPES, ANALYSIS_CONFIG, getAnalysisStatus, AnalysisType } from
 type ViewMode = 'all' | 'shift' | 'day';
 
 export default function AnalysisPage() {
-  const [selectedTypes, setSelectedTypes] = useState<AnalysisType[]>([]);
+  const [selectedType, setSelectedType] = useState<AnalysisType | 'all'>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -14,6 +14,11 @@ export default function AnalysisPage() {
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [groupedData, setGroupedData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Кастомный график
+  const [showCustomGraph, setShowCustomGraph] = useState(false);
+  const [customGraphTypes, setCustomGraphTypes] = useState<AnalysisType[]>([]);
+  const [customGraphData, setCustomGraphData] = useState<any[]>([]);
 
   useEffect(() => {
     // Установка дат по умолчанию: последний месяц
@@ -29,19 +34,16 @@ export default function AnalysisPage() {
     if (startDate && endDate) {
       fetchAnalyses();
     }
-  }, [startDate, endDate, shiftFilter, selectedTypes, viewMode]);
+  }, [startDate, endDate, shiftFilter, selectedType, viewMode]);
 
   const fetchAnalyses = async () => {
     setLoading(true);
     try {
-      // Fetch all analyses if no types selected, or fetch for specific types
-      const analysisType = selectedTypes.length === 0 ? 'all' : selectedTypes.join(',');
-
       const params = new URLSearchParams({
         start_date: startDate,
         end_date: endDate,
         shift_type: shiftFilter,
-        analysis_type: selectedTypes.length <= 1 ? (selectedTypes[0] || 'all') : 'all',
+        analysis_type: selectedType,
         group_by: viewMode === 'all' ? 'none' : viewMode,
       });
 
@@ -49,14 +51,7 @@ export default function AnalysisPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Filter analyses by selected types if multiple selected
-        let filteredAnalyses = data.analyses;
-        if (selectedTypes.length > 0) {
-          filteredAnalyses = data.analyses.filter((a: any) =>
-            selectedTypes.includes(a.analysis_type as AnalysisType)
-          );
-        }
-        setAnalyses(filteredAnalyses);
+        setAnalyses(data.analyses);
         setGroupedData(data.grouped || []);
       }
     } catch (error) {
@@ -118,6 +113,52 @@ export default function AnalysisPage() {
     document.body.removeChild(link);
   };
 
+  // Функция для построения кастомного графика
+  const buildCustomGraph = async () => {
+    if (customGraphTypes.length === 0) {
+      alert('Выберите хотя бы один тип анализа');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Загружаем данные для всех выбранных типов
+      const allData: any[] = [];
+
+      for (const type of customGraphTypes) {
+        const params = new URLSearchParams({
+          start_date: startDate,
+          end_date: endDate,
+          shift_type: shiftFilter,
+          analysis_type: type,
+          group_by: 'none',
+        });
+
+        const response = await fetch(`/api/quality-analysis?${params}`, { cache: 'no-store' });
+        const data = await response.json();
+
+        if (data.success && data.analyses.length > 0) {
+          allData.push(...data.analyses);
+        }
+      }
+
+      setCustomGraphData(allData);
+    } catch (error) {
+      console.error('Error fetching custom graph data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Функция для переключения типа анализа в кастомном графике
+  const toggleCustomGraphType = (type: AnalysisType) => {
+    setCustomGraphTypes(prev =>
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+
   // Данные для отображения
   const displayData = viewMode === 'all' ? analyses : groupedData;
 
@@ -166,29 +207,37 @@ export default function AnalysisPage() {
         )
       }));
 
-  // Check if we're in combined mode (multiple types selected)
-  const combinedMode = selectedTypes.length > 1;
-
   return (
     <div className="space-y-8">
         {/* Фильтры */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-8 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-display font-bold text-slate-700">ФИЛЬТРЫ</h3>
-            {analyses.length > 0 && (
+            <div className="flex gap-3">
               <button
-                onClick={exportToExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all"
+                onClick={() => setShowCustomGraph(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all"
               >
-                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="text-sm font-bold text-emerald-700">Экспорт в Excel</span>
-                <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
-                  {analyses.length}
-                </span>
+                <span className="text-sm font-bold text-blue-700">Создать график</span>
               </button>
-            )}
+              {analyses.length > 0 && (
+                <button
+                  onClick={exportToExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all"
+                >
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-sm font-bold text-emerald-700">Экспорт в Excel</span>
+                  <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
+                    {analyses.length}
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -212,49 +261,52 @@ export default function AnalysisPage() {
               />
             </div>
 
-            <div className="md:col-span-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs text-slate-600 font-semibold">
-                  Типы анализов ({selectedTypes.length} выбрано)
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTypes(Object.values(ANALYSIS_TYPES))}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
-                  >
-                    Выбрать все
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTypes([])}
-                    className="text-xs text-slate-600 hover:text-slate-700 font-semibold"
-                  >
-                    Очистить
-                  </button>
-                </div>
-              </div>
-              <div className="bg-white border border-slate-300 rounded-lg p-3 max-h-48 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {Object.entries(ANALYSIS_CONFIG).map(([type, config]) => (
-                    <label key={type} className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedTypes.includes(type as AnalysisType)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedTypes([...selectedTypes, type as AnalysisType]);
-                          } else {
-                            setSelectedTypes(selectedTypes.filter(t => t !== type));
-                          }
-                        }}
-                        className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                      />
-                      <span className="text-slate-700">{config.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+            <div>
+              <label className="block text-xs text-slate-600 font-semibold mb-2">Тип анализа</label>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value as AnalysisType | 'all')}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-sm focus:border-blue-500 focus:outline-none"
+              >
+                <option value="all">Все анализы</option>
+
+                <optgroup label="Входящее сырье">
+                  <option value={ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL].label}</option>
+                  <option value={ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL].label}</option>
+                </optgroup>
+
+                <optgroup label="Лузга">
+                  <option value={ANALYSIS_TYPES.MOISTURE_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_HUSK].label}</option>
+                  <option value={ANALYSIS_TYPES.FAT_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_HUSK].label}</option>
+                  <option value={ANALYSIS_TYPES.KERNEL_LOSS_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.KERNEL_LOSS_HUSK].label}</option>
+                </optgroup>
+
+                <optgroup label="Рушанка">
+                  <option value={ANALYSIS_TYPES.MOISTURE_CRUSHED}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_CRUSHED].label}</option>
+                  <option value={ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED].label}</option>
+                </optgroup>
+
+                <optgroup label="Мезга с жаровни">
+                  <option value={ANALYSIS_TYPES.MOISTURE_ROASTER_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_ROASTER_1].label}</option>
+                  <option value={ANALYSIS_TYPES.MOISTURE_ROASTER_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_ROASTER_2].label}</option>
+                </optgroup>
+
+                <optgroup label="Жмых с пресса">
+                  <option value={ANALYSIS_TYPES.MOISTURE_PRESS_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_PRESS_1].label}</option>
+                  <option value={ANALYSIS_TYPES.MOISTURE_PRESS_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_PRESS_2].label}</option>
+                  <option value={ANALYSIS_TYPES.FAT_PRESS_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_PRESS_1].label}</option>
+                  <option value={ANALYSIS_TYPES.FAT_PRESS_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_PRESS_2].label}</option>
+                </optgroup>
+
+                <optgroup label="Шрот">
+                  <option value={ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL].label}</option>
+                  <option value={ANALYSIS_TYPES.OIL_CONTENT_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_MEAL].label}</option>
+                </optgroup>
+
+                <optgroup label="Мисцелла">
+                  <option value={ANALYSIS_TYPES.MISCELLA_CONCENTRATION}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MISCELLA_CONCENTRATION].label}</option>
+                </optgroup>
+              </select>
             </div>
 
             <div>
@@ -500,6 +552,449 @@ export default function AnalysisPage() {
                       : 'По суткам'}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно для создания кастомного графика */}
+        {showCustomGraph && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-display font-bold text-blue-600">СОЗДАТЬ КАСТОМНЫЙ ГРАФИК</h2>
+                  <button
+                    onClick={() => {
+                      setShowCustomGraph(false);
+                      setCustomGraphData([]);
+                      setCustomGraphTypes([]);
+                    }}
+                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Выбор типов анализов */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-semibold text-slate-800">
+                      Выберите типы анализов ({customGraphTypes.length})
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCustomGraphTypes(Object.values(ANALYSIS_TYPES) as AnalysisType[])}
+                        className="text-xs px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all"
+                      >
+                        Выбрать все
+                      </button>
+                      <button
+                        onClick={() => setCustomGraphTypes([])}
+                        className="text-xs px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all"
+                      >
+                        Очистить
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 bg-slate-50 rounded-lg p-4 border border-slate-200 max-h-96 overflow-y-auto">
+                    {/* Входящее сырье */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Входящее сырье
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL, ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          const isSelected = customGraphTypes.includes(type);
+                          return (
+                            <label
+                              key={type}
+                              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCustomGraphType(type)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm font-semibold text-slate-800">{conf.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Лузга */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Лузга
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_HUSK, ANALYSIS_TYPES.FAT_HUSK, ANALYSIS_TYPES.KERNEL_LOSS_HUSK].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          const isSelected = customGraphTypes.includes(type);
+                          return (
+                            <label
+                              key={type}
+                              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCustomGraphType(type)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm font-semibold text-slate-800">{conf.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Рушанка */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Рушанка
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_CRUSHED, ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          const isSelected = customGraphTypes.includes(type);
+                          return (
+                            <label
+                              key={type}
+                              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCustomGraphType(type)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm font-semibold text-slate-800">{conf.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Мезга с жаровни */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Мезга с жаровни
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_ROASTER_1, ANALYSIS_TYPES.MOISTURE_ROASTER_2].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          const isSelected = customGraphTypes.includes(type);
+                          return (
+                            <label
+                              key={type}
+                              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCustomGraphType(type)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm font-semibold text-slate-800">{conf.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Жмых с пресса */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Жмых с пресса
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_PRESS_1, ANALYSIS_TYPES.MOISTURE_PRESS_2, ANALYSIS_TYPES.FAT_PRESS_1, ANALYSIS_TYPES.FAT_PRESS_2].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          const isSelected = customGraphTypes.includes(type);
+                          return (
+                            <label
+                              key={type}
+                              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCustomGraphType(type)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm font-semibold text-slate-800">{conf.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Шрот */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Шрот
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL, ANALYSIS_TYPES.OIL_CONTENT_MEAL].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          const isSelected = customGraphTypes.includes(type);
+                          return (
+                            <label
+                              key={type}
+                              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCustomGraphType(type)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm font-semibold text-slate-800">{conf.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Мисцелла */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        Мисцелла
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[ANALYSIS_TYPES.MISCELLA_CONCENTRATION].map(type => {
+                          const conf = ANALYSIS_CONFIG[type];
+                          const isSelected = customGraphTypes.includes(type);
+                          return (
+                            <label
+                              key={type}
+                              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCustomGraphType(type)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm font-semibold text-slate-800">{conf.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Кнопка построения графика */}
+                <button
+                  onClick={buildCustomGraph}
+                  disabled={loading || customGraphTypes.length === 0}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-lg transition-all shadow-lg"
+                >
+                  {loading ? 'Загрузка данных...' : 'Построить график'}
+                </button>
+
+                {/* Отображение кастомного графика */}
+                {customGraphData.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-display font-bold text-blue-600 mb-4">
+                      КОМБИНИРОВАННЫЙ ГРАФИК
+                    </h3>
+
+                    {(() => {
+                      // Группируем данные по типам анализов
+                      const groupedByType = customGraphData.reduce((acc: any, analysis) => {
+                        if (!acc[analysis.analysis_type]) {
+                          acc[analysis.analysis_type] = [];
+                        }
+                        acc[analysis.analysis_type].push(analysis);
+                        return acc;
+                      }, {});
+
+                      // Подготавливаем данные для каждого типа
+                      const chartLines = Object.entries(groupedByType).map(([type, data]: [string, any]) => {
+                        const sortedData = data.sort((a: any, b: any) =>
+                          new Date(a.sample_time).getTime() - new Date(b.sample_time).getTime()
+                        );
+                        return {
+                          type,
+                          data: sortedData,
+                          config: ANALYSIS_CONFIG[type as AnalysisType],
+                        };
+                      });
+
+                      // Цвета для разных линий
+                      const colors = [
+                        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+                        '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#14b8a6',
+                        '#6366f1', '#a855f7', '#22d3ee', '#fb923c', '#34d399'
+                      ];
+
+                      // Находим максимальное значение для масштабирования
+                      const allValues = customGraphData.map((d: any) => d.value);
+                      const maxValue = Math.max(...allValues) * 1.2;
+
+                      return (
+                        <div className="bg-slate-50 rounded-lg p-8 border border-slate-200">
+                          <div className="relative h-96 overflow-visible">
+                            {/* SVG для всех линий */}
+                            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                              {chartLines.map((line, lineIndex) => {
+                                const paddingPercent = 5;
+                                const usableWidth = 100 - (paddingPercent * 2);
+
+                                const points = line.data.map((point: any, index: number) => {
+                                  let x;
+                                  if (line.data.length === 1) {
+                                    x = 50;
+                                  } else {
+                                    x = paddingPercent + (index / (line.data.length - 1)) * usableWidth;
+                                  }
+                                  const y = 100 - Math.max((point.value / maxValue) * 100, 0);
+                                  return { x, y };
+                                });
+
+                                const linePath = points.map((p: any, index: number) => {
+                                  const command = index === 0 ? 'M' : 'L';
+                                  return `${command} ${p.x} ${p.y}`;
+                                }).join(' ');
+
+                                return (
+                                  <path
+                                    key={lineIndex}
+                                    d={linePath}
+                                    fill="none"
+                                    stroke={colors[lineIndex % colors.length]}
+                                    strokeWidth="0.3"
+                                    vectorEffect="non-scaling-stroke"
+                                  />
+                                );
+                              })}
+                            </svg>
+
+                            {/* Точки для всех линий */}
+                            {chartLines.map((line, lineIndex) => {
+                              const paddingPercent = 5;
+                              const usableWidth = 100 - (paddingPercent * 2);
+
+                              return line.data.map((point: any, pointIndex: number) => {
+                                let x;
+                                if (line.data.length === 1) {
+                                  x = 50;
+                                } else {
+                                  x = paddingPercent + (pointIndex / (line.data.length - 1)) * usableWidth;
+                                }
+                                const y = 100 - Math.max((point.value / maxValue) * 100, 0);
+                                const status = getAnalysisStatus(line.type as AnalysisType, point.value);
+                                const pointColor = colors[lineIndex % colors.length];
+
+                                return (
+                                  <div
+                                    key={`${lineIndex}-${pointIndex}`}
+                                    className="absolute group"
+                                    style={{
+                                      left: `${x}%`,
+                                      bottom: `${100 - y}%`,
+                                      transform: 'translate(-50%, 50%)'
+                                    }}
+                                  >
+                                    <div
+                                      className="w-2 h-2 rounded-full cursor-pointer transition-all duration-200 hover:scale-150"
+                                      style={{ backgroundColor: pointColor }}
+                                    ></div>
+
+                                    {/* Tooltip */}
+                                    <div className={`absolute hidden group-hover:block z-30 ${
+                                      x < 20 ? 'left-full ml-3' : x > 80 ? 'right-full mr-3' : x < 50 ? 'left-full ml-2' : 'right-full mr-2'
+                                    } ${
+                                      y < 20 ? 'top-0' : y > 80 ? 'bottom-0' : y < 50 ? 'top-0' : 'bottom-0'
+                                    }`}>
+                                      <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-2xl whitespace-nowrap">
+                                        <div className="text-xs text-slate-600 mb-1">{line.config.label}</div>
+                                        <div className="text-xs text-slate-500 mb-1 font-mono">
+                                          {new Date(point.sample_time).toLocaleString('ru-RU', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          })}
+                                        </div>
+                                        <div className="text-base font-bold" style={{ color: pointColor }}>
+                                          {point.value.toFixed(2)}{line.config.unit}
+                                        </div>
+                                        <div className="text-xs mt-1" style={{
+                                          color: status === 'normal' ? '#10b981' : status === 'warning' ? '#f59e0b' : '#ef4444'
+                                        }}>
+                                          {status === 'normal' ? 'В норме' : status === 'warning' ? 'Близко к норме' : 'Вне нормы'}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            })}
+                          </div>
+
+                          {/* Легенда */}
+                          <div className="mt-6 flex flex-wrap gap-4 justify-center">
+                            {chartLines.map((line, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded"
+                                  style={{ backgroundColor: colors[index % colors.length] }}
+                                ></div>
+                                <span className="text-xs text-slate-700">{line.config.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {customGraphData.length === 0 && customGraphTypes.length > 0 && !loading && (
+                  <div className="text-center py-8 text-slate-500">
+                    Нажмите "Построить график" для загрузки данных
+                  </div>
+                )}
               </div>
             </div>
           </div>
