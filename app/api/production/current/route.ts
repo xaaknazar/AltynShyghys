@@ -21,14 +21,14 @@ export async function GET(request: NextRequest) {
       const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
       const localHour = localNow.getUTCHours();
 
-      // Последние завершенные сутки = вчерашний день (так как сутки заканчиваются в 08:00)
+      // Последние завершенные сутки = вчерашний день (так как сутки заканчиваются в 20:00)
       const lastCompletedDay = new Date(localNow);
-      if (localHour >= 8) {
-        // Если сейчас после 08:00, то вчерашние сутки точно завершены
-        lastCompletedDay.setUTCDate(lastCompletedDay.getUTCDate() - 1);
+      if (localHour >= 20) {
+        // Если сейчас после 20:00, то сегодняшние сутки точно завершены
+        // (текущая смена уже начата)
       } else {
-        // Если до 08:00, то позавчерашние сутки последние завершенные
-        lastCompletedDay.setUTCDate(lastCompletedDay.getUTCDate() - 2);
+        // Если до 20:00, то вчерашние сутки последние завершенные
+        lastCompletedDay.setUTCDate(lastCompletedDay.getUTCDate() - 1);
       }
 
       targetDate = lastCompletedDay.toISOString().split('T')[0];

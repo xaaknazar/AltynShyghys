@@ -63,13 +63,13 @@ export function estimateGoalTime(
   const hoursNeeded = remaining / currentSpeed;
   const estimatedTime = new Date(Date.now() + hoursNeeded * 60 * 60 * 1000);
 
-  // Проверяем, можно ли достичь цели до конца суток (08:00 следующего дня)
+  // Проверяем, можно ли достичь цели до конца суток (20:00 текущего дня)
   const endOfDay = new Date();
-  if (endOfDay.getHours() < 8) {
-    endOfDay.setHours(8, 0, 0, 0);
+  if (endOfDay.getHours() < 20) {
+    endOfDay.setHours(20, 0, 0, 0);
   } else {
     endOfDay.setDate(endOfDay.getDate() + 1);
-    endOfDay.setHours(8, 0, 0, 0);
+    endOfDay.setHours(20, 0, 0, 0);
   }
 
   return {
