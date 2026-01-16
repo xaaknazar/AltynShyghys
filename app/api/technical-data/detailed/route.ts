@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       'Press_2_Job',
       'Press_Extractor_Job',
       'Press_Jarovnia_Mezga',
-      'Data_Extractor_Cooking'
+      'Data_extractor_cooking'
     ];
 
     if (!validCollections.includes(collection)) {
@@ -126,9 +126,9 @@ export async function GET(request: NextRequest) {
       .sort({ datetime: 1 })
       .toArray();
 
-    // Debug логирование для Data_Extractor_Cooking
-    if (collection === 'Data_Extractor_Cooking') {
-      console.log('=== DEBUG Data_Extractor_Cooking ===');
+    // Debug логирование для Data_extractor_cooking
+    if (collection === 'Data_extractor_cooking') {
+      console.log('=== DEBUG Data_extractor_cooking ===');
       console.log('Запрошенная дата:', date);
       console.log('Диапазон времени UTC:', { start: startUTC, end: endUTC });
       console.log('Найдено документов:', data.length);
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
         success: true,
         data: [],
         metrics: [],
-        debug: collection === 'Data_Extractor_Cooking' ? {
+        debug: collection === 'Data_extractor_cooking' ? {
           collection,
           date,
           startUTC: startUTC.toISOString(),

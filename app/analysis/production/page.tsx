@@ -32,7 +32,7 @@ export default function ProductionAnalysisPage() {
     { name: 'Press_1_Job', title: 'Пресс 1' },
     { name: 'Press_2_Job', title: 'Пресс 2' },
     { name: 'Press_Jarovnia_Mezga', title: 'Жаровня и Мезга' },
-    { name: 'Data_Extractor_Cooking', title: 'Экстрактор и Жаровня (дополнительно)' },
+    { name: 'Data_extractor_cooking', title: 'Экстрактор и Жаровня (дополнительно)' },
   ];
 
   // Нормы для метрик (одно значение или диапазон [min, max])
