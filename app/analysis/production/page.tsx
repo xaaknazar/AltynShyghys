@@ -496,7 +496,7 @@ export default function ProductionAnalysisPage() {
                 : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
             }`}
           >
-            Детально (30 мин)
+            Технологические параметры
           </button>
         </div>
 

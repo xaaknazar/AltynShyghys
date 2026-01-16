@@ -11,7 +11,6 @@ export default function OTKAddPage() {
   const [sampleTime, setSampleTime] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
     // Установка текущего времени
@@ -122,90 +121,49 @@ export default function OTKAddPage() {
 
           {/* Тип анализа */}
           <div>
-            <label className="block text-sm text-slate-800 mb-3 font-semibold">Тип анализа</label>
+            <label className="block text-sm text-slate-800 mb-2 font-semibold">Тип анализа</label>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value as AnalysisType)}
+              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:border-blue-500 focus:outline-none"
+            >
+              <optgroup label="Входящее сырье">
+                <option value={ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL].label}</option>
+                <option value={ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL].label}</option>
+              </optgroup>
 
-            {/* Поиск */}
-            <div className="relative mb-3">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Поиск анализа..."
-                className="w-full px-4 py-2 pl-10 bg-white border border-slate-300 rounded-lg text-slate-800 text-sm focus:border-blue-500 focus:outline-none"
-              />
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
+              <optgroup label="Лузга">
+                <option value={ANALYSIS_TYPES.MOISTURE_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_HUSK].label}</option>
+                <option value={ANALYSIS_TYPES.FAT_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_HUSK].label}</option>
+                <option value={ANALYSIS_TYPES.KERNEL_LOSS_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.KERNEL_LOSS_HUSK].label}</option>
+              </optgroup>
 
-            <div className="space-y-3 max-h-96 overflow-y-auto bg-slate-50 rounded-lg p-3 border border-slate-200">
-              {(() => {
-                // Группируем типы анализов по категориям
-                const categories = [
-                  { name: 'Входящее сырье', types: [ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL, ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL] },
-                  { name: 'Лузга', types: [ANALYSIS_TYPES.MOISTURE_HUSK, ANALYSIS_TYPES.FAT_HUSK, ANALYSIS_TYPES.KERNEL_LOSS_HUSK] },
-                  { name: 'Рушанка', types: [ANALYSIS_TYPES.MOISTURE_CRUSHED, ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED] },
-                  { name: 'Мезга с жаровни', types: [ANALYSIS_TYPES.MOISTURE_ROASTER_1, ANALYSIS_TYPES.MOISTURE_ROASTER_2] },
-                  { name: 'Жмых с пресса', types: [ANALYSIS_TYPES.MOISTURE_PRESS_1, ANALYSIS_TYPES.MOISTURE_PRESS_2, ANALYSIS_TYPES.FAT_PRESS_1, ANALYSIS_TYPES.FAT_PRESS_2] },
-                  { name: 'Шрот', types: [ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL, ANALYSIS_TYPES.OIL_CONTENT_MEAL] },
-                  { name: 'Мисцелла', types: [ANALYSIS_TYPES.MISCELLA_CONCENTRATION] },
-                ];
+              <optgroup label="Рушанка">
+                <option value={ANALYSIS_TYPES.MOISTURE_CRUSHED}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_CRUSHED].label}</option>
+                <option value={ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED].label}</option>
+              </optgroup>
 
-                // Фильтруем типы анализов по поисковому запросу
-                const filteredCategories = categories.map(category => ({
-                  ...category,
-                  types: category.types.filter(type => {
-                    const conf = ANALYSIS_CONFIG[type];
-                    return conf.label.toLowerCase().includes(searchTerm.toLowerCase());
-                  })
-                })).filter(category => category.types.length > 0);
+              <optgroup label="Мезга с жаровни">
+                <option value={ANALYSIS_TYPES.MOISTURE_ROASTER_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_ROASTER_1].label}</option>
+                <option value={ANALYSIS_TYPES.MOISTURE_ROASTER_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_ROASTER_2].label}</option>
+              </optgroup>
 
-                if (filteredCategories.length === 0) {
-                  return (
-                    <div className="text-center py-8 text-slate-500">
-                      Ничего не найдено
-                    </div>
-                  );
-                }
+              <optgroup label="Жмых с пресса">
+                <option value={ANALYSIS_TYPES.MOISTURE_PRESS_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_PRESS_1].label}</option>
+                <option value={ANALYSIS_TYPES.MOISTURE_PRESS_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_PRESS_2].label}</option>
+                <option value={ANALYSIS_TYPES.FAT_PRESS_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_PRESS_1].label}</option>
+                <option value={ANALYSIS_TYPES.FAT_PRESS_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_PRESS_2].label}</option>
+              </optgroup>
 
-                return filteredCategories.map((category, idx) => (
-                  <div key={idx}>
-                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
-                      {category.name}
-                    </h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      {category.types.map(type => {
-                        const conf = ANALYSIS_CONFIG[type];
-                        return (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => {
-                              setSelectedType(type);
-                              setSearchTerm('');
-                            }}
-                            className={`p-3 rounded-lg border-2 transition-all text-left ${
-                              selectedType === type
-                                ? 'border-blue-500 bg-blue-50 shadow-md'
-                                : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-semibold text-slate-800">{conf.label}</span>
-                              {selectedType === type && (
-                                <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ));
-              })()}
-            </div>
+              <optgroup label="Шрот">
+                <option value={ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL].label}</option>
+                <option value={ANALYSIS_TYPES.OIL_CONTENT_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_MEAL].label}</option>
+              </optgroup>
+
+              <optgroup label="Мисцелла">
+                <option value={ANALYSIS_TYPES.MISCELLA_CONCENTRATION}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MISCELLA_CONCENTRATION].label}</option>
+              </optgroup>
+            </select>
           </div>
 
           {/* Значение */}
@@ -247,18 +205,6 @@ export default function OTKAddPage() {
                  '✗ Вне нормы'}
               </div>
             )}
-          </div>
-
-          {/* Лаборант */}
-          <div>
-            <label className="block text-sm text-slate-800 mb-2">Лаборант (необязательно)</label>
-            <input
-              type="text"
-              value={technicianName}
-              onChange={(e) => setTechnicianName(e.target.value)}
-              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:border-blue-500 focus:outline-none"
-              placeholder="Имя лаборанта"
-            />
           </div>
 
           {/* Комментарии */}
