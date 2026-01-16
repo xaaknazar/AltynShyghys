@@ -153,6 +153,92 @@ export async function POST(request: NextRequest) {
 }
 
 // Удалить анализ
+export async function PUT(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Missing analysis ID' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const { value, technician_name, comments, sample_time } = body;
+
+    if (value === undefined || !sample_time) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Автоматически определяем смену из времени отбора
+    const sampleDate = new Date(sample_time);
+    const TIMEZONE_OFFSET = 5; // UTC+5
+    const localTime = new Date(sampleDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const hour = localTime.getUTCHours();
+
+    const isDayShift = hour >= 8 && hour < 20;
+    const shift_type = isDayShift ? 'day' : 'night';
+
+    const shiftDate = new Date(localTime);
+    if (hour < 8) {
+      shiftDate.setUTCDate(shiftDate.getUTCDate() - 1);
+    }
+    const shift_date = shiftDate.toISOString().split('T')[0];
+
+    const { db } = await connectToDatabase();
+    const collection = db.collection('Quality_Analysis');
+    const { ObjectId } = require('mongodb');
+
+    // Проверяем, существует ли анализ
+    const analysis = await collection.findOne({ _id: new ObjectId(id) });
+
+    if (!analysis) {
+      return NextResponse.json(
+        { success: false, error: 'Analysis not found' },
+        { status: 404 }
+      );
+    }
+
+    // Обновляем анализ
+    const updateData: any = {
+      value: parseFloat(value),
+      sample_time: sample_time,
+      shift_date: shift_date,
+      shift_type: shift_type,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (technician_name !== undefined) {
+      updateData.technician_name = technician_name || null;
+    }
+
+    if (comments !== undefined) {
+      updateData.comments = comments || null;
+    }
+
+    await collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: 'Analysis updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating quality analysis:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update quality analysis' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
