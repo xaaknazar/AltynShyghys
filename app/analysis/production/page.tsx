@@ -689,15 +689,29 @@ export default function ProductionAnalysisPage() {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
               >
-                {productionData.map((day) => (
-                  <option key={day.date} value={day.date}>
-                    {new Date(day.date).toLocaleDateString('ru-RU', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })} - {day.total.toFixed(2)} т
-                  </option>
-                ))}
+                {(() => {
+                  // Добавляем сегодняшнюю дату, если ее нет в productionData
+                  const today = new Date().toISOString().split('T')[0];
+                  const dates = [...productionData];
+
+                  // Проверяем, есть ли сегодняшняя дата в данных
+                  const hasTodayData = dates.some(d => d.date === today);
+
+                  // Если нет, добавляем сегодняшнюю дату в начало списка
+                  if (!hasTodayData) {
+                    dates.unshift({ date: today, total: 0 });
+                  }
+
+                  return dates.map((day) => (
+                    <option key={day.date} value={day.date}>
+                      {new Date(day.date).toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })}{day.total > 0 ? ` - ${day.total.toFixed(2)} т` : ' - текущая смена'}
+                    </option>
+                  ));
+                })()}
               </select>
             </div>
           </div>
