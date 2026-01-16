@@ -6,7 +6,7 @@ import { ANALYSIS_TYPES, ANALYSIS_CONFIG, getAnalysisStatus, AnalysisType } from
 type ViewMode = 'all' | 'shift' | 'day';
 
 export default function AnalysisPage() {
-  const [selectedType, setSelectedType] = useState<AnalysisType | 'all'>('all');
+  const [selectedTypes, setSelectedTypes] = useState<AnalysisType[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -29,16 +29,19 @@ export default function AnalysisPage() {
     if (startDate && endDate) {
       fetchAnalyses();
     }
-  }, [startDate, endDate, shiftFilter, selectedType, viewMode]);
+  }, [startDate, endDate, shiftFilter, selectedTypes, viewMode]);
 
   const fetchAnalyses = async () => {
     setLoading(true);
     try {
+      // Fetch all analyses if no types selected, or fetch for specific types
+      const analysisType = selectedTypes.length === 0 ? 'all' : selectedTypes.join(',');
+
       const params = new URLSearchParams({
         start_date: startDate,
         end_date: endDate,
         shift_type: shiftFilter,
-        analysis_type: selectedType,
+        analysis_type: selectedTypes.length <= 1 ? (selectedTypes[0] || 'all') : 'all',
         group_by: viewMode === 'all' ? 'none' : viewMode,
       });
 
@@ -46,7 +49,14 @@ export default function AnalysisPage() {
       const data = await response.json();
 
       if (data.success) {
-        setAnalyses(data.analyses);
+        // Filter analyses by selected types if multiple selected
+        let filteredAnalyses = data.analyses;
+        if (selectedTypes.length > 0) {
+          filteredAnalyses = data.analyses.filter((a: any) =>
+            selectedTypes.includes(a.analysis_type as AnalysisType)
+          );
+        }
+        setAnalyses(filteredAnalyses);
         setGroupedData(data.grouped || []);
       }
     } catch (error) {
@@ -112,6 +122,7 @@ export default function AnalysisPage() {
   const displayData = viewMode === 'all' ? analyses : groupedData;
 
   // Группировка данных для графика
+  // Generate chart data - combine multiple selected types if needed
   const chartData = viewMode === 'all'
     ? analyses.reduce((acc: any[], analysis) => {
         const existing = acc.find(
@@ -154,6 +165,9 @@ export default function AnalysisPage() {
           a.sortKey.localeCompare(b.sortKey)
         )
       }));
+
+  // Check if we're in combined mode (multiple types selected)
+  const combinedMode = selectedTypes.length > 1;
 
   return (
     <div className="space-y-8">
@@ -198,52 +212,49 @@ export default function AnalysisPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-xs text-slate-600 font-semibold mb-2">Тип анализа</label>
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value as AnalysisType | 'all')}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-sm focus:border-blue-500 focus:outline-none"
-              >
-                <option value="all">Все анализы</option>
-
-                <optgroup label="Входящее сырье">
-                  <option value={ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_RAW_MATERIAL].label}</option>
-                  <option value={ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_RAW_MATERIAL].label}</option>
-                </optgroup>
-
-                <optgroup label="Лузга">
-                  <option value={ANALYSIS_TYPES.MOISTURE_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_HUSK].label}</option>
-                  <option value={ANALYSIS_TYPES.FAT_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_HUSK].label}</option>
-                  <option value={ANALYSIS_TYPES.KERNEL_LOSS_HUSK}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.KERNEL_LOSS_HUSK].label}</option>
-                </optgroup>
-
-                <optgroup label="Рушанка">
-                  <option value={ANALYSIS_TYPES.MOISTURE_CRUSHED}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_CRUSHED].label}</option>
-                  <option value={ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.HUSK_CONTENT_CRUSHED].label}</option>
-                </optgroup>
-
-                <optgroup label="Мезга с жаровни">
-                  <option value={ANALYSIS_TYPES.MOISTURE_ROASTER_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_ROASTER_1].label}</option>
-                  <option value={ANALYSIS_TYPES.MOISTURE_ROASTER_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_ROASTER_2].label}</option>
-                </optgroup>
-
-                <optgroup label="Жмых с пресса">
-                  <option value={ANALYSIS_TYPES.MOISTURE_PRESS_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_PRESS_1].label}</option>
-                  <option value={ANALYSIS_TYPES.MOISTURE_PRESS_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_PRESS_2].label}</option>
-                  <option value={ANALYSIS_TYPES.FAT_PRESS_1}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_PRESS_1].label}</option>
-                  <option value={ANALYSIS_TYPES.FAT_PRESS_2}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.FAT_PRESS_2].label}</option>
-                </optgroup>
-
-                <optgroup label="Шрот">
-                  <option value={ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL].label}</option>
-                  <option value={ANALYSIS_TYPES.OIL_CONTENT_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_MEAL].label}</option>
-                </optgroup>
-
-                <optgroup label="Мисцелла">
-                  <option value={ANALYSIS_TYPES.MISCELLA_CONCENTRATION}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MISCELLA_CONCENTRATION].label}</option>
-                </optgroup>
-              </select>
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs text-slate-600 font-semibold">
+                  Типы анализов ({selectedTypes.length} выбрано)
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTypes(Object.values(ANALYSIS_TYPES))}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+                  >
+                    Выбрать все
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTypes([])}
+                    className="text-xs text-slate-600 hover:text-slate-700 font-semibold"
+                  >
+                    Очистить
+                  </button>
+                </div>
+              </div>
+              <div className="bg-white border border-slate-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {Object.entries(ANALYSIS_CONFIG).map(([type, config]) => (
+                    <label key={type} className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedTypes.includes(type as AnalysisType)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedTypes([...selectedTypes, type as AnalysisType]);
+                          } else {
+                            setSelectedTypes(selectedTypes.filter(t => t !== type));
+                          }
+                        }}
+                        className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                      />
+                      <span className="text-slate-700">{config.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div>
