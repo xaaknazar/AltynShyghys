@@ -20,6 +20,11 @@ export default function ProductionAnalysisPage() {
   const [selectedMetrics, setSelectedMetrics] = useState<{[collectionName: string]: string[]}>({});
   const [showShiftsOnChart, setShowShiftsOnChart] = useState(false);
 
+  // Кастомный график для технических параметров
+  const [showCustomTechGraph, setShowCustomTechGraph] = useState(false);
+  const [customTechMetrics, setCustomTechMetrics] = useState<{collection: string; metric: string}[]>([]);
+  const [customTechGraphData, setCustomTechGraphData] = useState<any[]>([]);
+
   const DAILY_TARGET = 1200; // Целевое производство в сутки (тонн)
 
   const techCollections = [
@@ -177,6 +182,59 @@ export default function ProductionAnalysisPage() {
           : [...current, metricTitle]
       };
     });
+  };
+
+  // Функции для кастомного графика технических параметров
+  const toggleCustomTechMetric = (collection: string, metric: string) => {
+    setCustomTechMetrics(prev => {
+      const exists = prev.find(m => m.collection === collection && m.metric === metric);
+      if (exists) {
+        return prev.filter(m => !(m.collection === collection && m.metric === metric));
+      } else {
+        return [...prev, { collection, metric }];
+      }
+    });
+  };
+
+  const buildCustomTechGraph = async () => {
+    if (customTechMetrics.length === 0 || !selectedDate) {
+      alert('Выберите хотя бы один параметр');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Загружаем данные для выбранных метрик
+      const allData: any[] = [];
+
+      for (const { collection, metric } of customTechMetrics) {
+        const params = new URLSearchParams({
+          date: selectedDate,
+          collection: collection,
+        });
+
+        const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
+        const data = await response.json();
+
+        if (data.success && data.data.length > 0) {
+          // Находим нужную метрику
+          const metricData = data.data.filter((d: any) => d.title === metric);
+          if (metricData.length > 0) {
+            allData.push({
+              collection,
+              metric,
+              data: metricData,
+            });
+          }
+        }
+      }
+
+      setCustomTechGraphData(allData);
+    } catch (error) {
+      console.error('Error fetching custom tech graph data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderTechnicalChart = (collectionName: string, title: string) => {
@@ -1151,9 +1209,20 @@ export default function ProductionAnalysisPage() {
 
               {/* Технические данные */}
               <div className="mt-8">
-                <h2 className="text-2xl font-display font-bold text-slate-700 mb-6">
-                  ТЕХНИЧЕСКИЕ ПАРАМЕТРЫ ОБОРУДОВАНИЯ
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-display font-bold text-slate-700">
+                    ТЕХНИЧЕСКИЕ ПАРАМЕТРЫ ОБОРУДОВАНИЯ
+                  </h2>
+                  <button
+                    onClick={() => setShowCustomTechGraph(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all"
+                  >
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span className="text-sm font-bold text-blue-700">Создать график</span>
+                  </button>
+                </div>
                 <div className="space-y-6">
                   {techCollections.map((collection) =>
                     renderTechnicalChart(collection.name, collection.title)
@@ -1162,6 +1231,239 @@ export default function ProductionAnalysisPage() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Модальное окно для создания кастомного графика технических параметров */}
+      {showCustomTechGraph && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-display font-bold text-blue-600">СОЗДАТЬ КАСТОМНЫЙ ГРАФИК</h2>
+                <button
+                  onClick={() => {
+                    setShowCustomTechGraph(false);
+                    setCustomTechGraphData([]);
+                    setCustomTechMetrics([]);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Информация о выбранной дате */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="text-sm font-semibold text-blue-800">
+                  Дата: {selectedDate ? new Date(selectedDate).toLocaleDateString('ru-RU') : 'Не выбрана'}
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  График будет построен для данных этой даты
+                </div>
+              </div>
+
+              {/* Выбор параметров */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-semibold text-slate-800">
+                    Выберите параметры ({customTechMetrics.length})
+                  </label>
+                  <button
+                    onClick={() => setCustomTechMetrics([])}
+                    className="text-xs px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all"
+                  >
+                    Очистить
+                  </button>
+                </div>
+
+                <div className="space-y-4 bg-slate-50 rounded-lg p-4 border border-slate-200 max-h-96 overflow-y-auto">
+                  {techCollections.map(collection => {
+                    const metrics = techMetrics[collection.name] || [];
+                    if (metrics.length === 0) return null;
+
+                    return (
+                      <div key={collection.name}>
+                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                          {collection.title}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {metrics.map((metric: any) => {
+                            const isSelected = customTechMetrics.some(
+                              m => m.collection === collection.name && m.metric === metric.title
+                            );
+                            return (
+                              <label
+                                key={metric.title}
+                                className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'border-blue-500 bg-blue-50'
+                                    : 'border-slate-200 bg-white hover:border-blue-300'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleCustomTechMetric(collection.name, metric.title)}
+                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-semibold text-slate-800">{metric.title}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Кнопка построения графика */}
+              <button
+                onClick={buildCustomTechGraph}
+                disabled={loading || customTechMetrics.length === 0}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-lg transition-all shadow-lg"
+              >
+                {loading ? 'Загрузка данных...' : 'Построить график'}
+              </button>
+
+              {/* Отображение кастомного графика */}
+              {customTechGraphData.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-display font-bold text-blue-600 mb-4">
+                    КОМБИНИРОВАННЫЙ ГРАФИК
+                  </h3>
+
+                  {(() => {
+                    // Подготовка данных для графика
+                    const colors = [
+                      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+                      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#14b8a6'
+                    ];
+
+                    // Находим все уникальные временные точки
+                    const allTimes = new Set<string>();
+                    customTechGraphData.forEach(({ data }) => {
+                      data.forEach((d: any) => allTimes.add(d.time));
+                    });
+                    const sortedTimes = Array.from(allTimes).sort();
+
+                    // Находим min и max для масштабирования
+                    const allValues = customTechGraphData.flatMap(({ data }) =>
+                      data.map((d: any) => d.value)
+                    );
+                    const minValue = Math.min(...allValues);
+                    const maxValue = Math.max(...allValues);
+                    const valueRange = maxValue - minValue || 1;
+
+                    return (
+                      <div className="bg-slate-50 rounded-lg p-8 border border-slate-200">
+                        <div className="relative h-96 overflow-visible">
+                          {/* SVG для всех линий */}
+                          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            {customTechGraphData.map((line, lineIndex) => {
+                              const points = line.data.map((point: any) => {
+                                const timeIndex = sortedTimes.indexOf(point.time);
+                                const x = (timeIndex / (sortedTimes.length - 1 || 1)) * 100;
+                                const y = 100 - ((point.value - minValue) / valueRange) * 100;
+                                return { x, y, point };
+                              });
+
+                              const linePath = points.map((p: any, index: number) => {
+                                const command = index === 0 ? 'M' : 'L';
+                                return `${command} ${p.x} ${p.y}`;
+                              }).join(' ');
+
+                              return (
+                                <path
+                                  key={lineIndex}
+                                  d={linePath}
+                                  fill="none"
+                                  stroke={colors[lineIndex % colors.length]}
+                                  strokeWidth="0.3"
+                                  vectorEffect="non-scaling-stroke"
+                                />
+                              );
+                            })}
+                          </svg>
+
+                          {/* Точки для всех линий */}
+                          {customTechGraphData.map((line, lineIndex) => {
+                            return line.data.map((point: any, pointIndex: number) => {
+                              const timeIndex = sortedTimes.indexOf(point.time);
+                              const x = (timeIndex / (sortedTimes.length - 1 || 1)) * 100;
+                              const y = 100 - ((point.value - minValue) / valueRange) * 100;
+                              const pointColor = colors[lineIndex % colors.length];
+
+                              return (
+                                <div
+                                  key={`${lineIndex}-${pointIndex}`}
+                                  className="absolute group"
+                                  style={{
+                                    left: `${x}%`,
+                                    bottom: `${100 - y}%`,
+                                    transform: 'translate(-50%, 50%)'
+                                  }}
+                                >
+                                  <div
+                                    className="w-2 h-2 rounded-full cursor-pointer transition-all duration-200 hover:scale-150"
+                                    style={{ backgroundColor: pointColor }}
+                                  ></div>
+
+                                  {/* Tooltip */}
+                                  <div className={`absolute hidden group-hover:block z-30 ${
+                                    x < 20 ? 'left-full ml-3' : x > 80 ? 'right-full mr-3' : x < 50 ? 'left-full ml-2' : 'right-full mr-2'
+                                  } ${
+                                    y < 20 ? 'top-0' : y > 80 ? 'bottom-0' : y < 50 ? 'top-0' : 'bottom-0'
+                                  }`}>
+                                    <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-2xl whitespace-nowrap">
+                                      <div className="text-xs text-slate-600 mb-1">{line.metric}</div>
+                                      <div className="text-xs text-slate-500 mb-1 font-mono">
+                                        {point.time}
+                                      </div>
+                                      <div className="text-base font-bold" style={{ color: pointColor }}>
+                                        {point.value.toFixed(2)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })}
+                        </div>
+
+                        {/* Легенда */}
+                        <div className="mt-6 flex flex-wrap gap-4 justify-center">
+                          {customTechGraphData.map((line, index) => {
+                            const collectionTitle = techCollections.find(c => c.name === line.collection)?.title || line.collection;
+                            return (
+                              <div key={index} className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded"
+                                  style={{ backgroundColor: colors[index % colors.length] }}
+                                ></div>
+                                <span className="text-xs text-slate-700">{collectionTitle}: {line.metric}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {customTechGraphData.length === 0 && customTechMetrics.length > 0 && !loading && (
+                <div className="text-center py-8 text-slate-500">
+                  Нажмите "Построить график" для загрузки данных
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
