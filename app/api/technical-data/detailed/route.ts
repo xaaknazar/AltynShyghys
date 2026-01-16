@@ -106,14 +106,19 @@ export async function GET(request: NextRequest) {
     const db = client.db('scheduler-sync-pro');
     const coll = db.collection(collection);
 
-    // Производственный день начинается в 08:00 текущего дня (дневная смена)
-    const startDateTime = new Date(`${date}T08:00:00`);
+    // Производственный день начинается в 20:00 предыдущего дня (ночная смена)
+    // и заканчивается в 20:00 текущего дня (конец дневной смены)
+    const dateObj = new Date(date);
+
+    // Начало: предыдущий день в 20:00 по местному времени
+    const prevDate = new Date(dateObj);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const startDateStr = prevDate.toISOString().split('T')[0];
+    const startDateTime = new Date(`${startDateStr}T20:00:00`);
     const startUTC = new Date(startDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
-    const endDate = new Date(date);
-    endDate.setDate(endDate.getDate() + 1);
-    const endDateStr = endDate.toISOString().split('T')[0];
-    const endDateTime = new Date(`${endDateStr}T08:00:00`);
+    // Конец: текущий день в 20:00 по местному времени
+    const endDateTime = new Date(`${date}T20:00:00`);
     const endUTC = new Date(endDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
     const data = await coll

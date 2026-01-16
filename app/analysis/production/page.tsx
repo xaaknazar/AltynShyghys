@@ -690,15 +690,15 @@ export default function ProductionAnalysisPage() {
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
               >
                 {(() => {
-                  // Получаем текущую дату с учетом UTC+5 и времени начала смены (08:00)
+                  // Получаем текущую дату с учетом UTC+5 и времени начала смены (20:00)
                   const now = new Date();
                   const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000);
                   const localHour = localTime.getUTCHours();
 
-                  // Если сейчас до 08:00 по местному времени, текущая смена - это вчерашний день
+                  // Если сейчас 20:00 или позже по местному времени, текущая смена - это завтрашний день
                   let currentShiftDate = new Date(localTime);
-                  if (localHour < 8) {
-                    currentShiftDate.setDate(currentShiftDate.getDate() - 1);
+                  if (localHour >= 20) {
+                    currentShiftDate.setDate(currentShiftDate.getDate() + 1);
                   }
                   const today = currentShiftDate.toISOString().split('T')[0];
                   const dates = [...productionData];
