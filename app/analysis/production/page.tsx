@@ -32,7 +32,7 @@ export default function ProductionAnalysisPage() {
     { name: 'Press_1_Job', title: 'Пресс 1' },
     { name: 'Press_2_Job', title: 'Пресс 2' },
     { name: 'Press_Jarovnia_Mezga', title: 'Жаровня и Мезга' },
-    { name: 'Data_extractor_cooking', title: 'Экстрактор и Жаровня (дополнительно)' },
+    { name: 'Data_Extractor_Cooking', title: 'Экстрактор и Жаровня (дополнительно)' },
   ];
 
   // Нормы для метрик (одно значение или диапазон [min, max])
@@ -41,16 +41,13 @@ export default function ProductionAnalysisPage() {
     'Температура масла': [105, 110],
     'Мезга Жаровня 2': 105,
     'Жаровня 1': 105,
-    // Data_extractor_cooking метрики
-    'Верх.Темпер. Мезги Жаровни 1': [100, 110],
-    'Температура Мезги Жаровни 1': [95, 105],
-    'Верх.Темпер. Мезги Жаровни 2': [100, 110],
-    'Температура Мезги Жаровни 2': [95, 105],
-    'Temperature_Toster_TT5415': [115, 125],
-    'Koefficient_Extractor_40D201-1': [0.8, 1.2],
-    'Press (Extractor)': [80, 120],
-    'Percent_Extractor_40D201-12': [26, 30],
-    'Podacha_Gexan_Clear': [50, 100],
+    // Data_Extractor_Cooking метрики (реальные названия из базы)
+    'Нижн.Темп. Мезги Жаровня 1': [80, 90],
+    'Нижн.Темп. Мезги Жаровня 2': [80, 90],
+    ' Температура Тостера': [100, 110],
+    'Коэффициент Экстрактора': [100, 120],
+    'Подача в Экстрактор': [40, 60],
+    'Процентаж Экстрактора': [50, 60],
   };
 
   useEffect(() => {
