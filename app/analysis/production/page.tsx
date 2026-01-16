@@ -258,10 +258,6 @@ export default function ProductionAnalysisPage() {
     const data = techData[collectionName] || [];
     const metrics = techMetrics[collectionName] || [];
 
-    if (data.length === 0 || metrics.length === 0) {
-      return null;
-    }
-
     const selected = selectedMetrics[collectionName] || [];
     const selectedMetricsData = metrics.filter((m: any) => selected.includes(m.title));
 
@@ -269,9 +265,17 @@ export default function ProductionAnalysisPage() {
       <div key={collectionName} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h3 className="text-lg font-display font-bold text-slate-700 mb-4">{title}</h3>
 
-        {/* Чекбоксы для выбора метрик */}
-        <div className="mb-6 flex flex-wrap gap-3">
-          {metrics.map((metric: any, metricIndex: number) => {
+        {/* Проверка наличия данных */}
+        {metrics.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-slate-500 mb-2">Нет данных для этой коллекции</div>
+            <div className="text-xs text-slate-400">Коллекция: {collectionName}</div>
+          </div>
+        ) : (
+          <>
+            {/* Чекбоксы для выбора метрик */}
+            <div className="mb-6 flex flex-wrap gap-3">
+              {metrics.map((metric: any, metricIndex: number) => {
             const isSelected = selected.includes(metric.title);
             const color = getMetricColor(metricIndex);
 
@@ -540,6 +544,8 @@ export default function ProductionAnalysisPage() {
           <div className="text-center py-8 text-slate-500">
             Выберите метрики для отображения графика
           </div>
+        )}
+          </>
         )}
       </div>
     );
