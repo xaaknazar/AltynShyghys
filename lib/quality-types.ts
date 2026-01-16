@@ -162,8 +162,8 @@ export const ANALYSIS_CONFIG: Record<AnalysisType, {
   [ANALYSIS_TYPES.MISCELLA_CONCENTRATION]: {
     label: 'Концентрация мисцеллы',
     unit: '%',
-    min: 25,
-    max: 30,
+    min: 26,
+    max: 29,
     warningThreshold: 1,
   },
 };

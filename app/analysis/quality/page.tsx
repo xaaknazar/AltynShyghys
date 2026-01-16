@@ -126,22 +126,34 @@ export default function AnalysisPage() {
           });
         }
         return acc;
-      }, [])
+      }, []).map(typeData => ({
+        ...typeData,
+        // Сортируем значения по времени
+        values: typeData.values.sort((a: any, b: any) =>
+          new Date(a.time).getTime() - new Date(b.time).getTime()
+        )
+      }))
     : groupedData.reduce((acc: any[], group) => {
         const existing = acc.find((item) => item.analysis_type === group.analysis_type);
         const label = viewMode === 'shift'
           ? `${group.shift_date} (${group.shift_type === 'day' ? 'Д' : 'Н'})`
           : group.shift_date;
         if (existing) {
-          existing.values.push({ time: label, value: group.average });
+          existing.values.push({ time: label, value: group.average, sortKey: group.shift_date });
         } else {
           acc.push({
             analysis_type: group.analysis_type,
-            values: [{ time: label, value: group.average }],
+            values: [{ time: label, value: group.average, sortKey: group.shift_date }],
           });
         }
         return acc;
-      }, []);
+      }, []).map(typeData => ({
+        ...typeData,
+        // Сортируем значения по дате
+        values: typeData.values.sort((a: any, b: any) =>
+          a.sortKey.localeCompare(b.sortKey)
+        )
+      }));
 
   return (
     <div className="space-y-8">
@@ -226,6 +238,10 @@ export default function AnalysisPage() {
                 <optgroup label="Шрот">
                   <option value={ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MOISTURE_TOASTED_MEAL].label}</option>
                   <option value={ANALYSIS_TYPES.OIL_CONTENT_MEAL}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.OIL_CONTENT_MEAL].label}</option>
+                </optgroup>
+
+                <optgroup label="Мисцелла">
+                  <option value={ANALYSIS_TYPES.MISCELLA_CONCENTRATION}>{ANALYSIS_CONFIG[ANALYSIS_TYPES.MISCELLA_CONCENTRATION].label}</option>
                 </optgroup>
               </select>
             </div>
@@ -313,9 +329,17 @@ export default function AnalysisPage() {
                     {/* Линейный график с точками */}
                     <div className="relative h-80 overflow-x-auto pb-2">
                       {(() => {
-                        // Вычисляем позиции точек
+                        // Вычисляем позиции точек с padding по краям
+                        const paddingPercent = 5; // 5% padding с каждой стороны
+                        const usableWidth = 100 - (paddingPercent * 2);
                         const points = typeData.values.map((point: any, index: number) => {
-                          const x = (index / (typeData.values.length - 1 || 1)) * 100;
+                          // Для одной точки ставим её в центр, для нескольких - распределяем равномерно
+                          let x;
+                          if (typeData.values.length === 1) {
+                            x = 50; // Центр
+                          } else {
+                            x = paddingPercent + (index / (typeData.values.length - 1)) * usableWidth;
+                          }
                           const y = 100 - Math.max((point.value / maxValue) * 100, 0);
                           const status = getAnalysisStatus(typeData.analysis_type, point.value);
                           const color = status === 'normal' ? '#10b981' : status === 'warning' ? '#f59e0b' : '#ef4444';
