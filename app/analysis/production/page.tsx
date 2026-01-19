@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 type QuickPeriod = 'week' | 'month' | 'year' | 'all' | 'custom';
-type ViewMode = 'daily' | 'detailed';
+type ViewMode = 'daily' | 'detailed' | 'monthly';
 
 export default function ProductionAnalysisPage() {
   const [startDate, setStartDate] = useState<string>('');
@@ -11,6 +11,7 @@ export default function ProductionAnalysisPage() {
   const [shiftFilter, setShiftFilter] = useState<'all' | 'day' | 'night'>('all');
   const [productionData, setProductionData] = useState<any[]>([]);
   const [detailedData, setDetailedData] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('week');
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
@@ -19,6 +20,12 @@ export default function ProductionAnalysisPage() {
   const [techMetrics, setTechMetrics] = useState<{[key: string]: any[]}>({});
   const [selectedMetrics, setSelectedMetrics] = useState<{[collectionName: string]: string[]}>({});
   const [showShiftsOnChart, setShowShiftsOnChart] = useState(false);
+
+  // Фильтры для режима "По месяцам"
+  const [startMonth, setStartMonth] = useState<string>('');
+  const [startYear, setStartYear] = useState<string>('');
+  const [endMonth, setEndMonth] = useState<string>('');
+  const [endYear, setEndYear] = useState<string>('');
 
   // Кастомный график для технических параметров
   const [showCustomTechGraph, setShowCustomTechGraph] = useState(false);
@@ -57,6 +64,17 @@ export default function ProductionAnalysisPage() {
     // Установка дат по умолчанию: последняя неделя
     setQuickPeriod('week');
     applyQuickPeriod('week');
+
+    // Установка месяца и года по умолчанию для режима "По месяцам"
+    const now = new Date();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentYear = String(now.getFullYear());
+
+    // По умолчанию: с января 2024 по текущий месяц
+    setStartMonth('01');
+    setStartYear('2024');
+    setEndMonth(currentMonth);
+    setEndYear(currentYear);
   }, []);
 
   const applyQuickPeriod = (period: QuickPeriod) => {
@@ -79,12 +97,12 @@ export default function ProductionAnalysisPage() {
   };
 
   useEffect(() => {
-    if (startDate && endDate) {
-      if (viewMode === 'daily') {
-        fetchProductionData();
-      }
+    if (viewMode === 'monthly' && startMonth && startYear && endMonth && endYear) {
+      fetchMonthlyData();
+    } else if (startDate && endDate && viewMode === 'daily') {
+      fetchProductionData();
     }
-  }, [startDate, endDate, shiftFilter, viewMode]);
+  }, [startDate, endDate, shiftFilter, viewMode, startMonth, startYear, endMonth, endYear]);
 
   useEffect(() => {
     if (viewMode === 'detailed' && selectedDate) {
@@ -114,6 +132,29 @@ export default function ProductionAnalysisPage() {
       }
     } catch (error) {
       console.error('Error fetching production data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMonthlyData = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        start_month: startMonth,
+        start_year: startYear,
+        end_month: endMonth,
+        end_year: endYear,
+      });
+
+      const response = await fetch(`/api/production/monthly-range?${params}`, { cache: 'no-store' });
+      const data = await response.json();
+
+      if (data.success) {
+        setMonthlyData(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching monthly data:', error);
     } finally {
       setLoading(false);
     }
@@ -563,18 +604,28 @@ export default function ProductionAnalysisPage() {
             onClick={() => setViewMode('daily')}
             className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
               viewMode === 'daily'
-                ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-semibold'
-                : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
+                ? 'bg-corporate-primary-50 border-corporate-primary-500 text-corporate-primary-700 font-semibold'
+                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-primary-300'
             }`}
           >
             По суткам
           </button>
           <button
+            onClick={() => setViewMode('monthly')}
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
+              viewMode === 'monthly'
+                ? 'bg-corporate-secondary-50 border-corporate-secondary-500 text-corporate-secondary-700 font-semibold'
+                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-secondary-300'
+            }`}
+          >
+            По месяцам
+          </button>
+          <button
             onClick={() => setViewMode('detailed')}
             className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
               viewMode === 'detailed'
-                ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-semibold'
-                : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
+                ? 'bg-corporate-success-50 border-corporate-success-500 text-corporate-success-700 font-semibold'
+                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-success-300'
             }`}
           >
             Технологические параметры
@@ -680,6 +731,95 @@ export default function ProductionAnalysisPage() {
               </select>
             </div>
           </div>
+        ) : viewMode === 'monthly' ? (
+          <div className="space-y-4">
+            <div className="bg-corporate-secondary-50 border-2 border-corporate-secondary-200 rounded-xl p-4">
+              <p className="text-sm text-corporate-secondary-700 font-medium">
+                📊 Выберите период для анализа производства по месяцам
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Начальный месяц */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-corporate-neutral-700">Начальный период</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-corporate-neutral-600 mb-1">Месяц</label>
+                    <select
+                      value={startMonth}
+                      onChange={(e) => setStartMonth(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                    >
+                      <option value="01">Январь</option>
+                      <option value="02">Февраль</option>
+                      <option value="03">Март</option>
+                      <option value="04">Апрель</option>
+                      <option value="05">Май</option>
+                      <option value="06">Июнь</option>
+                      <option value="07">Июль</option>
+                      <option value="08">Август</option>
+                      <option value="09">Сентябрь</option>
+                      <option value="10">Октябрь</option>
+                      <option value="11">Ноябрь</option>
+                      <option value="12">Декабрь</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-corporate-neutral-600 mb-1">Год</label>
+                    <select
+                      value={startYear}
+                      onChange={(e) => setStartYear(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                    >
+                      {Array.from({ length: 10 }, (_, i) => 2024 + i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Конечный месяц */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-corporate-neutral-700">Конечный период</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-corporate-neutral-600 mb-1">Месяц</label>
+                    <select
+                      value={endMonth}
+                      onChange={(e) => setEndMonth(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                    >
+                      <option value="01">Январь</option>
+                      <option value="02">Февраль</option>
+                      <option value="03">Март</option>
+                      <option value="04">Апрель</option>
+                      <option value="05">Май</option>
+                      <option value="06">Июнь</option>
+                      <option value="07">Июль</option>
+                      <option value="08">Август</option>
+                      <option value="09">Сентябрь</option>
+                      <option value="10">Октябрь</option>
+                      <option value="11">Ноябрь</option>
+                      <option value="12">Декабрь</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-corporate-neutral-600 mb-1">Год</label>
+                    <select
+                      value={endYear}
+                      onChange={(e) => setEndYear(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                    >
+                      {Array.from({ length: 10 }, (_, i) => 2024 + i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
             <div>
@@ -744,7 +884,207 @@ export default function ProductionAnalysisPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {viewMode === 'daily' ? (
+          {viewMode === 'monthly' ? (
+            <>
+              {/* Месячная статистика */}
+              {(() => {
+                const totalMonthlyProduction = monthlyData.reduce((sum, item) => sum + (item.total || 0), 0);
+                const averageMonthly = monthlyData.length > 0 ? totalMonthlyProduction / monthlyData.length : 0;
+                const monthlyTarget = 36000; // 1200 т/день * 30 дней
+
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="card-metric p-6 text-center group">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="w-12 h-12 rounded-lg bg-corporate-primary-100 flex items-center justify-center group-hover:bg-corporate-primary-200 transition-colors">
+                            <svg className="w-6 h-6 text-corporate-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Общее производство</div>
+                        <div className="metric-value text-4xl font-bold text-corporate-primary-600">
+                          {totalMonthlyProduction.toFixed(1)}
+                          <span className="text-xl ml-2 text-corporate-neutral-500">т</span>
+                        </div>
+                      </div>
+                      <div className="card-metric p-6 text-center group">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="w-12 h-12 rounded-lg bg-corporate-secondary-100 flex items-center justify-center group-hover:bg-corporate-secondary-200 transition-colors">
+                            <svg className="w-6 h-6 text-corporate-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Среднее за месяц</div>
+                        <div className="metric-value text-4xl font-bold text-corporate-secondary-600">
+                          {averageMonthly.toFixed(1)}
+                          <span className="text-xl ml-2 text-corporate-neutral-500">т</span>
+                        </div>
+                      </div>
+                      <div className="card-metric p-6 text-center group">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="w-12 h-12 rounded-lg bg-corporate-success-100 flex items-center justify-center group-hover:bg-corporate-success-200 transition-colors">
+                            <svg className="w-6 h-6 text-corporate-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Месяцев в выборке</div>
+                        <div className="metric-value text-4xl font-bold text-corporate-success-600">
+                          {monthlyData.length}
+                          <span className="text-xl ml-2 text-corporate-neutral-500">мес</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* График месячных данных */}
+                    <div className="bg-white rounded-2xl border-2 border-corporate-neutral-200 p-8 shadow-card-lg">
+                      <div className="mb-8 pb-4 border-b-2 border-corporate-neutral-100">
+                        <h3 className="text-2xl font-display font-semibold text-corporate-neutral-900 tracking-tight mb-2">
+                          Динамика производства по месяцам
+                        </h3>
+                        <p className="text-sm text-corporate-neutral-600">Общее производство за каждый месяц</p>
+                      </div>
+
+                      <div className="relative bg-gradient-to-br from-corporate-neutral-50 to-white rounded-xl p-8 border-2 border-corporate-neutral-100">
+                        <div className="relative h-96">
+                          {(() => {
+                            if (monthlyData.length === 0) return null;
+
+                            const maxValue = Math.max(...monthlyData.map(d => d.total)) * 1.15;
+                            const minValue = 0;
+                            const valueRange = maxValue - minValue;
+
+                            return (
+                              <>
+                                {/* SVG для линии графика */}
+                                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                  {(() => {
+                                    const points = monthlyData.map((point, index) => {
+                                      const x = (index / (monthlyData.length - 1 || 1)) * 100;
+                                      const y = 100 - ((point.total - minValue) / valueRange) * 100;
+                                      return { x, y };
+                                    });
+
+                                    const linePath = points.map((p, index) => {
+                                      const command = index === 0 ? 'M' : 'L';
+                                      return `${command} ${p.x} ${p.y}`;
+                                    }).join(' ');
+
+                                    return (
+                                      <>
+                                        <path
+                                          d={linePath}
+                                          fill="none"
+                                          stroke="#0ea5e9"
+                                          strokeWidth="1"
+                                          vectorEffect="non-scaling-stroke"
+                                          opacity="0.9"
+                                        />
+                                        <path
+                                          d={`${linePath} L 100 100 L 0 100 Z`}
+                                          fill="url(#monthlyGradient)"
+                                          opacity="0.2"
+                                        />
+                                        <defs>
+                                          <linearGradient id="monthlyGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                                            <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0} />
+                                          </linearGradient>
+                                        </defs>
+                                      </>
+                                    );
+                                  })()}
+                                </svg>
+
+                                {/* Точки */}
+                                {monthlyData.map((point, index) => {
+                                  const x = (index / (monthlyData.length - 1 || 1)) * 100;
+                                  const y = 100 - ((point.total - minValue) / valueRange) * 100;
+
+                                  return (
+                                    <div
+                                      key={index}
+                                      className="absolute group"
+                                      style={{
+                                        left: `${x}%`,
+                                        bottom: `${100 - y}%`,
+                                        transform: 'translate(-50%, 50%)'
+                                      }}
+                                    >
+                                      <div className="w-4 h-4 rounded-full bg-corporate-primary-600 border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-150"></div>
+
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:block z-20">
+                                        <div className="bg-white border-2 border-corporate-primary-300 rounded-xl p-4 shadow-2xl whitespace-nowrap">
+                                          <div className="text-sm text-corporate-neutral-600 mb-2 font-semibold">
+                                            {point.month}
+                                          </div>
+                                          <div className="text-2xl font-bold text-corporate-primary-600">
+                                            {point.total?.toFixed(1)} т
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {(index % Math.max(1, Math.floor(monthlyData.length / 12)) === 0 || monthlyData.length <= 12) && (
+                                        <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 text-xs text-corporate-neutral-600 font-semibold -rotate-45 origin-top whitespace-nowrap">
+                                          {point.month}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Таблица месячных данных */}
+                    <div className="bg-white rounded-2xl border-2 border-corporate-neutral-200 p-8 shadow-card-lg">
+                      <div className="mb-6 pb-4 border-b-2 border-corporate-neutral-100">
+                        <h3 className="text-xl font-display font-semibold text-corporate-neutral-900 tracking-tight">
+                          Детальные данные по месяцам
+                        </h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b-2 border-corporate-neutral-200">
+                              <th className="text-left py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Месяц</th>
+                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Производство, т</th>
+                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Среднее в день, т</th>
+                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Дней</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {monthlyData.map((item, idx) => (
+                              <tr key={idx} className="border-b border-corporate-neutral-100 hover:bg-corporate-neutral-50 transition-colors">
+                                <td className="py-4 px-4 text-sm font-semibold text-corporate-neutral-800">
+                                  {item.month}
+                                </td>
+                                <td className="py-4 px-4 text-base font-mono font-bold text-corporate-primary-600 text-right">
+                                  {item.total?.toFixed(1)}
+                                </td>
+                                <td className="py-4 px-4 text-sm font-mono text-corporate-neutral-700 text-right">
+                                  {item.averageDaily?.toFixed(1)}
+                                </td>
+                                <td className="py-4 px-4 text-sm font-mono text-corporate-neutral-600 text-right">
+                                  {item.daysCount}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </>
+          ) : viewMode === 'daily' ? (
             <>
           {/* Статистика */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
