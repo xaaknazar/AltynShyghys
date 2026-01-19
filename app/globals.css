@@ -6,26 +6,26 @@
 @tailwind utilities;
 
 :root {
-  --gradient-primary: linear-gradient(135deg, #1e3a5f 0%, #0a0e1a 100%);
-  --gradient-accent: linear-gradient(135deg, #ff6b2c 0%, #ff3366 100%);
-  --gradient-success: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
-  --glow-accent: 0 0 20px rgba(255, 107, 44, 0.5);
-  --glow-success: 0 0 20px rgba(0, 255, 136, 0.5);
+  --gradient-primary: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --glow-accent: 0 0 8px rgba(59, 130, 246, 0.15);
+  --glow-success: 0 0 8px rgba(16, 185, 129, 0.15);
 }
 
 body {
-  background: #0a0e1a;
-  color: #e0e6ed;
+  background: #f1f5f9;
+  color: #1e293b;
   font-family: 'JetBrains Mono', monospace;
   overflow-x: hidden;
 }
 
 .grid-background {
-  background-image: 
-    linear-gradient(rgba(30, 58, 95, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30, 58, 95, 0.1) 1px, transparent 1px);
+  background-color: #f1f5f9;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
   background-size: 50px 50px;
-  animation: gridScroll 20s linear infinite;
 }
 
 @keyframes gridScroll {
@@ -62,9 +62,9 @@ body {
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(30, 58, 95, 0.1) 25%,
-    rgba(30, 58, 95, 0.2) 50%,
-    rgba(30, 58, 95, 0.1) 75%
+    rgba(200, 210, 220, 0.1) 25%,
+    rgba(200, 210, 220, 0.2) 50%,
+    rgba(200, 210, 220, 0.1) 75%
   );
   background-size: 200% 100%;
   animation: skeleton 1.5s ease-in-out infinite;
@@ -76,14 +76,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(30, 58, 95, 0.1);
+  background: rgba(226, 232, 240, 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 107, 44, 0.5);
+  background: rgba(59, 130, 246, 0.4);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 107, 44, 0.7);
+  background: rgba(59, 130, 246, 0.6);
 }
