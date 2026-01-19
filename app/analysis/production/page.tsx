@@ -367,7 +367,7 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-80 overflow-x-auto">
+              <div className="relative h-80 pt-8 pb-12 overflow-x-auto">
                 {selectedMetricsData.map((metric: any) => {
                   const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
                   const metricData = data.filter((d: any) => d[metric.title] !== undefined);
@@ -537,42 +537,77 @@ export default function ProductionAnalysisPage() {
                       )}
 
                       {/* Точки */}
-                      {points.map((p: any, index: number) => (
-                        <div
-                          key={`${metric.title}-${index}`}
-                          className="absolute group"
-                          style={{
-                            left: `${p.x}%`,
-                            bottom: `${100 - p.y}%`,
-                            transform: 'translate(-50%, 50%)'
-                          }}
-                        >
+                      {points.map((p: any, index: number) => {
+                        const tooltipRight = p.x > 50;
+                        return (
                           <div
-                            className="w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"
-                            style={{ backgroundColor: color }}
-                          ></div>
+                            key={`${metric.title}-${index}`}
+                            className="absolute group"
+                            style={{
+                              left: `${p.x}%`,
+                              bottom: `${100 - p.y}%`,
+                              transform: 'translate(-50%, 50%)'
+                            }}
+                          >
+                            <div
+                              className="w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"
+                              style={{ backgroundColor: color }}
+                            ></div>
 
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                            <div className="bg-white border-2 rounded-lg p-3 shadow-xl whitespace-nowrap" style={{ borderColor: color }}>
-                              <div className="text-xs text-slate-600 mb-1 font-mono">
+                            {/* Постоянное отображение значения */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                              <div
+                                className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
+                                style={{ backgroundColor: color }}
+                              >
+                                {p.value?.toFixed(1)}
+                              </div>
+                            </div>
+
+                            {/* Детальный tooltip при наведении */}
+                            <div
+                              className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
+                            >
+                              <div className="bg-white border-2 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[220px]" style={{ borderColor: color }}>
+                                <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                  {p.point.time}
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-xs text-slate-600">{metric.title}:</span>
+                                    <span className="text-lg font-bold" style={{ color }}>{p.value?.toFixed(2)} {metric.unit}</span>
+                                  </div>
+                                  {normValue !== undefined && (
+                                    <div className="pt-2 border-t border-slate-200">
+                                      <div className="text-xs text-slate-600">
+                                        Норма: {Array.isArray(normValue) ? `${normValue[0]} - ${normValue[1]}` : normValue} {metric.unit}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {/* Стрелка указатель */}
+                              <div
+                                className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                  tooltipRight
+                                    ? 'left-full border-l-[8px] border-y-transparent border-y-[8px] border-r-0'
+                                    : 'right-full border-r-[8px] border-y-transparent border-y-[8px] border-l-0'
+                                }`}
+                                style={{
+                                  borderLeftColor: tooltipRight ? color : 'transparent',
+                                  borderRightColor: tooltipRight ? 'transparent' : color,
+                                }}
+                              ></div>
+                            </div>
+
+                            {index % Math.max(1, Math.floor(metricData.length / 12)) === 0 && (
+                              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
                                 {p.point.time}
                               </div>
-                              <div className="text-sm font-medium text-slate-700 mb-1">
-                                {metric.title}
-                              </div>
-                              <div className="text-lg font-bold" style={{ color }}>
-                                {p.value?.toFixed(2)} {metric.unit}
-                              </div>
-                            </div>
+                            )}
                           </div>
-
-                          {index % Math.max(1, Math.floor(metricData.length / 12)) === 0 && (
-                            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
-                              {p.point.time}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -1159,7 +1194,7 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-96 overflow-x-auto">
+              <div className="relative h-96 pt-8 pb-12 overflow-x-auto">
                 {(() => {
                   const maxValue = Math.max(...productionData.map(d => d.total), DAILY_TARGET) * 1.15;
                   const minValue = 0;
@@ -1348,37 +1383,68 @@ export default function ProductionAnalysisPage() {
                                 }}
                               >
                                 <div
-                                  className="w-3.5 h-3.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-md"
+                                  className="w-3.5 h-3.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-md z-10"
                                   style={{ backgroundColor: pointColor }}
                                 ></div>
 
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                                  <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
-                                    <div className="text-xs text-slate-600 mb-2 font-mono">
-                                      {new Date(point.date).toLocaleDateString('ru-RU', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric',
-                                      })}
-                                    </div>
-                                    <div className="space-y-1">
-                                      <div className="text-xs text-amber-600">
-                                        <span className="font-medium">День:</span> {point.dayShift?.toFixed(2)} т
-                                      </div>
-                                      <div className="text-xs text-purple-600">
-                                        <span className="font-medium">Ночь:</span> {point.nightShift?.toFixed(2)} т
-                                      </div>
-                                      <div className="text-sm font-bold pt-1 border-t border-slate-200" style={{ color: pointColor }}>
-                                        Всего: {point.total?.toFixed(2)} т
-                                      </div>
-                                      {point.total < DAILY_TARGET && (
-                                        <div className="text-xs text-red-600 pt-1">
-                                          Ниже нормы на {(DAILY_TARGET - point.total).toFixed(2)} т
-                                        </div>
-                                      )}
-                                    </div>
+                                {/* Постоянное отображение значения */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                  <div
+                                    className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                                    style={{ backgroundColor: pointColor }}
+                                  >
+                                    {point.total?.toFixed(0)}
                                   </div>
                                 </div>
+
+                                {/* Детальный tooltip при наведении */}
+                                {(() => {
+                                  const tooltipRight = x > 50;
+                                  return (
+                                    <div
+                                      className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
+                                    >
+                                      <div className="bg-white border-2 border-blue-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[240px]">
+                                        <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                          {new Date(point.date).toLocaleDateString('ru-RU', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                          })}
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-xs text-slate-600">Дневная смена:</span>
+                                            <span className="text-sm font-semibold text-amber-600">{point.dayShift?.toFixed(2)} т</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-xs text-slate-600">Ночная смена:</span>
+                                            <span className="text-sm font-semibold text-purple-600">{point.nightShift?.toFixed(2)} т</span>
+                                          </div>
+                                          <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                                            <span className="text-xs text-slate-600">Всего:</span>
+                                            <span className="text-lg font-bold" style={{ color: pointColor }}>{point.total?.toFixed(2)} т</span>
+                                          </div>
+                                          {point.total < DAILY_TARGET && (
+                                            <div className="pt-2 border-t border-red-200">
+                                              <div className="text-xs text-red-600">
+                                                Ниже нормы на <span className="font-bold">{(DAILY_TARGET - point.total).toFixed(2)} т</span>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {/* Стрелка указатель */}
+                                      <div
+                                        className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                          tooltipRight
+                                            ? 'left-full border-l-[8px] border-l-blue-400 border-y-transparent border-y-[8px] border-r-0'
+                                            : 'right-full border-r-[8px] border-r-blue-400 border-y-transparent border-y-[8px] border-l-0'
+                                        }`}
+                                      ></div>
+                                    </div>
+                                  );
+                                })()}
 
                                 {index % Math.max(1, Math.floor(productionData.length / 12)) === 0 && (
                                   <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
@@ -1394,50 +1460,116 @@ export default function ProductionAnalysisPage() {
                               <>
                                 {/* Точка дневной смены */}
                                 <div
-                                  className="absolute group"
+                                  className="absolute group/day"
                                   style={{
                                     left: `calc(3rem + (100% - 3rem) * ${x} / 100)`,
                                     top: `${yDay}%`,
                                     transform: 'translate(-50%, -50%)'
                                   }}
                                 >
-                                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"></div>
+                                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"></div>
+
+                                  {/* Постоянное отображение значения дневной смены */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                    <div className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+                                      {point.dayShift?.toFixed(0)}
+                                    </div>
+                                  </div>
+
+                                  {/* Детальный tooltip при наведении на дневную точку */}
+                                  {(() => {
+                                    const tooltipRight = x > 50;
+                                    return (
+                                      <div
+                                        className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover/day:block z-30`}
+                                      >
+                                        <div className="bg-white border-2 border-amber-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[220px]">
+                                          <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                            {new Date(point.date).toLocaleDateString('ru-RU', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: 'numeric',
+                                            })}
+                                          </div>
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-slate-600">Дневная смена:</span>
+                                              <span className="text-lg font-bold text-amber-600">{point.dayShift?.toFixed(2)} т</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {/* Стрелка указатель */}
+                                        <div
+                                          className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                            tooltipRight
+                                              ? 'left-full border-l-[8px] border-l-amber-400 border-y-transparent border-y-[8px] border-r-0'
+                                              : 'right-full border-r-[8px] border-r-amber-400 border-y-transparent border-y-[8px] border-l-0'
+                                          }`}
+                                        ></div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
 
                                 {/* Точка ночной смены */}
                                 <div
-                                  className="absolute group"
+                                  className="absolute group/night"
                                   style={{
                                     left: `calc(3rem + (100% - 3rem) * ${x} / 100)`,
                                     top: `${yNight}%`,
                                     transform: 'translate(-50%, -50%)'
                                   }}
                                 >
-                                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"></div>
+                                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"></div>
 
-                                  {/* Tooltip для режима смен (показываем на ночной точке) */}
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                                    <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
-                                      <div className="text-xs text-slate-600 mb-2 font-mono">
-                                        {new Date(point.date).toLocaleDateString('ru-RU', {
-                                          day: '2-digit',
-                                          month: '2-digit',
-                                          year: 'numeric',
-                                        })}
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs text-amber-600">
-                                          <span className="font-medium">День:</span> {point.dayShift?.toFixed(2)} т
-                                        </div>
-                                        <div className="text-xs text-purple-600">
-                                          <span className="font-medium">Ночь:</span> {point.nightShift?.toFixed(2)} т
-                                        </div>
-                                        <div className="text-sm font-bold pt-1 border-t border-slate-200" style={{ color: pointColor }}>
-                                          Всего: {point.total?.toFixed(2)} т
-                                        </div>
-                                      </div>
+                                  {/* Постоянное отображение значения ночной смены */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                    <div className="bg-purple-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+                                      {point.nightShift?.toFixed(0)}
                                     </div>
                                   </div>
+
+                                  {/* Детальный tooltip при наведении на ночную точку */}
+                                  {(() => {
+                                    const tooltipRight = x > 50;
+                                    return (
+                                      <div
+                                        className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover/night:block z-30`}
+                                      >
+                                        <div className="bg-white border-2 border-purple-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[240px]">
+                                          <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                            {new Date(point.date).toLocaleDateString('ru-RU', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: 'numeric',
+                                            })}
+                                          </div>
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-slate-600">Дневная смена:</span>
+                                              <span className="text-sm font-semibold text-amber-600">{point.dayShift?.toFixed(2)} т</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-slate-600">Ночная смена:</span>
+                                              <span className="text-sm font-semibold text-purple-600">{point.nightShift?.toFixed(2)} т</span>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                                              <span className="text-xs text-slate-600">Всего:</span>
+                                              <span className="text-lg font-bold" style={{ color: pointColor }}>{point.total?.toFixed(2)} т</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {/* Стрелка указатель */}
+                                        <div
+                                          className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                            tooltipRight
+                                              ? 'left-full border-l-[8px] border-l-purple-400 border-y-transparent border-y-[8px] border-r-0'
+                                              : 'right-full border-r-[8px] border-r-purple-400 border-y-transparent border-y-[8px] border-l-0'
+                                          }`}
+                                        ></div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
 
                                 {index % Math.max(1, Math.floor(productionData.length / 12)) === 0 && (
