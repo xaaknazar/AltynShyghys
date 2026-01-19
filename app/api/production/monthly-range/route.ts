@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 
 // Функция для получения начала производственного дня
 function getProductionDayStart(date: Date): Date {
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const endMonth = parseInt(searchParams.get('end_month') || String(new Date().getMonth() + 1));
     const endYear = parseInt(searchParams.get('end_year') || String(new Date().getFullYear()));
 
-    const client = await clientPromise;
+    const { client } = await connectToDatabase();
     const database = client.db('Factory');
     const collection = database.collection('Maslozavod_Proizvodstvo');
 
