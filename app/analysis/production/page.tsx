@@ -33,6 +33,7 @@ export default function ProductionAnalysisPage() {
   const [customTechGraphData, setCustomTechGraphData] = useState<any[]>([]);
 
   const DAILY_TARGET = 1200; // Целевое производство в сутки (тонн)
+  const SHIFT_TARGET = 600; // Целевое производство за смену (тонн)
 
   const techCollections = [
     { name: 'Extractor_TechData_Job', title: 'Экстрактор' },
@@ -1202,9 +1203,18 @@ export default function ProductionAnalysisPage() {
 
                   // Линия нормы
                   const normY = 100 - ((DAILY_TARGET - minValue) / valueRange) * 100;
+                  const shiftNormY = 100 - ((SHIFT_TARGET - minValue) / valueRange) * 100;
 
                   // Метки оси Y
-                  const yAxisMarks = [
+                  const yAxisMarks = showShiftsOnChart ? [
+                    { value: 0, label: '0' },
+                    { value: 200, label: '200' },
+                    { value: 400, label: '400' },
+                    { value: SHIFT_TARGET, label: '600', highlight: true },
+                    { value: 800, label: '800' },
+                    { value: 1000, label: '1000' },
+                    { value: DAILY_TARGET, label: '1200' },
+                  ].filter(mark => mark.value <= maxValue) : [
                     { value: 0, label: '0' },
                     { value: 400, label: '400' },
                     { value: 800, label: '800' },
@@ -1236,18 +1246,35 @@ export default function ProductionAnalysisPage() {
 
                       {/* SVG для линий и графика */}
                       <svg className="absolute left-12 top-0 w-[calc(100%-3rem)] h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        {/* Линия нормы */}
-                        <line
-                          x1="0"
-                          y1={normY}
-                          x2="100"
-                          y2={normY}
-                          stroke="#ef4444"
-                          strokeWidth="0.4"
-                          strokeDasharray="2,2"
-                          vectorEffect="non-scaling-stroke"
-                          opacity="0.7"
-                        />
+                        {/* Линия нормы суточная */}
+                        {!showShiftsOnChart && (
+                          <line
+                            x1="0"
+                            y1={normY}
+                            x2="100"
+                            y2={normY}
+                            stroke="#ef4444"
+                            strokeWidth="0.4"
+                            strokeDasharray="2,2"
+                            vectorEffect="non-scaling-stroke"
+                            opacity="0.7"
+                          />
+                        )}
+
+                        {/* Линия нормы для смены */}
+                        {showShiftsOnChart && (
+                          <line
+                            x1="0"
+                            y1={shiftNormY}
+                            x2="100"
+                            y2={shiftNormY}
+                            stroke="#ef4444"
+                            strokeWidth="0.4"
+                            strokeDasharray="2,2"
+                            vectorEffect="non-scaling-stroke"
+                            opacity="0.7"
+                          />
+                        )}
 
                         {!showShiftsOnChart ? (
                           // Общая линия производства
@@ -1331,17 +1358,31 @@ export default function ProductionAnalysisPage() {
                       </svg>
 
                       {/* Метка нормы */}
-                      <div
-                        className="absolute left-14 pointer-events-none"
-                        style={{
-                          top: `${normY}%`,
-                          transform: 'translateY(-50%)'
-                        }}
-                      >
-                        <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
-                          Норма: {DAILY_TARGET} т
+                      {!showShiftsOnChart ? (
+                        <div
+                          className="absolute left-14 pointer-events-none"
+                          style={{
+                            top: `${normY}%`,
+                            transform: 'translateY(-50%)'
+                          }}
+                        >
+                          <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                            Норма: {DAILY_TARGET} т
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div
+                          className="absolute left-14 pointer-events-none"
+                          style={{
+                            top: `${shiftNormY}%`,
+                            transform: 'translateY(-50%)'
+                          }}
+                        >
+                          <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                            Норма смены: {SHIFT_TARGET} т
+                          </div>
+                        </div>
+                      )}
 
                       {/* Легенда при показе смен */}
                       {showShiftsOnChart && (
