@@ -949,7 +949,7 @@ export default function ProductionAnalysisPage() {
                       </div>
 
                       <div className="relative bg-gradient-to-br from-corporate-neutral-50 to-white rounded-xl p-8 border-2 border-corporate-neutral-100">
-                        <div className="relative h-96">
+                        <div className="relative h-96 pt-8 pb-12">
                           {(() => {
                             if (monthlyData.length === 0) return null;
 
@@ -1004,6 +1004,9 @@ export default function ProductionAnalysisPage() {
                                   const x = (index / (monthlyData.length - 1 || 1)) * 100;
                                   const y = 100 - ((point.total - minValue) / valueRange) * 100;
 
+                                  // Определяем позицию tooltip (слева или справа)
+                                  const tooltipRight = x > 50;
+
                                   return (
                                     <div
                                       key={index}
@@ -1014,19 +1017,49 @@ export default function ProductionAnalysisPage() {
                                         transform: 'translate(-50%, 50%)'
                                       }}
                                     >
-                                      <div className="w-4 h-4 rounded-full bg-corporate-primary-600 border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-150"></div>
+                                      <div className="w-4 h-4 rounded-full bg-corporate-primary-600 border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-150 z-10"></div>
 
-                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:block z-20">
-                                        <div className="bg-white border-2 border-corporate-primary-300 rounded-xl p-4 shadow-2xl whitespace-nowrap">
-                                          <div className="text-sm text-corporate-neutral-600 mb-2 font-semibold">
-                                            {point.month}
-                                          </div>
-                                          <div className="text-2xl font-bold text-corporate-primary-600">
-                                            {point.total?.toFixed(1)} т
-                                          </div>
+                                      {/* Постоянное отображение значения */}
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                        <div className="bg-corporate-primary-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap">
+                                          {point.total?.toFixed(0)}
                                         </div>
                                       </div>
 
+                                      {/* Детальный tooltip при наведении */}
+                                      <div
+                                        className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
+                                      >
+                                        <div className="bg-white border-2 border-corporate-primary-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[240px]">
+                                          <div className="text-sm text-corporate-neutral-600 mb-3 font-semibold border-b border-corporate-neutral-200 pb-2">
+                                            {point.month}
+                                          </div>
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-corporate-neutral-600">Общее производство:</span>
+                                              <span className="text-lg font-bold text-corporate-primary-600">{point.total?.toFixed(1)} т</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-corporate-neutral-600">Среднее в день:</span>
+                                              <span className="text-sm font-semibold text-corporate-secondary-600">{point.averageDaily?.toFixed(1)} т</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-corporate-neutral-600">Дней с данными:</span>
+                                              <span className="text-sm font-semibold text-corporate-neutral-700">{point.daysCount}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {/* Стрелка указатель */}
+                                        <div
+                                          className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                            tooltipRight
+                                              ? 'left-full border-l-[8px] border-l-corporate-primary-400 border-y-transparent border-y-[8px] border-r-0'
+                                              : 'right-full border-r-[8px] border-r-corporate-primary-400 border-y-transparent border-y-[8px] border-l-0'
+                                          }`}
+                                        ></div>
+                                      </div>
+
+                                      {/* Подписи месяцев снизу */}
                                       {(index % Math.max(1, Math.floor(monthlyData.length / 12)) === 0 || monthlyData.length <= 12) && (
                                         <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 text-xs text-corporate-neutral-600 font-semibold -rotate-45 origin-top whitespace-nowrap">
                                           {point.month}
