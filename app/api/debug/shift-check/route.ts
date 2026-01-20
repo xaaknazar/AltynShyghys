@@ -68,9 +68,14 @@ export async function GET(request: NextRequest) {
       (r) => r.productionDay === checkDate && r.shiftType === 'НОЧНАЯ'
     );
 
-    // Если нашли проблемную ночную смену, проверяем сырые данные
+    // Находим предыдущую смену (дневную того же производственного дня)
+    const previousShift = processedReports.find(
+      (r) => r.productionDay === checkDate && r.shiftType === 'ДНЕВНАЯ'
+    );
+
+    // Если нашли ночную смену, всегда проверяем сырые данные
     let rawDataAnalysis = null;
-    if (targetNightShift && targetNightShift.difference > 10000) {
+    if (targetNightShift) {
       // Ночная смена начинается в 20:00 предыдущего дня и заканчивается в 08:00 текущего дня
       const shiftStartLocal = new Date(`${checkDate}T20:00:00`);
       shiftStartLocal.setDate(shiftStartLocal.getDate() - 1); // Предыдущий день
@@ -113,15 +118,40 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Диагностика проблемы
+    let diagnosis = 'Проблем не обнаружено';
+    let recommendation = null;
+
+    if (targetNightShift && targetNightShift.difference > 10000) {
+      diagnosis = `АНОМАЛИЯ: difference = ${targetNightShift.difference.toFixed(2)} т (ожидалось ~400 т)`;
+
+      if (targetNightShift.difference === targetNightShift.value) {
+        recommendation = {
+          issue: 'В shift_report записано абсолютное значение счетчика (value) вместо разницы за смену (difference)',
+          context: previousShift
+            ? `Предыдущая смена (дневная) имела value=${previousShift.value}. ${
+                previousShift.value === 0
+                  ? '⚠️ Счетчик был сброшен в 0!'
+                  : ''
+              }`
+            : 'Предыдущая смена не найдена',
+          solution: 'Необходимо пересчитать difference как: value_конца_смены - value_начала_смены',
+          possibleFix: rawDataAnalysis
+            ? `Правильное значение difference должно быть ${rawDataAnalysis.calculatedDifference.toFixed(2)} т`
+            : 'Для точного расчета нужны сырые данные из Rvo_Production_Job за период смены. Возможно, счетчик был сброшен.',
+        };
+      }
+    }
+
     return NextResponse.json({
       success: true,
       checkDate,
       allShiftReports: processedReports,
+      previousShift,
       targetNightShift,
       rawDataAnalysis,
-      problem: targetNightShift && targetNightShift.difference > 10000
-        ? `АНОМАЛИЯ: difference = ${targetNightShift.difference.toFixed(2)} т (ожидалось ~400 т)`
-        : 'Проблем не обнаружено',
+      problem: diagnosis,
+      recommendation,
     });
   } catch (error) {
     console.error('Error checking shift data:', error);
