@@ -404,7 +404,7 @@ export default function OTKListPage() {
                               </button>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-24">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pr-24">
                               <div>
                                 <div className="text-xs text-slate-500 mb-1">Время отбора</div>
                                 <div className="text-sm font-mono text-slate-800">
