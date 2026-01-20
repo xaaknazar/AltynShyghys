@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
             difference: correctDifference,
             corrected: true,
             corrected_at: new Date(),
-            correction_reason: first.value < 10 ? 'counter_reset' : 'manual_fix',
+            correction_reason: wasCounterReset ? 'counter_reset' : 'manual_fix',
           },
         }
       );
