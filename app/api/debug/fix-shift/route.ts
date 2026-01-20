@@ -100,10 +100,14 @@ export async function POST(request: NextRequest) {
 
     if (rawData.length === 0) {
       // Нет сырых данных - проверяем предыдущую смену
-      // Находим предыдущую дневную смену того же производственного дня
-      // Она должна быть РАНЬШЕ по времени, чем ночная смена
+      // Для ночной смены производственного дня X, предыдущая дневная смена имеет prodDay = X-1
       let previousDayShift = null;
       const targetDateTime = new Date(targetShift.datetime);
+
+      // Вычисляем предыдущий производственный день
+      const currentProdDate = new Date(date);
+      currentProdDate.setDate(currentProdDate.getDate() - 1);
+      const previousProdDay = currentProdDate.toISOString().split('T')[0];
 
       for (const doc of shiftReports) {
         const docDate = new Date(doc.datetime);
@@ -116,10 +120,10 @@ export async function POST(request: NextRequest) {
           productionDate.setUTCDate(productionDate.getUTCDate() - 1);
           const prodDay = productionDate.toISOString().split('T')[0];
 
-          // Должна быть для того же производственного дня И раньше по времени
-          if (prodDay === date && docDate < targetDateTime) {
+          // Должна быть для ПРЕДЫДУЩЕГО производственного дня
+          if (prodDay === previousProdDay) {
             previousDayShift = doc;
-            break; // Берем первую найденную (самую раннюю)
+            break; // Берем первую найденную
           }
         }
       }
