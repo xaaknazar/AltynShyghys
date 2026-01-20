@@ -94,27 +94,58 @@ export async function POST(request: NextRequest) {
       .sort({ datetime: 1 })
       .toArray();
 
-    if (rawData.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Не найдены сырые данные производства за период смены',
-        recommendation: 'Возможно данные были очищены. Если был сброс счетчика в 0, то difference можно взять равным финальному value.',
-      });
-    }
-
-    const first = rawData[0];
-    const last = rawData[rawData.length - 1];
-
-    // Вычисляем правильное значение difference
     let correctDifference = 0;
+    let wasCounterReset = false;
+    let calculationMethod = '';
 
-    // Если счетчик был сброшен (начальное значение близко к 0)
-    if (first.value < 10) {
-      // После сброса difference = конечное значение
-      correctDifference = last.value;
+    if (rawData.length === 0) {
+      // Нет сырых данных - проверяем предыдущую смену
+      // Находим предыдущую дневную смену того же производственного дня
+      let previousDayShift = null;
+      for (const doc of shiftReports) {
+        const docDate = new Date(doc.datetime);
+        const localTime = new Date(docDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+        const hour = localTime.getUTCHours();
+
+        if (hour >= 18 && hour <= 22) {
+          const productionDate = new Date(localTime);
+          productionDate.setUTCDate(productionDate.getUTCDate() - 1);
+          const prodDay = productionDate.toISOString().split('T')[0];
+
+          if (prodDay === date) {
+            previousDayShift = doc;
+            break;
+          }
+        }
+      }
+
+      if (previousDayShift && previousDayShift.value === 0) {
+        // Счетчик был сброшен в 0 - берем текущий value как difference
+        correctDifference = targetShift.value;
+        wasCounterReset = true;
+        calculationMethod = 'Счетчик был сброшен в 0. difference = текущий value';
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: 'Не найдены сырые данные производства за период смены',
+          suggestion: previousDayShift
+            ? `Предыдущая смена имеет value=${previousDayShift.value}. Если это правильное начальное значение, то difference = ${targetShift.value} - ${previousDayShift.value} = ${(targetShift.value - previousDayShift.value).toFixed(2)} т`
+            : 'Невозможно автоматически определить правильное значение без сырых данных',
+        });
+      }
     } else {
-      // Нормальный случай: разница между концом и началом
-      correctDifference = last.value - first.value;
+      const first = rawData[0];
+      const last = rawData[rawData.length - 1];
+
+      // Если счетчик был сброшен (начальное значение близко к 0)
+      if (first.value < 10) {
+        correctDifference = last.value;
+        wasCounterReset = true;
+        calculationMethod = 'Счетчик начался с 0. difference = конечный value';
+      } else {
+        correctDifference = last.value - first.value;
+        calculationMethod = 'Нормальный расчет: difference = конечный value - начальный value';
+      }
     }
 
     const analysis = {
@@ -125,23 +156,24 @@ export async function POST(request: NextRequest) {
         value: targetShift.value,
         datetime: targetShift.datetime.toISOString(),
       },
-      rawDataAnalysis: {
+      rawDataAnalysis: rawData.length > 0 ? {
         recordsCount: rawData.length,
         firstRecord: {
-          datetime: first.datetime.toISOString(),
-          localTime: new Date(first.datetime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
-          value: first.value,
+          datetime: rawData[0].datetime.toISOString(),
+          localTime: new Date(rawData[0].datetime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
+          value: rawData[0].value,
         },
         lastRecord: {
-          datetime: last.datetime.toISOString(),
-          localTime: new Date(last.datetime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
-          value: last.value,
+          datetime: rawData[rawData.length - 1].datetime.toISOString(),
+          localTime: new Date(rawData[rawData.length - 1].datetime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
+          value: rawData[rawData.length - 1].value,
         },
-      },
+      } : null,
       correction: {
         oldDifference: targetShift.difference,
         newDifference: correctDifference,
-        wasCounterReset: first.value < 10,
+        wasCounterReset,
+        calculationMethod,
       },
     };
 

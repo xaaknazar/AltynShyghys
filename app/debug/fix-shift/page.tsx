@@ -105,9 +105,15 @@ export default function FixShiftPage() {
 
             {result.error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                <p className="text-red-700">{result.error}</p>
+                <p className="text-red-700 font-semibold">{result.error}</p>
                 {result.recommendation && (
                   <p className="text-red-600 text-sm mt-2">{result.recommendation}</p>
+                )}
+                {result.suggestion && (
+                  <div className="mt-3 pt-3 border-t border-red-200">
+                    <p className="text-sm font-semibold text-red-700 mb-1">💡 Возможное решение:</p>
+                    <p className="text-sm text-red-600">{result.suggestion}</p>
+                  </div>
                 )}
               </div>
             )}
@@ -128,26 +134,41 @@ export default function FixShiftPage() {
                     <div className="space-y-1 text-sm">
                       <p><span className="text-slate-500">difference:</span> <span className="font-mono font-bold text-green-600">{result.analysis.correction.newDifference.toFixed(2)} т</span></p>
                       <p><span className="text-slate-500">Счетчик сброшен:</span> <span className="font-semibold">{result.analysis.correction.wasCounterReset ? 'Да ⚠️' : 'Нет'}</span></p>
+                      {result.analysis.correction.calculationMethod && (
+                        <p className="text-xs text-slate-600 mt-2 pt-2 border-t border-green-200">
+                          <span className="font-semibold">Метод:</span> {result.analysis.correction.calculationMethod}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <h3 className="text-sm font-semibold text-blue-800 mb-2">Анализ сырых данных</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-blue-600 font-semibold mb-1">Начало смены:</p>
-                      <p className="text-slate-600">{result.analysis.rawDataAnalysis.firstRecord.localTime}</p>
-                      <p className="font-mono">value: {result.analysis.rawDataAnalysis.firstRecord.value.toFixed(2)} т</p>
+                {result.analysis.rawDataAnalysis && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <h3 className="text-sm font-semibold text-blue-800 mb-2">Анализ сырых данных</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-blue-600 font-semibold mb-1">Начало смены:</p>
+                        <p className="text-slate-600">{result.analysis.rawDataAnalysis.firstRecord.localTime}</p>
+                        <p className="font-mono">value: {result.analysis.rawDataAnalysis.firstRecord.value.toFixed(2)} т</p>
+                      </div>
+                      <div>
+                        <p className="text-blue-600 font-semibold mb-1">Конец смены:</p>
+                        <p className="text-slate-600">{result.analysis.rawDataAnalysis.lastRecord.localTime}</p>
+                        <p className="font-mono">value: {result.analysis.rawDataAnalysis.lastRecord.value.toFixed(2)} т</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-blue-600 font-semibold mb-1">Конец смены:</p>
-                      <p className="text-slate-600">{result.analysis.rawDataAnalysis.lastRecord.localTime}</p>
-                      <p className="font-mono">value: {result.analysis.rawDataAnalysis.lastRecord.value.toFixed(2)} т</p>
-                    </div>
+                    <p className="text-slate-500 mt-2">Записей за смену: {result.analysis.rawDataAnalysis.recordsCount}</p>
                   </div>
-                  <p className="text-slate-500 mt-2">Записей за смену: {result.analysis.rawDataAnalysis.recordsCount}</p>
-                </div>
+                )}
+
+                {!result.analysis.rawDataAnalysis && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                    <h3 className="text-sm font-semibold text-amber-800 mb-2">⚠️ Сырые данные недоступны</h3>
+                    <p className="text-sm text-amber-700">Сырые данные из Rvo_Production_Job не найдены (возможно были очищены).</p>
+                    <p className="text-sm text-amber-600 mt-2">Расчет: {result.analysis.correction.calculationMethod}</p>
+                  </div>
+                )}
 
                 {!result.applied && result.success && result.analysis.correction.oldDifference !== result.analysis.correction.newDifference && (
                   <button
