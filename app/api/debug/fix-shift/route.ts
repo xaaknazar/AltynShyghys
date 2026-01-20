@@ -101,20 +101,25 @@ export async function POST(request: NextRequest) {
     if (rawData.length === 0) {
       // Нет сырых данных - проверяем предыдущую смену
       // Находим предыдущую дневную смену того же производственного дня
+      // Она должна быть РАНЬШЕ по времени, чем ночная смена
       let previousDayShift = null;
+      const targetDateTime = new Date(targetShift.datetime);
+
       for (const doc of shiftReports) {
         const docDate = new Date(doc.datetime);
         const localTime = new Date(docDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
         const hour = localTime.getUTCHours();
 
+        // Ищем дневную смену (около 20:00)
         if (hour >= 18 && hour <= 22) {
           const productionDate = new Date(localTime);
           productionDate.setUTCDate(productionDate.getUTCDate() - 1);
           const prodDay = productionDate.toISOString().split('T')[0];
 
-          if (prodDay === date) {
+          // Должна быть для того же производственного дня И раньше по времени
+          if (prodDay === date && docDate < targetDateTime) {
             previousDayShift = doc;
-            break;
+            break; // Берем первую найденную (самую раннюю)
           }
         }
       }
