@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 type QuickPeriod = 'week' | 'month' | 'year' | 'all' | 'custom';
-type ViewMode = 'daily' | 'detailed';
+type ViewMode = 'daily' | 'detailed' | 'monthly';
 
 export default function ProductionAnalysisPage() {
   const [startDate, setStartDate] = useState<string>('');
@@ -11,6 +11,7 @@ export default function ProductionAnalysisPage() {
   const [shiftFilter, setShiftFilter] = useState<'all' | 'day' | 'night'>('all');
   const [productionData, setProductionData] = useState<any[]>([]);
   const [detailedData, setDetailedData] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('week');
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
@@ -20,19 +21,26 @@ export default function ProductionAnalysisPage() {
   const [selectedMetrics, setSelectedMetrics] = useState<{[collectionName: string]: string[]}>({});
   const [showShiftsOnChart, setShowShiftsOnChart] = useState(false);
 
+  // Фильтры для режима "По месяцам"
+  const [startMonth, setStartMonth] = useState<string>('');
+  const [startYear, setStartYear] = useState<string>('');
+  const [endMonth, setEndMonth] = useState<string>('');
+  const [endYear, setEndYear] = useState<string>('');
+
   // Кастомный график для технических параметров
   const [showCustomTechGraph, setShowCustomTechGraph] = useState(false);
   const [customTechMetrics, setCustomTechMetrics] = useState<{collection: string; metric: string}[]>([]);
   const [customTechGraphData, setCustomTechGraphData] = useState<any[]>([]);
 
   const DAILY_TARGET = 1200; // Целевое производство в сутки (тонн)
+  const SHIFT_TARGET = 600; // Целевое производство за смену (тонн)
 
   const techCollections = [
-    { name: 'Extractor_TechData_Job', title: 'Экстрактор' },
-    { name: 'Press_1_Job', title: 'Пресс 1' },
-    { name: 'Press_2_Job', title: 'Пресс 2' },
-    { name: 'Press_Jarovnia_Mezga', title: 'Жаровня и Мезга' },
-    { name: 'Data_extractor_cooking', title: 'Экстрактор и Жаровня (дополнительно)' },
+    { name: 'combined_extractor', title: 'Экстрактор', group: 'combined_extractor', collections: ['Extractor_TechData_Job', 'Data_extractor_cooking'] },
+    { name: 'Press_1_Job', title: 'Пресс 1', group: null, collections: ['Press_1_Job'] },
+    { name: 'Press_2_Job', title: 'Пресс 2', group: null, collections: ['Press_2_Job'] },
+    { name: 'Data_extractor_cooking', title: 'Жаровня', group: 'jarovnia', collections: ['Data_extractor_cooking'] },
+    { name: 'Data_extractor_cooking', title: 'Тостер', group: 'toster', collections: ['Data_extractor_cooking'] },
   ];
 
   // Нормы для метрик (одно значение или диапазон [min, max])
@@ -57,6 +65,17 @@ export default function ProductionAnalysisPage() {
     // Установка дат по умолчанию: последняя неделя
     setQuickPeriod('week');
     applyQuickPeriod('week');
+
+    // Установка месяца и года по умолчанию для режима "По месяцам"
+    const now = new Date();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentYear = String(now.getFullYear());
+
+    // По умолчанию: с января 2024 по текущий месяц
+    setStartMonth('01');
+    setStartYear('2024');
+    setEndMonth(currentMonth);
+    setEndYear(currentYear);
   }, []);
 
   const applyQuickPeriod = (period: QuickPeriod) => {
@@ -79,12 +98,12 @@ export default function ProductionAnalysisPage() {
   };
 
   useEffect(() => {
-    if (startDate && endDate) {
-      if (viewMode === 'daily') {
-        fetchProductionData();
-      }
+    if (viewMode === 'monthly' && startMonth && startYear && endMonth && endYear) {
+      fetchMonthlyData();
+    } else if (startDate && endDate && viewMode === 'daily') {
+      fetchProductionData();
     }
-  }, [startDate, endDate, shiftFilter, viewMode]);
+  }, [startDate, endDate, shiftFilter, viewMode, startMonth, startYear, endMonth, endYear]);
 
   useEffect(() => {
     if (viewMode === 'detailed' && selectedDate) {
@@ -119,6 +138,29 @@ export default function ProductionAnalysisPage() {
     }
   };
 
+  const fetchMonthlyData = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        start_month: startMonth,
+        start_year: startYear,
+        end_month: endMonth,
+        end_year: endYear,
+      });
+
+      const response = await fetch(`/api/production/monthly-range?${params}`, { cache: 'no-store' });
+      const data = await response.json();
+
+      if (data.success) {
+        setMonthlyData(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching monthly data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchDetailedData = async (date: string) => {
     setLoading(true);
     try {
@@ -141,19 +183,23 @@ export default function ProductionAnalysisPage() {
 
   const fetchTechnicalData = async (date: string) => {
     try {
-      const promises = techCollections.map(async (collection) => {
+      // Получаем уникальные названия коллекций из всех элементов
+      const allCollectionNames = techCollections.flatMap(c => c.collections || [c.name]);
+      const uniqueCollectionNames = [...new Set(allCollectionNames)];
+
+      const promises = uniqueCollectionNames.map(async (collectionName) => {
         const params = new URLSearchParams({
           date: date,
-          collection: collection.name,
+          collection: collectionName,
         });
 
         const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
         const data = await response.json();
 
         if (data.success) {
-          return { name: collection.name, data: data.data || [], metrics: data.metrics || [] };
+          return { name: collectionName, data: data.data || [], metrics: data.metrics || [] };
         }
-        return { name: collection.name, data: [], metrics: [] };
+        return { name: collectionName, data: [], metrics: [] };
       });
 
       const results = await Promise.all(promises);
@@ -254,22 +300,62 @@ export default function ProductionAnalysisPage() {
     }
   };
 
-  const renderTechnicalChart = (collectionName: string, title: string) => {
-    const data = techData[collectionName] || [];
-    const metrics = techMetrics[collectionName] || [];
+  // Определяем какие метрики относятся к каждой группе
+  const getMetricsForGroup = (group: string | null, allMetrics: any[]) => {
+    if (group === null) {
+      // Если нет группы, возвращаем все метрики
+      return allMetrics;
+    }
 
-    const selected = selectedMetrics[collectionName] || [];
+    if (group === 'combined_extractor') {
+      // Экстрактор (объединенный): Вакуум, Температура масла, Коэффициент, Подача, Процентаж, Гексан
+      return allMetrics.filter((m: any) =>
+        m.title.includes('Вакуум') ||
+        m.title.includes('Температура масла') ||
+        m.title.includes('Коэффициент Экстрактора') ||
+        m.title.includes('Подача в Экстрактор') ||
+        m.title.includes('Процентаж Экстрактора') ||
+        m.title.includes('Подача Чистого Гексана')
+      );
+    } else if (group === 'jarovnia') {
+      // Жаровня: все температуры жаровни
+      return allMetrics.filter((m: any) =>
+        m.title.includes('Жаровни 1') ||
+        m.title.includes('Жаровни 2')
+      );
+    } else if (group === 'toster') {
+      // Тостер: температура тостера
+      return allMetrics.filter((m: any) =>
+        m.title.includes('Тостера')
+      );
+    }
+
+    return allMetrics;
+  };
+
+  const renderTechnicalChart = (collections: string[], title: string, group: string | null, uniqueKey: string) => {
+    // Объединяем данные и метрики из всех коллекций
+    const allData = collections.flatMap(coll => techData[coll] || []);
+    const allMetrics = collections.flatMap(coll => techMetrics[coll] || []);
+
+    // Фильтруем метрики по группе
+    const metrics = getMetricsForGroup(group, allMetrics);
+
+    // Генерируем уникальный ключ для selectedMetrics
+    const selectionKey = uniqueKey;
+
+    const selected = selectedMetrics[selectionKey] || [];
     const selectedMetricsData = metrics.filter((m: any) => selected.includes(m.title));
 
     return (
-      <div key={collectionName} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <div key={uniqueKey} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h3 className="text-lg font-display font-bold text-slate-700 mb-4">{title}</h3>
 
         {/* Проверка наличия данных */}
         {metrics.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-slate-500 mb-2">Нет данных для этой коллекции</div>
-            <div className="text-xs text-slate-400">Коллекция: {collectionName}</div>
+            <div className="text-xs text-slate-400">Коллекции: {collections.join(', ')}</div>
           </div>
         ) : (
           <>
@@ -291,7 +377,7 @@ export default function ProductionAnalysisPage() {
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  onChange={() => toggleMetricSelection(collectionName, metric.title)}
+                  onChange={() => toggleMetricSelection(selectionKey, metric.title)}
                   className="w-4 h-4 cursor-pointer"
                   style={{ accentColor: color }}
                 />
@@ -326,10 +412,10 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-80 overflow-x-auto">
+              <div className="relative h-80 pt-8 pb-12 overflow-x-auto">
                 {selectedMetricsData.map((metric: any) => {
                   const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
-                  const metricData = data.filter((d: any) => d[metric.title] !== undefined);
+                  const metricData = allData.filter((d: any) => d[metric.title] !== undefined);
 
                   if (metricData.length === 0) return null;
 
@@ -496,42 +582,77 @@ export default function ProductionAnalysisPage() {
                       )}
 
                       {/* Точки */}
-                      {points.map((p: any, index: number) => (
-                        <div
-                          key={`${metric.title}-${index}`}
-                          className="absolute group"
-                          style={{
-                            left: `${p.x}%`,
-                            bottom: `${100 - p.y}%`,
-                            transform: 'translate(-50%, 50%)'
-                          }}
-                        >
+                      {points.map((p: any, index: number) => {
+                        const tooltipRight = p.x > 50;
+                        return (
                           <div
-                            className="w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"
-                            style={{ backgroundColor: color }}
-                          ></div>
+                            key={`${metric.title}-${index}`}
+                            className="absolute group"
+                            style={{
+                              left: `${p.x}%`,
+                              bottom: `${100 - p.y}%`,
+                              transform: 'translate(-50%, 50%)'
+                            }}
+                          >
+                            <div
+                              className="w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"
+                              style={{ backgroundColor: color }}
+                            ></div>
 
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                            <div className="bg-white border-2 rounded-lg p-3 shadow-xl whitespace-nowrap" style={{ borderColor: color }}>
-                              <div className="text-xs text-slate-600 mb-1 font-mono">
+                            {/* Постоянное отображение значения */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                              <div
+                                className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
+                                style={{ backgroundColor: color }}
+                              >
+                                {p.value?.toFixed(1)}
+                              </div>
+                            </div>
+
+                            {/* Детальный tooltip при наведении */}
+                            <div
+                              className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
+                            >
+                              <div className="bg-white border-2 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[220px]" style={{ borderColor: color }}>
+                                <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                  {p.point.time}
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-xs text-slate-600">{metric.title}:</span>
+                                    <span className="text-lg font-bold" style={{ color }}>{p.value?.toFixed(2)} {metric.unit}</span>
+                                  </div>
+                                  {normValue !== undefined && (
+                                    <div className="pt-2 border-t border-slate-200">
+                                      <div className="text-xs text-slate-600">
+                                        Норма: {Array.isArray(normValue) ? `${normValue[0]} - ${normValue[1]}` : normValue} {metric.unit}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {/* Стрелка указатель */}
+                              <div
+                                className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                  tooltipRight
+                                    ? 'left-full border-l-[8px] border-y-transparent border-y-[8px] border-r-0'
+                                    : 'right-full border-r-[8px] border-y-transparent border-y-[8px] border-l-0'
+                                }`}
+                                style={{
+                                  borderLeftColor: tooltipRight ? color : 'transparent',
+                                  borderRightColor: tooltipRight ? 'transparent' : color,
+                                }}
+                              ></div>
+                            </div>
+
+                            {index % Math.max(1, Math.floor(metricData.length / 12)) === 0 && (
+                              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
                                 {p.point.time}
                               </div>
-                              <div className="text-sm font-medium text-slate-700 mb-1">
-                                {metric.title}
-                              </div>
-                              <div className="text-lg font-bold" style={{ color }}>
-                                {p.value?.toFixed(2)} {metric.unit}
-                              </div>
-                            </div>
+                            )}
                           </div>
-
-                          {index % Math.max(1, Math.floor(metricData.length / 12)) === 0 && (
-                            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
-                              {p.point.time}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -563,18 +684,28 @@ export default function ProductionAnalysisPage() {
             onClick={() => setViewMode('daily')}
             className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
               viewMode === 'daily'
-                ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-semibold'
-                : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
+                ? 'bg-corporate-primary-50 border-corporate-primary-500 text-corporate-primary-700 font-semibold'
+                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-primary-300'
             }`}
           >
             По суткам
           </button>
           <button
+            onClick={() => setViewMode('monthly')}
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
+              viewMode === 'monthly'
+                ? 'bg-corporate-secondary-50 border-corporate-secondary-500 text-corporate-secondary-700 font-semibold'
+                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-secondary-300'
+            }`}
+          >
+            По месяцам
+          </button>
+          <button
             onClick={() => setViewMode('detailed')}
             className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
               viewMode === 'detailed'
-                ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-semibold'
-                : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
+                ? 'bg-corporate-success-50 border-corporate-success-500 text-corporate-success-700 font-semibold'
+                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-success-300'
             }`}
           >
             Технологические параметры
@@ -680,6 +811,95 @@ export default function ProductionAnalysisPage() {
               </select>
             </div>
           </div>
+        ) : viewMode === 'monthly' ? (
+          <div className="space-y-4">
+            <div className="bg-corporate-secondary-50 border-2 border-corporate-secondary-200 rounded-xl p-4">
+              <p className="text-sm text-corporate-secondary-700 font-medium">
+                📊 Выберите период для анализа производства по месяцам
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Начальный месяц */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-corporate-neutral-700">Начальный период</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-corporate-neutral-600 mb-1">Месяц</label>
+                    <select
+                      value={startMonth}
+                      onChange={(e) => setStartMonth(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                    >
+                      <option value="01">Январь</option>
+                      <option value="02">Февраль</option>
+                      <option value="03">Март</option>
+                      <option value="04">Апрель</option>
+                      <option value="05">Май</option>
+                      <option value="06">Июнь</option>
+                      <option value="07">Июль</option>
+                      <option value="08">Август</option>
+                      <option value="09">Сентябрь</option>
+                      <option value="10">Октябрь</option>
+                      <option value="11">Ноябрь</option>
+                      <option value="12">Декабрь</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-corporate-neutral-600 mb-1">Год</label>
+                    <select
+                      value={startYear}
+                      onChange={(e) => setStartYear(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                    >
+                      {Array.from({ length: 10 }, (_, i) => 2024 + i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Конечный месяц */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-corporate-neutral-700">Конечный период</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-corporate-neutral-600 mb-1">Месяц</label>
+                    <select
+                      value={endMonth}
+                      onChange={(e) => setEndMonth(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                    >
+                      <option value="01">Январь</option>
+                      <option value="02">Февраль</option>
+                      <option value="03">Март</option>
+                      <option value="04">Апрель</option>
+                      <option value="05">Май</option>
+                      <option value="06">Июнь</option>
+                      <option value="07">Июль</option>
+                      <option value="08">Август</option>
+                      <option value="09">Сентябрь</option>
+                      <option value="10">Октябрь</option>
+                      <option value="11">Ноябрь</option>
+                      <option value="12">Декабрь</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-corporate-neutral-600 mb-1">Год</label>
+                    <select
+                      value={endYear}
+                      onChange={(e) => setEndYear(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                    >
+                      {Array.from({ length: 10 }, (_, i) => 2024 + i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
             <div>
@@ -744,7 +964,240 @@ export default function ProductionAnalysisPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {viewMode === 'daily' ? (
+          {viewMode === 'monthly' ? (
+            <>
+              {/* Месячная статистика */}
+              {(() => {
+                const totalMonthlyProduction = monthlyData.reduce((sum, item) => sum + (item.total || 0), 0);
+                const averageMonthly = monthlyData.length > 0 ? totalMonthlyProduction / monthlyData.length : 0;
+                const monthlyTarget = 36000; // 1200 т/день * 30 дней
+
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="card-metric p-6 text-center group">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="w-12 h-12 rounded-lg bg-corporate-primary-100 flex items-center justify-center group-hover:bg-corporate-primary-200 transition-colors">
+                            <svg className="w-6 h-6 text-corporate-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Общее производство</div>
+                        <div className="metric-value text-4xl font-bold text-corporate-primary-600">
+                          {totalMonthlyProduction.toFixed(1)}
+                          <span className="text-xl ml-2 text-corporate-neutral-500">т</span>
+                        </div>
+                      </div>
+                      <div className="card-metric p-6 text-center group">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="w-12 h-12 rounded-lg bg-corporate-secondary-100 flex items-center justify-center group-hover:bg-corporate-secondary-200 transition-colors">
+                            <svg className="w-6 h-6 text-corporate-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Среднее за месяц</div>
+                        <div className="metric-value text-4xl font-bold text-corporate-secondary-600">
+                          {averageMonthly.toFixed(1)}
+                          <span className="text-xl ml-2 text-corporate-neutral-500">т</span>
+                        </div>
+                      </div>
+                      <div className="card-metric p-6 text-center group">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="w-12 h-12 rounded-lg bg-corporate-success-100 flex items-center justify-center group-hover:bg-corporate-success-200 transition-colors">
+                            <svg className="w-6 h-6 text-corporate-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Месяцев в выборке</div>
+                        <div className="metric-value text-4xl font-bold text-corporate-success-600">
+                          {monthlyData.length}
+                          <span className="text-xl ml-2 text-corporate-neutral-500">мес</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* График месячных данных */}
+                    <div className="bg-white rounded-2xl border-2 border-corporate-neutral-200 p-8 shadow-card-lg">
+                      <div className="mb-8 pb-4 border-b-2 border-corporate-neutral-100">
+                        <h3 className="text-2xl font-display font-semibold text-corporate-neutral-900 tracking-tight mb-2">
+                          Динамика производства по месяцам
+                        </h3>
+                        <p className="text-sm text-corporate-neutral-600">Общее производство за каждый месяц</p>
+                      </div>
+
+                      <div className="relative bg-gradient-to-br from-corporate-neutral-50 to-white rounded-xl p-8 border-2 border-corporate-neutral-100">
+                        <div className="relative h-96 pt-8 pb-12">
+                          {(() => {
+                            if (monthlyData.length === 0) return null;
+
+                            const maxValue = Math.max(...monthlyData.map(d => d.total)) * 1.15;
+                            const minValue = 0;
+                            const valueRange = maxValue - minValue;
+
+                            return (
+                              <>
+                                {/* SVG для линии графика */}
+                                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                  {(() => {
+                                    const points = monthlyData.map((point, index) => {
+                                      const x = (index / (monthlyData.length - 1 || 1)) * 100;
+                                      const y = 100 - ((point.total - minValue) / valueRange) * 100;
+                                      return { x, y };
+                                    });
+
+                                    const linePath = points.map((p, index) => {
+                                      const command = index === 0 ? 'M' : 'L';
+                                      return `${command} ${p.x} ${p.y}`;
+                                    }).join(' ');
+
+                                    return (
+                                      <>
+                                        <path
+                                          d={linePath}
+                                          fill="none"
+                                          stroke="#0ea5e9"
+                                          strokeWidth="1"
+                                          vectorEffect="non-scaling-stroke"
+                                          opacity="0.9"
+                                        />
+                                        <path
+                                          d={`${linePath} L 100 100 L 0 100 Z`}
+                                          fill="url(#monthlyGradient)"
+                                          opacity="0.2"
+                                        />
+                                        <defs>
+                                          <linearGradient id="monthlyGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                                            <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0} />
+                                          </linearGradient>
+                                        </defs>
+                                      </>
+                                    );
+                                  })()}
+                                </svg>
+
+                                {/* Точки */}
+                                {monthlyData.map((point, index) => {
+                                  const x = (index / (monthlyData.length - 1 || 1)) * 100;
+                                  const y = 100 - ((point.total - minValue) / valueRange) * 100;
+
+                                  // Определяем позицию tooltip (слева или справа)
+                                  const tooltipRight = x > 50;
+
+                                  return (
+                                    <div
+                                      key={index}
+                                      className="absolute group"
+                                      style={{
+                                        left: `${x}%`,
+                                        bottom: `${100 - y}%`,
+                                        transform: 'translate(-50%, 50%)'
+                                      }}
+                                    >
+                                      <div className="w-4 h-4 rounded-full bg-corporate-primary-600 border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-150 z-10"></div>
+
+                                      {/* Постоянное отображение значения */}
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                        <div className="bg-corporate-primary-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap">
+                                          {point.total?.toFixed(0)}
+                                        </div>
+                                      </div>
+
+                                      {/* Детальный tooltip при наведении */}
+                                      <div
+                                        className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
+                                      >
+                                        <div className="bg-white border-2 border-corporate-primary-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[240px]">
+                                          <div className="text-sm text-corporate-neutral-600 mb-3 font-semibold border-b border-corporate-neutral-200 pb-2">
+                                            {point.month}
+                                          </div>
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-corporate-neutral-600">Общее производство:</span>
+                                              <span className="text-lg font-bold text-corporate-primary-600">{point.total?.toFixed(1)} т</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-corporate-neutral-600">Среднее в день:</span>
+                                              <span className="text-sm font-semibold text-corporate-secondary-600">{point.averageDaily?.toFixed(1)} т</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-corporate-neutral-600">Дней с данными:</span>
+                                              <span className="text-sm font-semibold text-corporate-neutral-700">{point.daysCount}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {/* Стрелка указатель */}
+                                        <div
+                                          className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                            tooltipRight
+                                              ? 'left-full border-l-[8px] border-l-corporate-primary-400 border-y-transparent border-y-[8px] border-r-0'
+                                              : 'right-full border-r-[8px] border-r-corporate-primary-400 border-y-transparent border-y-[8px] border-l-0'
+                                          }`}
+                                        ></div>
+                                      </div>
+
+                                      {/* Подписи месяцев снизу */}
+                                      {(index % Math.max(1, Math.floor(monthlyData.length / 12)) === 0 || monthlyData.length <= 12) && (
+                                        <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 text-xs text-corporate-neutral-600 font-semibold -rotate-45 origin-top whitespace-nowrap">
+                                          {point.month}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Таблица месячных данных */}
+                    <div className="bg-white rounded-2xl border-2 border-corporate-neutral-200 p-8 shadow-card-lg">
+                      <div className="mb-6 pb-4 border-b-2 border-corporate-neutral-100">
+                        <h3 className="text-xl font-display font-semibold text-corporate-neutral-900 tracking-tight">
+                          Детальные данные по месяцам
+                        </h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b-2 border-corporate-neutral-200">
+                              <th className="text-left py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Месяц</th>
+                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Производство, т</th>
+                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Среднее в день, т</th>
+                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Дней</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {monthlyData.map((item, idx) => (
+                              <tr key={idx} className="border-b border-corporate-neutral-100 hover:bg-corporate-neutral-50 transition-colors">
+                                <td className="py-4 px-4 text-sm font-semibold text-corporate-neutral-800">
+                                  {item.month}
+                                </td>
+                                <td className="py-4 px-4 text-base font-mono font-bold text-corporate-primary-600 text-right">
+                                  {item.total?.toFixed(1)}
+                                </td>
+                                <td className="py-4 px-4 text-sm font-mono text-corporate-neutral-700 text-right">
+                                  {item.averageDaily?.toFixed(1)}
+                                </td>
+                                <td className="py-4 px-4 text-sm font-mono text-corporate-neutral-600 text-right">
+                                  {item.daysCount}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </>
+          ) : viewMode === 'daily' ? (
             <>
           {/* Статистика */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -786,7 +1239,7 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-96 overflow-x-auto">
+              <div className="relative h-96 pt-8 pb-12 overflow-x-auto">
                 {(() => {
                   const maxValue = Math.max(...productionData.map(d => d.total), DAILY_TARGET) * 1.15;
                   const minValue = 0;
@@ -794,9 +1247,18 @@ export default function ProductionAnalysisPage() {
 
                   // Линия нормы
                   const normY = 100 - ((DAILY_TARGET - minValue) / valueRange) * 100;
+                  const shiftNormY = 100 - ((SHIFT_TARGET - minValue) / valueRange) * 100;
 
                   // Метки оси Y
-                  const yAxisMarks = [
+                  const yAxisMarks = showShiftsOnChart ? [
+                    { value: 0, label: '0' },
+                    { value: 200, label: '200' },
+                    { value: 400, label: '400' },
+                    { value: SHIFT_TARGET, label: '600', highlight: true },
+                    { value: 800, label: '800' },
+                    { value: 1000, label: '1000' },
+                    { value: DAILY_TARGET, label: '1200' },
+                  ].filter(mark => mark.value <= maxValue) : [
                     { value: 0, label: '0' },
                     { value: 400, label: '400' },
                     { value: 800, label: '800' },
@@ -828,18 +1290,35 @@ export default function ProductionAnalysisPage() {
 
                       {/* SVG для линий и графика */}
                       <svg className="absolute left-12 top-0 w-[calc(100%-3rem)] h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        {/* Линия нормы */}
-                        <line
-                          x1="0"
-                          y1={normY}
-                          x2="100"
-                          y2={normY}
-                          stroke="#ef4444"
-                          strokeWidth="0.4"
-                          strokeDasharray="2,2"
-                          vectorEffect="non-scaling-stroke"
-                          opacity="0.7"
-                        />
+                        {/* Линия нормы суточная */}
+                        {!showShiftsOnChart && (
+                          <line
+                            x1="0"
+                            y1={normY}
+                            x2="100"
+                            y2={normY}
+                            stroke="#ef4444"
+                            strokeWidth="0.4"
+                            strokeDasharray="2,2"
+                            vectorEffect="non-scaling-stroke"
+                            opacity="0.7"
+                          />
+                        )}
+
+                        {/* Линия нормы для смены */}
+                        {showShiftsOnChart && (
+                          <line
+                            x1="0"
+                            y1={shiftNormY}
+                            x2="100"
+                            y2={shiftNormY}
+                            stroke="#ef4444"
+                            strokeWidth="0.4"
+                            strokeDasharray="2,2"
+                            vectorEffect="non-scaling-stroke"
+                            opacity="0.7"
+                          />
+                        )}
 
                         {!showShiftsOnChart ? (
                           // Общая линия производства
@@ -923,17 +1402,31 @@ export default function ProductionAnalysisPage() {
                       </svg>
 
                       {/* Метка нормы */}
-                      <div
-                        className="absolute left-14 pointer-events-none"
-                        style={{
-                          top: `${normY}%`,
-                          transform: 'translateY(-50%)'
-                        }}
-                      >
-                        <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
-                          Норма: {DAILY_TARGET} т
+                      {!showShiftsOnChart ? (
+                        <div
+                          className="absolute left-14 pointer-events-none"
+                          style={{
+                            top: `${normY}%`,
+                            transform: 'translateY(-50%)'
+                          }}
+                        >
+                          <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                            Норма: {DAILY_TARGET} т
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div
+                          className="absolute left-14 pointer-events-none"
+                          style={{
+                            top: `${shiftNormY}%`,
+                            transform: 'translateY(-50%)'
+                          }}
+                        >
+                          <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                            Норма смены: {SHIFT_TARGET} т
+                          </div>
+                        </div>
+                      )}
 
                       {/* Легенда при показе смен */}
                       {showShiftsOnChart && (
@@ -975,37 +1468,68 @@ export default function ProductionAnalysisPage() {
                                 }}
                               >
                                 <div
-                                  className="w-3.5 h-3.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-md"
+                                  className="w-3.5 h-3.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-md z-10"
                                   style={{ backgroundColor: pointColor }}
                                 ></div>
 
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                                  <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
-                                    <div className="text-xs text-slate-600 mb-2 font-mono">
-                                      {new Date(point.date).toLocaleDateString('ru-RU', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric',
-                                      })}
-                                    </div>
-                                    <div className="space-y-1">
-                                      <div className="text-xs text-amber-600">
-                                        <span className="font-medium">День:</span> {point.dayShift?.toFixed(2)} т
-                                      </div>
-                                      <div className="text-xs text-purple-600">
-                                        <span className="font-medium">Ночь:</span> {point.nightShift?.toFixed(2)} т
-                                      </div>
-                                      <div className="text-sm font-bold pt-1 border-t border-slate-200" style={{ color: pointColor }}>
-                                        Всего: {point.total?.toFixed(2)} т
-                                      </div>
-                                      {point.total < DAILY_TARGET && (
-                                        <div className="text-xs text-red-600 pt-1">
-                                          Ниже нормы на {(DAILY_TARGET - point.total).toFixed(2)} т
-                                        </div>
-                                      )}
-                                    </div>
+                                {/* Постоянное отображение значения */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                  <div
+                                    className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                                    style={{ backgroundColor: pointColor }}
+                                  >
+                                    {point.total?.toFixed(0)}
                                   </div>
                                 </div>
+
+                                {/* Детальный tooltip при наведении */}
+                                {(() => {
+                                  const tooltipRight = x > 50;
+                                  return (
+                                    <div
+                                      className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
+                                    >
+                                      <div className="bg-white border-2 border-blue-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[240px]">
+                                        <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                          {new Date(point.date).toLocaleDateString('ru-RU', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                          })}
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-xs text-slate-600">Дневная смена:</span>
+                                            <span className="text-sm font-semibold text-amber-600">{point.dayShift?.toFixed(2)} т</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-xs text-slate-600">Ночная смена:</span>
+                                            <span className="text-sm font-semibold text-purple-600">{point.nightShift?.toFixed(2)} т</span>
+                                          </div>
+                                          <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                                            <span className="text-xs text-slate-600">Всего:</span>
+                                            <span className="text-lg font-bold" style={{ color: pointColor }}>{point.total?.toFixed(2)} т</span>
+                                          </div>
+                                          {point.total < DAILY_TARGET && (
+                                            <div className="pt-2 border-t border-red-200">
+                                              <div className="text-xs text-red-600">
+                                                Ниже нормы на <span className="font-bold">{(DAILY_TARGET - point.total).toFixed(2)} т</span>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {/* Стрелка указатель */}
+                                      <div
+                                        className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                          tooltipRight
+                                            ? 'left-full border-l-[8px] border-l-blue-400 border-y-transparent border-y-[8px] border-r-0'
+                                            : 'right-full border-r-[8px] border-r-blue-400 border-y-transparent border-y-[8px] border-l-0'
+                                        }`}
+                                      ></div>
+                                    </div>
+                                  );
+                                })()}
 
                                 {index % Math.max(1, Math.floor(productionData.length / 12)) === 0 && (
                                   <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
@@ -1021,50 +1545,116 @@ export default function ProductionAnalysisPage() {
                               <>
                                 {/* Точка дневной смены */}
                                 <div
-                                  className="absolute group"
+                                  className="absolute group/day"
                                   style={{
                                     left: `calc(3rem + (100% - 3rem) * ${x} / 100)`,
                                     top: `${yDay}%`,
                                     transform: 'translate(-50%, -50%)'
                                   }}
                                 >
-                                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"></div>
+                                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"></div>
+
+                                  {/* Постоянное отображение значения дневной смены */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                    <div className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+                                      {point.dayShift?.toFixed(0)}
+                                    </div>
+                                  </div>
+
+                                  {/* Детальный tooltip при наведении на дневную точку */}
+                                  {(() => {
+                                    const tooltipRight = x > 50;
+                                    return (
+                                      <div
+                                        className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover/day:block z-30`}
+                                      >
+                                        <div className="bg-white border-2 border-amber-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[220px]">
+                                          <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                            {new Date(point.date).toLocaleDateString('ru-RU', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: 'numeric',
+                                            })}
+                                          </div>
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-slate-600">Дневная смена:</span>
+                                              <span className="text-lg font-bold text-amber-600">{point.dayShift?.toFixed(2)} т</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {/* Стрелка указатель */}
+                                        <div
+                                          className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                            tooltipRight
+                                              ? 'left-full border-l-[8px] border-l-amber-400 border-y-transparent border-y-[8px] border-r-0'
+                                              : 'right-full border-r-[8px] border-r-amber-400 border-y-transparent border-y-[8px] border-l-0'
+                                          }`}
+                                        ></div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
 
                                 {/* Точка ночной смены */}
                                 <div
-                                  className="absolute group"
+                                  className="absolute group/night"
                                   style={{
                                     left: `calc(3rem + (100% - 3rem) * ${x} / 100)`,
                                     top: `${yNight}%`,
                                     transform: 'translate(-50%, -50%)'
                                   }}
                                 >
-                                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm"></div>
+                                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"></div>
 
-                                  {/* Tooltip для режима смен (показываем на ночной точке) */}
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                                    <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
-                                      <div className="text-xs text-slate-600 mb-2 font-mono">
-                                        {new Date(point.date).toLocaleDateString('ru-RU', {
-                                          day: '2-digit',
-                                          month: '2-digit',
-                                          year: 'numeric',
-                                        })}
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs text-amber-600">
-                                          <span className="font-medium">День:</span> {point.dayShift?.toFixed(2)} т
-                                        </div>
-                                        <div className="text-xs text-purple-600">
-                                          <span className="font-medium">Ночь:</span> {point.nightShift?.toFixed(2)} т
-                                        </div>
-                                        <div className="text-sm font-bold pt-1 border-t border-slate-200" style={{ color: pointColor }}>
-                                          Всего: {point.total?.toFixed(2)} т
-                                        </div>
-                                      </div>
+                                  {/* Постоянное отображение значения ночной смены */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                    <div className="bg-purple-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+                                      {point.nightShift?.toFixed(0)}
                                     </div>
                                   </div>
+
+                                  {/* Детальный tooltip при наведении на ночную точку */}
+                                  {(() => {
+                                    const tooltipRight = x > 50;
+                                    return (
+                                      <div
+                                        className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover/night:block z-30`}
+                                      >
+                                        <div className="bg-white border-2 border-purple-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[240px]">
+                                          <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                            {new Date(point.date).toLocaleDateString('ru-RU', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: 'numeric',
+                                            })}
+                                          </div>
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-slate-600">Дневная смена:</span>
+                                              <span className="text-sm font-semibold text-amber-600">{point.dayShift?.toFixed(2)} т</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-xs text-slate-600">Ночная смена:</span>
+                                              <span className="text-sm font-semibold text-purple-600">{point.nightShift?.toFixed(2)} т</span>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                                              <span className="text-xs text-slate-600">Всего:</span>
+                                              <span className="text-lg font-bold" style={{ color: pointColor }}>{point.total?.toFixed(2)} т</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {/* Стрелка указатель */}
+                                        <div
+                                          className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                            tooltipRight
+                                              ? 'left-full border-l-[8px] border-l-purple-400 border-y-transparent border-y-[8px] border-r-0'
+                                              : 'right-full border-r-[8px] border-r-purple-400 border-y-transparent border-y-[8px] border-l-0'
+                                          }`}
+                                        ></div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
 
                                 {index % Math.max(1, Math.floor(productionData.length / 12)) === 0 && (
@@ -1271,8 +1861,8 @@ export default function ProductionAnalysisPage() {
                   </button>
                 </div>
                 <div className="space-y-6">
-                  {techCollections.map((collection) =>
-                    renderTechnicalChart(collection.name, collection.title)
+                  {techCollections.map((collection, idx) =>
+                    renderTechnicalChart(collection.collections, collection.title, collection.group, `${collection.name}_${collection.group || idx}`)
                   )}
                 </div>
               </div>
@@ -1329,19 +1919,26 @@ export default function ProductionAnalysisPage() {
                 </div>
 
                 <div className="space-y-4 bg-slate-50 rounded-lg p-4 border border-slate-200 max-h-96 overflow-y-auto">
-                  {techCollections.map(collection => {
-                    const metrics = techMetrics[collection.name] || [];
+                  {techCollections.map((collection, idx) => {
+                    // Объединяем метрики из всех коллекций группы
+                    const allCollectionMetrics = collection.collections.flatMap(coll => techMetrics[coll] || []);
+                    const metrics = getMetricsForGroup(collection.group, allCollectionMetrics);
                     if (metrics.length === 0) return null;
 
                     return (
-                      <div key={collection.name}>
+                      <div key={`${collection.name}_${collection.group || idx}`}>
                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
                           {collection.title}
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {metrics.map((metric: any) => {
+                            // Находим в какой реальной коллекции находится эта метрика
+                            const realCollection = collection.collections.find(coll =>
+                              (techMetrics[coll] || []).some((m: any) => m.title === metric.title)
+                            ) || collection.collections[0];
+
                             const isSelected = customTechMetrics.some(
-                              m => m.collection === collection.name && m.metric === metric.title
+                              m => m.collection === realCollection && m.metric === metric.title
                             );
                             return (
                               <label
@@ -1355,7 +1952,7 @@ export default function ProductionAnalysisPage() {
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
-                                  onChange={() => toggleCustomTechMetric(collection.name, metric.title)}
+                                  onChange={() => toggleCustomTechMetric(realCollection, metric.title)}
                                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                                 />
                                 <span className="text-sm font-semibold text-slate-800">{metric.title}</span>

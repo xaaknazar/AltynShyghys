@@ -98,6 +98,19 @@ export async function GET(request: NextRequest) {
         isNightShift = true;
         productionDate = new Date(localTime);
         productionDate.setUTCDate(productionDate.getUTCDate() - 1); // Вычитаем день
+
+        // Детальное логирование для проверки
+        const prodDay = productionDate.toISOString().split('T')[0];
+        if (prodDay === '2025-07-09' && difference > 10000) {
+          console.log('⚠️  АНОМАЛИЯ ОБНАРУЖЕНА:');
+          console.log(`   Документ datetime: ${doc.datetime.toISOString()}`);
+          console.log(`   Локальное время: ${localTime.toISOString()}`);
+          console.log(`   Час: ${hour}`);
+          console.log(`   Производственный день: ${prodDay}`);
+          console.log(`   difference: ${difference.toFixed(2)} т`);
+          console.log(`   value: ${doc.value?.toFixed(2) || 'N/A'} т`);
+          console.log(`   shift_type: ${doc.shift_type || 'N/A'}`);
+        }
       }
       // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню
       // так как сутки начинаются в 20:00 предыдущего дня
