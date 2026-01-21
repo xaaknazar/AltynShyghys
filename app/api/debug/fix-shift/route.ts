@@ -9,7 +9,7 @@ export const revalidate = 0;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { date, dryRun = true } = body; // date: YYYY-MM-DD
+    const { date, dryRun = true, manualValue = null } = body; // date: YYYY-MM-DD, manualValue: ручное значение
 
     if (!date) {
       return NextResponse.json(
@@ -98,7 +98,12 @@ export async function POST(request: NextRequest) {
     let wasCounterReset = false;
     let calculationMethod = '';
 
-    if (rawData.length === 0) {
+    // Если указано ручное значение, используем его
+    if (manualValue !== null) {
+      correctDifference = manualValue;
+      calculationMethod = `Ручная установка значения: ${manualValue} т`;
+      wasCounterReset = true;
+    } else if (rawData.length === 0) {
       // Нет сырых данных - проверяем предыдущую смену
       // Для ночной смены производственного дня X, предыдущая дневная смена имеет prodDay = X-1
       let previousDayShift = null;
