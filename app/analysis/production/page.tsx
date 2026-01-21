@@ -36,11 +36,12 @@ export default function ProductionAnalysisPage() {
   const SHIFT_TARGET = 600; // Целевое производство за смену (тонн)
 
   const techCollections = [
-    { name: 'Extractor_TechData_Job', title: 'Экстрактор' },
-    { name: 'Press_1_Job', title: 'Пресс 1' },
-    { name: 'Press_2_Job', title: 'Пресс 2' },
-    { name: 'Press_Jarovnia_Mezga', title: 'Жаровня и Мезга' },
-    { name: 'Data_extractor_cooking', title: 'Экстрактор и Жаровня (дополнительно)' },
+    { name: 'Extractor_TechData_Job', title: 'Экстрактор', group: null },
+    { name: 'Press_1_Job', title: 'Пресс 1', group: null },
+    { name: 'Press_2_Job', title: 'Пресс 2', group: null },
+    { name: 'Data_extractor_cooking', title: 'Экстрактор', group: 'extractor' },
+    { name: 'Data_extractor_cooking', title: 'Жаровня', group: 'jarovnia' },
+    { name: 'Data_extractor_cooking', title: 'Тостер', group: 'toster' },
   ];
 
   // Нормы для метрик (одно значение или диапазон [min, max])
@@ -183,19 +184,22 @@ export default function ProductionAnalysisPage() {
 
   const fetchTechnicalData = async (date: string) => {
     try {
-      const promises = techCollections.map(async (collection) => {
+      // Получаем уникальные названия коллекций
+      const uniqueCollectionNames = [...new Set(techCollections.map(c => c.name))];
+
+      const promises = uniqueCollectionNames.map(async (collectionName) => {
         const params = new URLSearchParams({
           date: date,
-          collection: collection.name,
+          collection: collectionName,
         });
 
         const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
         const data = await response.json();
 
         if (data.success) {
-          return { name: collection.name, data: data.data || [], metrics: data.metrics || [] };
+          return { name: collectionName, data: data.data || [], metrics: data.metrics || [] };
         }
-        return { name: collection.name, data: [], metrics: [] };
+        return { name: collectionName, data: [], metrics: [] };
       });
 
       const results = await Promise.all(promises);
@@ -296,15 +300,56 @@ export default function ProductionAnalysisPage() {
     }
   };
 
-  const renderTechnicalChart = (collectionName: string, title: string) => {
-    const data = techData[collectionName] || [];
-    const metrics = techMetrics[collectionName] || [];
+  // Определяем какие метрики относятся к каждой группе
+  const getMetricsForGroup = (collectionName: string, group: string | null, allMetrics: any[]) => {
+    if (group === null) {
+      // Если нет группы, возвращаем все метрики
+      return allMetrics;
+    }
 
-    const selected = selectedMetrics[collectionName] || [];
+    if (collectionName === 'Data_extractor_cooking') {
+      if (group === 'extractor') {
+        // Экстрактор: Вакуум, Температура масла, Коэффициент, Подача, Процентаж, Гексан
+        return allMetrics.filter((m: any) =>
+          m.title.includes('Вакуум') ||
+          m.title.includes('Температура масла') ||
+          m.title.includes('Коэффициент Экстрактора') ||
+          m.title.includes('Подача в Экстрактор') ||
+          m.title.includes('Процентаж Экстрактора') ||
+          m.title.includes('Подача Чистого Гексана')
+        );
+      } else if (group === 'jarovnia') {
+        // Жаровня: все температуры жаровни
+        return allMetrics.filter((m: any) =>
+          m.title.includes('Жаровни 1') ||
+          m.title.includes('Жаровни 2')
+        );
+      } else if (group === 'toster') {
+        // Тостер: температура тостера
+        return allMetrics.filter((m: any) =>
+          m.title.includes('Тостера')
+        );
+      }
+    }
+
+    return allMetrics;
+  };
+
+  const renderTechnicalChart = (collectionName: string, title: string, group: string | null, uniqueKey: string) => {
+    const data = techData[collectionName] || [];
+    const allMetrics = techMetrics[collectionName] || [];
+
+    // Фильтруем метрики по группе
+    const metrics = getMetricsForGroup(collectionName, group, allMetrics);
+
+    // Генерируем уникальный ключ для selectedMetrics
+    const selectionKey = group ? `${collectionName}_${group}` : collectionName;
+
+    const selected = selectedMetrics[selectionKey] || [];
     const selectedMetricsData = metrics.filter((m: any) => selected.includes(m.title));
 
     return (
-      <div key={collectionName} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <div key={uniqueKey} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h3 className="text-lg font-display font-bold text-slate-700 mb-4">{title}</h3>
 
         {/* Проверка наличия данных */}
@@ -333,7 +378,7 @@ export default function ProductionAnalysisPage() {
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  onChange={() => toggleMetricSelection(collectionName, metric.title)}
+                  onChange={() => toggleMetricSelection(selectionKey, metric.title)}
                   className="w-4 h-4 cursor-pointer"
                   style={{ accentColor: color }}
                 />
@@ -1817,8 +1862,8 @@ export default function ProductionAnalysisPage() {
                   </button>
                 </div>
                 <div className="space-y-6">
-                  {techCollections.map((collection) =>
-                    renderTechnicalChart(collection.name, collection.title)
+                  {techCollections.map((collection, idx) =>
+                    renderTechnicalChart(collection.name, collection.title, collection.group, `${collection.name}_${collection.group || idx}`)
                   )}
                 </div>
               </div>
@@ -1875,12 +1920,16 @@ export default function ProductionAnalysisPage() {
                 </div>
 
                 <div className="space-y-4 bg-slate-50 rounded-lg p-4 border border-slate-200 max-h-96 overflow-y-auto">
-                  {techCollections.map(collection => {
-                    const metrics = techMetrics[collection.name] || [];
+                  {techCollections.map((collection, idx) => {
+                    const metrics = getMetricsForGroup(
+                      collection.name,
+                      collection.group,
+                      techMetrics[collection.name] || []
+                    );
                     if (metrics.length === 0) return null;
 
                     return (
-                      <div key={collection.name}>
+                      <div key={`${collection.name}_${collection.group || idx}`}>
                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
                           {collection.title}
                         </h4>
