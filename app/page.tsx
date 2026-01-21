@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import DailyStatsCard from '@/app/components/DailyStatsCard';
 import CurrentDayChart from '@/app/components/CurrentDayChart';
 import DayDetailModal from '@/app/components/DayDetailModal';
@@ -118,13 +117,10 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full xl:w-auto">
               <div>
                 <div className="mb-2">
-                  <Image
+                  <img
                     src="/logo.jpg"
                     alt="Altyn Shyghys"
-                    width={200}
-                    height={60}
-                    className="h-12 w-auto object-contain"
-                    priority
+                    className="h-16 w-auto object-contain"
                   />
                 </div>
                 <p className="text-sm text-corporate-neutral-600 mt-1.5 font-medium">
