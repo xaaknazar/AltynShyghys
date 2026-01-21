@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import DailyStatsCard from '@/app/components/DailyStatsCard';
 import CurrentDayChart from '@/app/components/CurrentDayChart';
 import DayDetailModal from '@/app/components/DayDetailModal';
@@ -116,9 +117,16 @@ export default function HomePage() {
             {/* Левая часть с названием и текущей подачей */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full xl:w-auto">
               <div>
-                <h1 className="text-3xl lg:text-4xl font-display font-bold text-corporate-primary-600 tracking-tight">
-                  Altyn Shyghys
-                </h1>
+                <div className="mb-2">
+                  <Image
+                    src="/logo.jpg"
+                    alt="Altyn Shyghys"
+                    width={200}
+                    height={60}
+                    className="h-12 w-auto object-contain"
+                    priority
+                  />
+                </div>
                 <p className="text-sm text-corporate-neutral-600 mt-1.5 font-medium">
                   Производственная панель мониторинга
                 </p>
