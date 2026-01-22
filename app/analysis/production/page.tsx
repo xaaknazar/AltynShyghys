@@ -446,20 +446,33 @@ export default function ProductionAnalysisPage() {
                   );
                 })}
               </div>
-              {selectedMetricsData.length > 0 && (
+              {allData.length > 0 && metrics.length > 0 && (
                 <button
                   onClick={() => {
+                    // Экспортируем ВСЕ метрики, а не только выбранные
                     const exportData = allData.map(d => {
-                      const row: any = {time: d.time};
-                      selectedMetricsData.forEach((metric: any) => {
-                        row[metric.title] = d[metric.title];
+                      const row: any = {
+                        time: new Date(d.time).toLocaleString('ru-RU', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      };
+
+                      // Добавляем все метрики
+                      metrics.forEach((metric: any) => {
+                        const value = d[metric.title];
+                        row[metric.title] = value !== undefined && value !== null ? value : '';
                       });
+
                       return row;
                     });
 
                     const columns = [
                       {key: 'time', label: 'Время'},
-                      ...selectedMetricsData.map((m: any) => ({key: m.title, label: `${m.title} (${m.unit})`}))
+                      ...metrics.map((m: any) => ({key: m.title, label: `${m.title} (${m.unit})`}))
                     ];
 
                     exportToExcel(exportData, `tech_${title}_${selectedDate}`, columns);

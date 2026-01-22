@@ -310,6 +310,54 @@ export default function HomePage() {
           <h2 className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-4">
             Сводка за месяц
           </h2>
+
+          {/* Общие показатели за месяц */}
+          {(() => {
+            const totalProduced = dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0);
+            const totalPlan = dailyGrouped.length * TARGETS.daily;
+            const totalCompletion = (totalProduced / totalPlan) * 100;
+
+            return (
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-5 mb-4">
+                <div className="grid grid-cols-3 gap-6">
+                  {/* Произведено */}
+                  <div>
+                    <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
+                      Произведено, т
+                    </div>
+                    <div className="text-2xl font-bold tabular-nums text-slate-900">
+                      {totalProduced.toFixed(0)}
+                    </div>
+                  </div>
+
+                  {/* План */}
+                  <div>
+                    <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
+                      План, т
+                    </div>
+                    <div className="text-2xl font-bold tabular-nums text-slate-700">
+                      {totalPlan.toFixed(0)}
+                    </div>
+                  </div>
+
+                  {/* Выполнение */}
+                  <div>
+                    <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
+                      Выполнение, %
+                    </div>
+                    <div className={`text-2xl font-bold tabular-nums ${
+                      totalCompletion >= 100 ? 'text-emerald-600' :
+                      totalCompletion >= 80 ? 'text-amber-600' :
+                      'text-red-600'
+                    }`}>
+                      {totalCompletion.toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -323,10 +371,13 @@ export default function HomePage() {
               <tbody className="divide-y divide-slate-100">
                 {dailyGrouped.reverse().map((day, idx) => {
                   const completion = (day.stats.totalProduction / TARGETS.daily) * 100;
+                  // Парсим дату локально, избегая проблем с часовыми поясами
+                  const [year, month, dayNum] = day.date.split('-').map(Number);
+                  const localDate = new Date(year, month - 1, dayNum);
                   return (
                     <tr key={idx} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {new Date(day.date).toLocaleDateString('ru-RU', {
+                        {localDate.toLocaleDateString('ru-RU', {
                           day: '2-digit',
                           month: 'short'
                         })}

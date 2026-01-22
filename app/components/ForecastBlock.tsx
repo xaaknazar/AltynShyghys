@@ -37,9 +37,6 @@ export default function ForecastBlock({
         <h3 className="text-sm uppercase tracking-wider font-semibold text-slate-700">
           Прогноз до конца суток
         </h3>
-        <div className={`${conf.bg} ${conf.color} px-3 py-1 rounded text-xs font-semibold uppercase tracking-wider`}>
-          {conf.label}
-        </div>
       </div>
 
       {/* Основные цифры */}
