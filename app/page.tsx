@@ -76,37 +76,33 @@ export default function HomePage() {
   // Вычисления для KPI и прогноза
   const currentSpeed = latestData?.speed || 0;
 
-  // Рассчитываем время с начала суток (00:00)
+  // Рассчитываем время с начала ПРОИЗВОДСТВЕННЫХ суток (20:00 вчера)
   const now = new Date();
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
-  const hoursPassed = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
+  const startOfProductionDay = new Date(now);
 
-  // ВАЖНО: Фильтруем данные только с 00:00 текущего дня (календарные сутки)
-  // API возвращает данные за производственные сутки (20:00-20:00),
-  // но на главной странице показываем календарные сутки (00:00-23:59)
-  const todayData = currentDayData?.data?.filter(d => {
-    const itemDate = new Date(d.datetime);
-    return itemDate >= startOfDay;
-  }) || [];
+  // Если сейчас до 20:00, то сутки начались вчера в 20:00
+  // Если после 20:00, то сутки начались сегодня в 20:00
+  if (now.getHours() < 20) {
+    startOfProductionDay.setDate(startOfProductionDay.getDate() - 1);
+  }
+  startOfProductionDay.setHours(20, 0, 0, 0);
 
-  // Производство с 00:00 текущего дня
-  const produced = todayData.reduce((sum, d) => {
-    const diff = d.difference || 0;
-    return sum + (diff > 0 ? diff : 0);
-  }, 0);
+  const hoursPassed = (now.getTime() - startOfProductionDay.getTime()) / (1000 * 60 * 60);
 
-  // Средняя скорость за календарные сутки (с 00:00)
-  const averageSpeed = hoursPassed > 0 ? produced / hoursPassed : 0;
+  // Производство за производственные сутки (API уже возвращает правильные данные)
+  const produced = currentStats.totalProduction;
+
+  // Средняя скорость берем из базы данных
+  const averageSpeed = currentStats.averageSpeed || 0;
 
   // Определяем текущую смену и среднюю скорость смены
   const currentHour = now.getHours();
   const isNightShift = currentHour >= 20 || currentHour < 8;
 
-  // Рассчитываем среднюю скорость текущей смены (используем todayData с 00:00)
-  let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за прошедшее время
-  if (todayData.length > 0) {
-    const shiftData = todayData.filter(d => {
+  // Рассчитываем среднюю скорость текущей смены
+  let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за производственные сутки
+  if (currentDayData?.data && currentDayData.data.length > 0) {
+    const shiftData = currentDayData.data.filter(d => {
       const dataHour = new Date(d.datetime).getHours();
       if (isNightShift) {
         return dataHour >= 20 || dataHour < 8;
@@ -125,10 +121,17 @@ export default function HomePage() {
   const deviation = produced - currentPlan;
   const deviationPercent = (deviation / currentPlan) * 100;
 
-  // Прогноз до конца суток - используем СРЕДНЮЮ скорость за прошедшее время
-  const endOfDay = new Date(now);
-  endOfDay.setHours(23, 59, 59, 999);
-  const hoursRemaining = Math.max(0, (endOfDay.getTime() - now.getTime()) / (1000 * 60 * 60));
+  // Прогноз до конца ПРОИЗВОДСТВЕННЫХ суток (20:00)
+  const endOfProductionDay = new Date(now);
+
+  // Если сейчас до 20:00, то конец суток сегодня в 20:00
+  // Если после 20:00, то конец суток завтра в 20:00
+  if (now.getHours() >= 20) {
+    endOfProductionDay.setDate(endOfProductionDay.getDate() + 1);
+  }
+  endOfProductionDay.setHours(20, 0, 0, 0);
+
+  const hoursRemaining = Math.max(0, (endOfProductionDay.getTime() - now.getTime()) / (1000 * 60 * 60));
   const forecast = produced + (averageSpeed * hoursRemaining);
 
   // Определяем статус
