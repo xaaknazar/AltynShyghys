@@ -199,7 +199,7 @@ export default function HomePage() {
               format="integer"
             />
             <KPIMetricCard
-              label="Отклонение"
+              label="Разница от плана"
               value={Math.abs(deviation)}
               unit="т"
               trend={deviation >= 0 ? 'up' : 'down'}
