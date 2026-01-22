@@ -163,14 +163,8 @@ export default function TechnicalChart({
                 </defs>
                 <rect width="100" height="100" fill={`url(#grid-${uniqueKey})`} />
 
-                {/* Оси X и Y */}
+                {/* Горизонтальные линии-сетка */}
                 <g>
-                  {/* Ось Y (левая вертикальная линия) */}
-                  <line x1="2" y1="2" x2="2" y2="98" stroke="#475569" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                  {/* Ось X (нижняя горизонтальная линия) */}
-                  <line x1="2" y1="98" x2="98" y2="98" stroke="#475569" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-
-                  {/* Деления на оси Y (горизонтальные линии) */}
                   {[0, 25, 50, 75, 100].map((tick) => (
                     <line
                       key={`y-tick-${tick}`}
@@ -181,7 +175,7 @@ export default function TechnicalChart({
                       stroke="#94a3b8"
                       strokeWidth="1"
                       strokeDasharray="2,2"
-                      opacity="0.5"
+                      opacity="0.3"
                       vectorEffect="non-scaling-stroke"
                     />
                   ))}
@@ -246,7 +240,7 @@ export default function TechnicalChart({
                 })}
               </svg>
 
-              {/* Метки на оси Y и название оси */}
+              {/* Метки на Y */}
               {selectedMetricsData.length > 0 && (() => {
                 const metric = selectedMetricsData[0];
                 const metricData = allData.filter((d: any) => d[metric.title] !== undefined);
@@ -261,17 +255,6 @@ export default function TechnicalChart({
 
                 return (
                   <>
-                    {/* Название оси Y */}
-                    <div
-                      className="absolute pointer-events-none text-sm font-bold text-slate-700"
-                      style={{
-                        left: '10px',
-                        top: '-20px'
-                      }}
-                    >
-                      Значение ({metric.unit})
-                    </div>
-
                     {/* Метки значений */}
                     {[0, 25, 50, 75, 100].map((tick) => {
                       const value = minValue + (tick / 100) * (maxValue - minValue);
@@ -280,32 +263,20 @@ export default function TechnicalChart({
                       return (
                         <div
                           key={`y-label-${tick}`}
-                          className="absolute left-0 pointer-events-none text-xs font-mono text-slate-600 font-semibold"
+                          className="absolute left-0 pointer-events-none text-xs font-mono text-slate-700 font-bold bg-white px-2 py-1 rounded border border-slate-300"
                           style={{
                             top: `${yPos}%`,
                             transform: 'translate(-100%, -50%)',
                             marginLeft: '-8px'
                           }}
                         >
-                          {value.toFixed(1)}
+                          {value.toFixed(1)} {metric.unit}
                         </div>
                       );
                     })}
                   </>
                 );
               })()}
-
-              {/* Название оси X */}
-              <div
-                className="absolute pointer-events-none text-sm font-bold text-slate-700"
-                style={{
-                  left: '50%',
-                  bottom: '-60px',
-                  transform: 'translateX(-50%)'
-                }}
-              >
-                Время
-              </div>
 
               {/* Точки и tooltips как HTML элементы */}
               {selectedMetricsData.map((metric: any) => {
@@ -332,7 +303,12 @@ export default function TechnicalChart({
                 });
 
                 return points.map((p, index) => {
-                  const showTime = index % Math.max(1, Math.floor(points.length / 12)) === 0;
+                  const showTime = index % Math.max(1, Math.floor(points.length / 10)) === 0;
+
+                  // Проверяем, меняется ли дата
+                  const currentDate = p.time.split(' ')[0];
+                  const prevDate = index > 0 ? points[index - 1].time.split(' ')[0] : '';
+                  const isNewDay = currentDate !== prevDate;
 
                   return (
                     <div
@@ -358,10 +334,34 @@ export default function TechnicalChart({
                         {p.value?.toFixed(1)}
                       </div>
 
-                      {/* Метка времени на оси X */}
-                      {showTime && (
-                        <div className="absolute left-1/2 -translate-x-1/2 text-xs text-slate-600 font-mono -rotate-45 origin-top whitespace-nowrap" style={{ top: '100%', marginTop: '8px' }}>
-                          {formatTime(p.time, true)}
+                      {/* Вертикальная линия при смене даты */}
+                      {isNewDay && (
+                        <div
+                          className="absolute pointer-events-none"
+                          style={{
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: '2px',
+                            height: '500px',
+                            backgroundColor: '#ef4444',
+                            opacity: 0.3,
+                            zIndex: 1
+                          }}
+                        />
+                      )}
+
+                      {/* Метка даты при смене дня */}
+                      {isNewDay && (
+                        <div className="absolute left-1/2 -translate-x-1/2 text-sm font-bold text-red-600 bg-white px-3 py-1 rounded border-2 border-red-600 shadow-lg whitespace-nowrap" style={{ top: '100%', marginTop: '8px' }}>
+                          {formatTime(p.time, false)}
+                        </div>
+                      )}
+
+                      {/* Метка времени */}
+                      {showTime && !isNewDay && (
+                        <div className="absolute left-1/2 -translate-x-1/2 text-xs text-slate-700 font-semibold font-mono whitespace-nowrap" style={{ top: '100%', marginTop: '8px' }}>
+                          {p.time.split(' ')[1]}
                         </div>
                       )}
 
