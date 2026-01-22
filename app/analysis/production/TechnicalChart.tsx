@@ -53,8 +53,8 @@ export default function TechnicalChart({
     );
   }
 
-  // Вычисляем ширину графика: минимум 15px на точку
-  const graphWidth = Math.max(1000, allData.length * 15);
+  // Вычисляем ширину графика: минимум 20px на точку для большей читаемости
+  const graphWidth = Math.max(1400, allData.length * 20);
 
   // Функция для форматирования времени
   const formatTime = (timeStr: string, short = false) => {
@@ -152,7 +152,7 @@ export default function TechnicalChart({
 
           {/* Контейнер графика со скроллом */}
           <div className="bg-slate-50 rounded-lg p-6 border border-slate-200 overflow-x-auto">
-            <div className="relative" style={{ width: `${graphWidth}px`, height: '400px' }}>
+            <div className="relative" style={{ width: `${graphWidth}px`, height: '500px' }}>
               {/* SVG с графиком */}
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                 {/* Сетка */}

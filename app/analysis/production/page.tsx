@@ -107,11 +107,11 @@ export default function ProductionAnalysisPage() {
   }, [startDate, endDate, shiftFilter, viewMode, startMonth, startYear, endMonth, endYear]);
 
   useEffect(() => {
-    if (viewMode === 'detailed' && startDate) {
+    if (viewMode === 'detailed' && startDate && endDate) {
       fetchDetailedData(startDate);
-      fetchTechnicalData(startDate);
+      fetchTechnicalData(startDate, endDate);
     }
-  }, [startDate, viewMode]);
+  }, [startDate, endDate, viewMode]);
 
   const fetchProductionData = async () => {
     setLoading(true);
@@ -178,26 +178,55 @@ export default function ProductionAnalysisPage() {
     }
   };
 
-  const fetchTechnicalData = async (date: string) => {
+  const fetchTechnicalData = async (startDate: string, endDate: string) => {
     try {
-      // Получаем уникальные названия коллекций из всех элементов
+      // Генерируем все даты в диапазоне
+      const dates: string[] = [];
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split('T')[0]);
+      }
+
+      console.log(`📅 Loading technical data for ${dates.length} days: ${dates[0]} to ${dates[dates.length - 1]}`);
+
+      // Получаем уникальные названия коллекций
       const allCollectionNames = techCollections.flatMap(c => c.collections || [c.name]);
       const uniqueCollectionNames = [...new Set(allCollectionNames)];
 
+      // Загружаем данные для каждой коллекции за весь период
       const promises = uniqueCollectionNames.map(async (collectionName) => {
-        const params = new URLSearchParams({
-          date: date,
-          collection: collectionName,
+        // Загружаем данные для каждого дня
+        const dailyPromises = dates.map(async (date) => {
+          const params = new URLSearchParams({
+            date: date,
+            collection: collectionName,
+          });
+
+          const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
+          const data = await response.json();
+
+          if (data.success && data.data) {
+            return data.data;
+          }
+          return [];
         });
 
-        const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
-        const data = await response.json();
+        const dailyResults = await Promise.all(dailyPromises);
+        // Объединяем данные за все дни
+        const allData = dailyResults.flat();
 
-        if (data.success && data.data) {
-          // Возвращаем все данные из API без фильтрации
-          return { name: collectionName, data: data.data, metrics: data.metrics || [] };
-        }
-        return { name: collectionName, data: [], metrics: [] };
+        // Получаем метрики из первого успешного запроса
+        const metricsPromise = fetch(`/api/technical-data/detailed?${new URLSearchParams({
+          date: dates[0],
+          collection: collectionName,
+        })}`, { cache: 'no-store' });
+
+        const metricsData = await metricsPromise.then(r => r.json());
+        const metrics = metricsData.success ? metricsData.metrics || [] : [];
+
+        return { name: collectionName, data: allData, metrics };
       });
 
       const results = await Promise.all(promises);
@@ -209,6 +238,8 @@ export default function ProductionAnalysisPage() {
         newTechData[result.name] = result.data;
         newTechMetrics[result.name] = result.metrics;
       });
+
+      console.log(`✅ Loaded technical data: ${Object.values(newTechData).flat().length} total points`);
 
       setTechData(newTechData);
       setTechMetrics(newTechMetrics);
