@@ -488,7 +488,7 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-80 pt-8 pb-12 px-16 overflow-x-auto">
+              <div className="relative h-96 pt-16 pb-16 px-20 overflow-x-auto">
                 {(() => {
                   // Подготовка данных для всех метрик
                   const metricsWithData = selectedMetricsData.map((metric: any) => {
@@ -518,7 +518,10 @@ export default function ProductionAnalysisPage() {
                     const valueRange = maxValue - minValue;
 
                     const points = metricData.map((point: any, index: number) => {
-                      const x = (index / (metricData.length - 1 || 1)) * 100;
+                      // Добавляем margin 3% слева и справа для видимости крайних точек
+                      const xMargin = 3;
+                      const xRange = 100 - (2 * xMargin);
+                      const x = xMargin + (index / (metricData.length - 1 || 1)) * xRange;
                       const normalizedValue = valueRange !== 0 ? ((point[metric.title] - minValue) / valueRange) : 0.5;
                       const y = 100 - (normalizedValue * 100);
                       return { x, y, point, value: point[metric.title] };
@@ -601,9 +604,9 @@ export default function ProductionAnalysisPage() {
                             {/* Линия нормы (одно значение) */}
                             {data.normY !== null && (
                               <line
-                                x1="0"
+                                x1="3"
                                 y1={data.normY}
-                                x2="100"
+                                x2="97"
                                 y2={data.normY}
                                 stroke="#ef4444"
                                 strokeWidth="2"
@@ -616,9 +619,9 @@ export default function ProductionAnalysisPage() {
                             {data.isRange && data.normMinY !== null && data.normMaxY !== null && (
                               <>
                                 <line
-                                  x1="0"
+                                  x1="3"
                                   y1={data.normMinY}
-                                  x2="100"
+                                  x2="97"
                                   y2={data.normMinY}
                                   stroke="#10b981"
                                   strokeWidth="2"
@@ -627,9 +630,9 @@ export default function ProductionAnalysisPage() {
                                   opacity="0.7"
                                 />
                                 <line
-                                  x1="0"
+                                  x1="3"
                                   y1={data.normMaxY}
-                                  x2="100"
+                                  x2="97"
                                   y2={data.normMaxY}
                                   stroke="#10b981"
                                   strokeWidth="2"
@@ -639,9 +642,9 @@ export default function ProductionAnalysisPage() {
                                 />
                                 {/* Заливка между линиями норм */}
                                 <rect
-                                  x="0"
+                                  x="3"
                                   y={data.normMaxY}
-                                  width="100"
+                                  width="94"
                                   height={data.normMinY - data.normMaxY}
                                   fill="#10b981"
                                   opacity="0.1"
@@ -702,7 +705,8 @@ export default function ProductionAnalysisPage() {
                       {/* Точки как div */}
                       {metricsWithData.map((data: any) =>
                         data.points.map((p: any, index: number) => {
-                          const tooltipRight = p.x > 50;
+                          // Для крайних точек (первых 20% и последних 20%) показываем tooltip с противоположной стороны
+                          const tooltipRight = p.x < 20 ? false : p.x > 80 ? true : p.x > 50;
                           return (
                             <div
                               key={`${data.metric.title}-${index}`}
