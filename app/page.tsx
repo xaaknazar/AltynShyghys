@@ -84,7 +84,7 @@ export default function HomePage() {
 
   // Вычисления для KPI и прогноза
   const currentSpeed = latestData?.speed || 0;
-  const produced = currentStats.total;
+  const produced = currentStats.totalProduction;
   const plan = TARGETS.daily;
   const deviation = produced - plan;
   const deviationPercent = (deviation / plan) * 100;
@@ -228,7 +228,7 @@ export default function HomePage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {dailyGrouped.slice(-7).reverse().map((day, idx) => {
-                  const completion = (day.stats.total / TARGETS.daily) * 100;
+                  const completion = (day.stats.totalProduction / TARGETS.daily) * 100;
                   return (
                     <tr key={idx} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
@@ -238,7 +238,7 @@ export default function HomePage() {
                         })}
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-slate-900 text-right tabular-nums">
-                        {day.stats.total.toFixed(0)}
+                        {day.stats.totalProduction.toFixed(0)}
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-slate-600 text-right tabular-nums">
                         {TARGETS.daily.toFixed(0)}
