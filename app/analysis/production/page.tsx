@@ -106,13 +106,11 @@ export default function ProductionAnalysisPage() {
   }, [startDate, endDate, shiftFilter, viewMode, startMonth, startYear, endMonth, endYear]);
 
   useEffect(() => {
-    if (viewMode === 'detailed' && startDate && endDate) {
-      // Для детального режима используем только startDate (первый день периода)
+    if (viewMode === 'detailed' && startDate) {
       fetchDetailedData(startDate);
-      // Для технических параметров загружаем за весь период
-      fetchTechnicalData(startDate, endDate);
+      fetchTechnicalData(startDate);
     }
-  }, [startDate, endDate, viewMode]);
+  }, [startDate, viewMode]);
 
   const fetchProductionData = async () => {
     setLoading(true);
@@ -179,7 +177,7 @@ export default function ProductionAnalysisPage() {
     }
   };
 
-  const fetchTechnicalData = async (startDate: string, endDate: string) => {
+  const fetchTechnicalData = async (date: string) => {
     try {
       // Получаем уникальные названия коллекций из всех элементов
       const allCollectionNames = techCollections.flatMap(c => c.collections || [c.name]);
@@ -187,12 +185,11 @@ export default function ProductionAnalysisPage() {
 
       const promises = uniqueCollectionNames.map(async (collectionName) => {
         const params = new URLSearchParams({
-          start_date: startDate,
-          end_date: endDate,
+          date: date,
           collection: collectionName,
         });
 
-        const response = await fetch(`/api/technical-data/range?${params}`, { cache: 'no-store' });
+        const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
         const data = await response.json();
 
         if (data.success) {
@@ -412,7 +409,7 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-80 pt-8 pb-12 overflow-x-auto">
+              <div className="relative h-80 pt-8 pb-12 px-8 overflow-x-auto">
                 {selectedMetricsData.map((metric: any) => {
                   const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
                   const metricData = allData.filter((d: any) => d[metric.title] !== undefined);
@@ -997,7 +994,7 @@ export default function ProductionAnalysisPage() {
                       </div>
 
                       <div className="relative bg-slate-50 rounded-lg p-8 border border-slate-200">
-                        <div className="relative h-96 pt-8 pb-12">
+                        <div className="relative h-96 pt-8 pb-12 px-8">
                           {(() => {
                             if (monthlyData.length === 0) return null;
 
@@ -1201,7 +1198,7 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-96 pt-8 pb-12 overflow-x-auto">
+              <div className="relative h-96 pt-8 pb-12 px-8 overflow-x-auto">
                 {(() => {
                   const maxValue = Math.max(...productionData.map(d => d.total), DAILY_TARGET) * 1.15;
                   const minValue = 0;
@@ -1702,7 +1699,7 @@ export default function ProductionAnalysisPage() {
 
                 {/* График */}
                 <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-                  <div className="relative h-96 overflow-x-auto">
+                  <div className="relative h-96 pt-8 pb-12 px-8 overflow-x-auto">
                     {(() => {
                       const maxValue = Math.max(...detailedData.map(d => d.totalProduction), 5) * 1.2;
                       const points = detailedData.map((point, index) => {
@@ -1977,7 +1974,7 @@ export default function ProductionAnalysisPage() {
 
                     return (
                       <div className="bg-slate-50 rounded-lg p-8 border border-slate-200">
-                        <div className="relative h-96 overflow-visible">
+                        <div className="relative h-96 pt-8 pb-12 px-8 overflow-visible">
                           {/* SVG для всех линий */}
                           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                             {/* Сетка */}
