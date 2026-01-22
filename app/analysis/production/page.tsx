@@ -179,18 +179,6 @@ export default function ProductionAnalysisPage() {
 
   const fetchTechnicalData = async (date: string) => {
     try {
-      // Рассчитываем период смены: с 20:00 предыдущего дня до 20:00 выбранного дня
-      const selectedDate = new Date(date);
-
-      // Начало смены: 20:00 предыдущего дня
-      const shiftStart = new Date(selectedDate);
-      shiftStart.setDate(shiftStart.getDate() - 1);
-      shiftStart.setHours(20, 0, 0, 0);
-
-      // Конец смены: 20:00 выбранного дня
-      const shiftEnd = new Date(selectedDate);
-      shiftEnd.setHours(20, 0, 0, 0);
-
       // Получаем уникальные названия коллекций из всех элементов
       const allCollectionNames = techCollections.flatMap(c => c.collections || [c.name]);
       const uniqueCollectionNames = [...new Set(allCollectionNames)];
@@ -205,13 +193,8 @@ export default function ProductionAnalysisPage() {
         const data = await response.json();
 
         if (data.success && data.data) {
-          // Фильтруем данные по периоду смены
-          const filteredData = data.data.filter((item: any) => {
-            const itemDate = new Date(item.time);
-            return itemDate >= shiftStart && itemDate <= shiftEnd;
-          });
-
-          return { name: collectionName, data: filteredData, metrics: data.metrics || [] };
+          // Возвращаем все данные из API без фильтрации
+          return { name: collectionName, data: data.data, metrics: data.metrics || [] };
         }
         return { name: collectionName, data: [], metrics: [] };
       });
