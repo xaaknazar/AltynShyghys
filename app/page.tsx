@@ -3,18 +3,16 @@
 /**
  * Enterprise Production Dashboard - главная страница
  * Data-driven, минималистичный интерфейс для промышленного мониторинга
- * Архитектура: StatusBar → KPI Grid → Forecast → Chart → Monthly Summary
+ * Архитектура: Header → KPI Grid → Forecast → Monthly Summary
  */
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import StatusBar from '@/app/components/StatusBar';
 import KPIMetricCard from '@/app/components/KPIMetricCard';
 import ForecastBlock from '@/app/components/ForecastBlock';
-import CurrentDayChart from '@/app/components/CurrentDayChart';
 import LoadingState from '@/app/components/LoadingState';
 import ErrorState from '@/app/components/ErrorState';
-import { ProductionData, calculateDailyStats, DailyGroupedData, aggregateToThirtyMinutes, ThirtyMinuteData, TARGETS } from '@/lib/utils';
+import { ProductionData, calculateDailyStats, DailyGroupedData, TARGETS } from '@/lib/utils';
 
 interface LatestDataResponse {
   success: boolean;
@@ -34,7 +32,6 @@ export default function HomePage() {
   const [latestData, setLatestData] = useState<ProductionData | null>(null);
   const [monthlyData, setMonthlyData] = useState<ProductionData[]>([]);
   const [dailyGrouped, setDailyGrouped] = useState<DailyGroupedData[]>([]);
-  const [currentDayThirtyMin, setCurrentDayThirtyMin] = useState<ThirtyMinuteData[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
@@ -55,12 +52,6 @@ export default function HomePage() {
         setLatestData(latestResult.data);
         setMonthlyData(monthlyResult.data);
         setDailyGrouped(monthlyResult.dailyGrouped);
-
-        const currentDay = monthlyResult.dailyGrouped[monthlyResult.dailyGrouped.length - 1];
-        if (currentDay?.data) {
-          setCurrentDayThirtyMin(aggregateToThirtyMinutes(currentDay.data));
-        }
-
         setLastUpdate(new Date(latestResult.data.datetime));
       } else {
         setError('Ошибка при загрузке данных');
@@ -85,12 +76,19 @@ export default function HomePage() {
   // Вычисления для KPI и прогноза
   const currentSpeed = latestData?.speed || 0;
   const produced = currentStats.totalProduction;
-  const plan = TARGETS.daily;
-  const deviation = produced - plan;
-  const deviationPercent = (deviation / plan) * 100;
+
+  // Рассчитываем время с начала суток
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const hoursPassed = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
+
+  // Рассчитываем текущий план пропорционально времени
+  const currentPlan = (hoursPassed / 24) * TARGETS.daily;
+  const deviation = produced - currentPlan;
+  const deviationPercent = (deviation / currentPlan) * 100;
 
   // Прогноз до конца суток
-  const now = new Date();
   const endOfDay = new Date(now);
   endOfDay.setHours(23, 59, 59, 999);
   const hoursRemaining = Math.max(0, (endOfDay.getTime() - now.getTime()) / (1000 * 60 * 60));
@@ -111,14 +109,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Status Bar - индикатор состояния */}
-      <StatusBar
-        status={status}
-        deviation={deviation}
-        deviationPercent={deviationPercent}
-        lastUpdate={lastUpdate}
-      />
-
       {/* Header с логотипом */}
       <header className="bg-white border-b border-slate-200">
         <div className="container mx-auto px-4 lg:px-8 py-4">
@@ -130,9 +120,15 @@ export default function HomePage() {
                 className="h-12 w-auto object-contain"
               />
               <div className="h-8 w-px bg-slate-300"></div>
-              <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                Производственная панель
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                  Производственная панель
+                </span>
+                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-semibold text-emerald-700">Производство работает</span>
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <Link
@@ -166,15 +162,39 @@ export default function HomePage() {
               target={TARGETS.hourly}
               status={currentSpeed >= TARGETS.hourly ? 'normal' : currentSpeed >= TARGETS.hourly * 0.8 ? 'warning' : 'critical'}
             />
-            <KPIMetricCard
-              label="Произведено за сутки"
-              value={produced}
-              unit="т"
-              target={plan}
-            />
+            <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
+              <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
+                Произведено за сутки
+              </div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-4xl font-bold tabular-nums text-slate-900">
+                  {produced.toFixed(1)}
+                </span>
+                <span className="text-lg text-slate-600 font-medium">т</span>
+              </div>
+              <div className="text-xs text-slate-500 mb-2">
+                Прошло {hoursPassed.toFixed(1)} ч / Осталось {hoursRemaining.toFixed(1)} ч
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-600">План на текущий момент:</span>
+                <span className="font-semibold text-slate-900">{currentPlan.toFixed(0)} т</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">Выполнение плана:</span>
+                  <span className={`font-bold ${
+                    (produced / currentPlan) * 100 >= 100 ? 'text-emerald-600' :
+                    (produced / currentPlan) * 100 >= 80 ? 'text-amber-600' :
+                    'text-red-600'
+                  }`}>
+                    {((produced / currentPlan) * 100).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
             <KPIMetricCard
               label="План на сутки"
-              value={plan}
+              value={TARGETS.daily}
               unit="т"
               format="integer"
             />
@@ -195,26 +215,16 @@ export default function HomePage() {
           </h2>
           <ForecastBlock
             forecast={forecast}
-            plan={plan}
+            plan={TARGETS.daily}
             confidence={confidence}
             hoursRemaining={Math.round(hoursRemaining)}
           />
         </section>
 
-        {/* Production Chart - основной график */}
-        <section className="mb-8">
-          <h2 className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-4">
-            Динамика производства (текущие сутки)
-          </h2>
-          <div className="bg-white border-2 border-slate-200 rounded-lg p-6">
-            <CurrentDayChart data={currentDayThirtyMin} />
-          </div>
-        </section>
-
         {/* Monthly Summary - вторичная информация */}
         <section>
           <h2 className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-4">
-            Сводка за месяц (последние 7 дней)
+            Сводка за месяц
           </h2>
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <table className="w-full">
@@ -227,7 +237,7 @@ export default function HomePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {dailyGrouped.slice(-7).reverse().map((day, idx) => {
+                {dailyGrouped.reverse().map((day, idx) => {
                   const completion = (day.stats.totalProduction / TARGETS.daily) * 100;
                   return (
                     <tr key={idx} className="hover:bg-slate-50 transition-colors">
