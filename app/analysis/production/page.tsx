@@ -241,6 +241,29 @@ export default function ProductionAnalysisPage() {
     return colors[index % colors.length];
   };
 
+  // Функция экспорта данных в CSV (Excel)
+  const exportToExcel = (data: any[], filename: string, columns: {key: string, label: string}[]) => {
+    // Создаем CSV строку
+    const headers = columns.map(col => col.label).join(',');
+    const rows = data.map(row =>
+      columns.map(col => {
+        const value = row[col.key];
+        // Экранируем значения с запятыми
+        return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+      }).join(',')
+    );
+
+    const csv = [headers, ...rows].join('\n');
+
+    // Создаем Blob и скачиваем
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   const toggleMetricSelection = (collectionName: string, metricTitle: string) => {
     setSelectedMetrics(prev => {
       const current = prev[collectionName] || [];
@@ -406,93 +429,140 @@ export default function ProductionAnalysisPage() {
         {/* Объединенный график */}
         {selectedMetricsData.length > 0 && (
           <div>
-            {/* Легенда */}
-            <div className="mb-4 flex flex-wrap gap-4">
-              {selectedMetricsData.map((metric: any, idx: number) => {
-                const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
-                const color = getMetricColor(metricIndex);
+            {/* Легенда и кнопка экспорта */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap gap-4">
+                {selectedMetricsData.map((metric: any, idx: number) => {
+                  const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
+                  const color = getMetricColor(metricIndex);
 
-                return (
-                  <div key={metric.title} className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: color }}
-                    ></div>
-                    <span className="text-sm font-medium text-slate-700">
-                      {metric.title} ({metric.unit})
-                    </span>
-                  </div>
-                );
-              })}
+                  return (
+                    <div key={metric.title} className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: color }}
+                      ></div>
+                      <span className="text-sm font-medium text-slate-700">
+                        {metric.title} ({metric.unit})
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedMetricsData.length > 0 && (
+                <button
+                  onClick={() => {
+                    const exportData = allData.map(d => {
+                      const row: any = {time: d.time};
+                      selectedMetricsData.forEach((metric: any) => {
+                        row[metric.title] = d[metric.title];
+                      });
+                      return row;
+                    });
+
+                    const columns = [
+                      {key: 'time', label: 'Время'},
+                      ...selectedMetricsData.map((m: any) => ({key: m.title, label: `${m.title} (${m.unit})`}))
+                    ];
+
+                    exportToExcel(exportData, `tech_${title}_${selectedDate}`, columns);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-sm font-semibold">Экспорт</span>
+                </button>
+              )}
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-80 pt-8 pb-12 px-8 overflow-x-auto">
-                {selectedMetricsData.map((metric: any) => {
-                  const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
-                  const metricData = allData.filter((d: any) => d[metric.title] !== undefined);
+              <div className="relative h-80 pt-8 pb-12 px-16 overflow-x-auto">
+                {(() => {
+                  // Подготовка данных для всех метрик
+                  const metricsWithData = selectedMetricsData.map((metric: any) => {
+                    const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
+                    const metricData = allData.filter((d: any) => d[metric.title] !== undefined);
 
-                  if (metricData.length === 0) return null;
+                    if (metricData.length === 0) return null;
 
-                  // Получаем все значения метрики
-                  const values = metricData.map((d: any) => d[metric.title]);
-                  const dataMin = Math.min(...values);
-                  const dataMax = Math.max(...values);
+                    // Получаем все значения метрики
+                    const values = metricData.map((d: any) => d[metric.title]);
+                    const dataMin = Math.min(...values);
+                    const dataMax = Math.max(...values);
 
-                  // Правильная обработка для отрицательных значений
-                  let minValue: number, maxValue: number;
-                  if (dataMax <= 0) {
-                    minValue = dataMin * 1.2;
-                    maxValue = dataMax * 0.8;
-                  } else if (dataMin >= 0) {
-                    minValue = dataMin * 0.8;
-                    maxValue = dataMax * 1.2;
-                  } else {
-                    minValue = dataMin < 0 ? dataMin * 1.2 : dataMin * 0.8;
-                    maxValue = dataMax * 1.2;
-                  }
-
-                  const valueRange = maxValue - minValue;
-
-                  const points = metricData.map((point: any, index: number) => {
-                    const x = (index / (metricData.length - 1 || 1)) * 100;
-                    const normalizedValue = valueRange !== 0 ? ((point[metric.title] - minValue) / valueRange) : 0.5;
-                    const y = 100 - (normalizedValue * 100);
-                    return { x, y, point, value: point[metric.title] };
-                  });
-
-                  const linePath = points.map((p: any, index: number) => {
-                    const command = index === 0 ? 'M' : 'L';
-                    return `${command} ${p.x} ${p.y}`;
-                  }).join(' ');
-
-                  const color = getMetricColor(metricIndex);
-
-                  // Проверяем есть ли норма для этой метрики
-                  const normValue = metricNorms[metric.title];
-                  let normY: number | null = null;
-                  let normMinY: number | null = null;
-                  let normMaxY: number | null = null;
-                  let isRange = false;
-
-                  if (normValue !== undefined && valueRange !== 0) {
-                    if (Array.isArray(normValue)) {
-                      // Диапазон норм [min, max]
-                      isRange = true;
-                      const normalizedMin = (normValue[0] - minValue) / valueRange;
-                      const normalizedMax = (normValue[1] - minValue) / valueRange;
-                      normMinY = 100 - (normalizedMin * 100);
-                      normMaxY = 100 - (normalizedMax * 100);
+                    // Правильная обработка для отрицательных значений
+                    let minValue: number, maxValue: number;
+                    if (dataMax <= 0) {
+                      minValue = dataMin * 1.2;
+                      maxValue = dataMax * 0.8;
+                    } else if (dataMin >= 0) {
+                      minValue = dataMin * 0.8;
+                      maxValue = dataMax * 1.2;
                     } else {
-                      // Одно значение нормы
-                      const normalizedNorm = (normValue - minValue) / valueRange;
-                      normY = 100 - (normalizedNorm * 100);
+                      minValue = dataMin < 0 ? dataMin * 1.2 : dataMin * 0.8;
+                      maxValue = dataMax * 1.2;
                     }
-                  }
+
+                    const valueRange = maxValue - minValue;
+
+                    const points = metricData.map((point: any, index: number) => {
+                      const x = (index / (metricData.length - 1 || 1)) * 100;
+                      const normalizedValue = valueRange !== 0 ? ((point[metric.title] - minValue) / valueRange) : 0.5;
+                      const y = 100 - (normalizedValue * 100);
+                      return { x, y, point, value: point[metric.title] };
+                    });
+
+                    const linePath = points.map((p: any, index: number) => {
+                      const command = index === 0 ? 'M' : 'L';
+                      return `${command} ${p.x} ${p.y}`;
+                    }).join(' ');
+
+                    const color = getMetricColor(metricIndex);
+
+                    // Проверяем есть ли норма для этой метрики
+                    const normValue = metricNorms[metric.title];
+                    let normY: number | null = null;
+                    let normMinY: number | null = null;
+                    let normMaxY: number | null = null;
+                    let isRange = false;
+
+                    if (normValue !== undefined && valueRange !== 0) {
+                      if (Array.isArray(normValue)) {
+                        // Диапазон норм [min, max]
+                        isRange = true;
+                        const normalizedMin = (normValue[0] - minValue) / valueRange;
+                        const normalizedMax = (normValue[1] - minValue) / valueRange;
+                        normMinY = 100 - (normalizedMin * 100);
+                        normMaxY = 100 - (normalizedMax * 100);
+                      } else {
+                        // Одно значение нормы
+                        const normalizedNorm = (normValue - minValue) / valueRange;
+                        normY = 100 - (normalizedNorm * 100);
+                      }
+                    }
+
+                    return {
+                      metric,
+                      metricIndex,
+                      metricData,
+                      points,
+                      linePath,
+                      color,
+                      normValue,
+                      normY,
+                      normMinY,
+                      normMaxY,
+                      isRange
+                    };
+                  }).filter(Boolean);
+
+                  if (metricsWithData.length === 0) return null;
 
                   return (
-                    <div key={metric.title}>
-                      {/* SVG для линии */}
+                    <>
+                      {/* ОДИН SVG для всех линий */}
                       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                         {/* Сетка */}
                         <defs>
@@ -502,182 +572,194 @@ export default function ProductionAnalysisPage() {
                         </defs>
                         <rect width="100" height="100" fill={`url(#grid-tech-${uniqueKey})`} />
 
-                        <path
-                          d={linePath}
-                          fill="none"
-                          stroke={color}
-                          strokeWidth="2.5"
-                          vectorEffect="non-scaling-stroke"
-                        />
-                        {/* Линия нормы (одно значение) */}
-                        {normY !== null && (
-                          <line
-                            x1="0"
-                            y1={normY}
-                            x2="100"
-                            y2={normY}
-                            stroke="#ef4444"
-                            strokeWidth="2"
-                            strokeDasharray="4,4"
-                            vectorEffect="non-scaling-stroke"
-                            opacity="0.7"
-                          />
-                        )}
-                        {/* Линии норм (диапазон) */}
-                        {isRange && normMinY !== null && normMaxY !== null && (
-                          <>
-                            <line
-                              x1="0"
-                              y1={normMinY}
-                              x2="100"
-                              y2={normMinY}
-                              stroke="#10b981"
-                              strokeWidth="2"
-                              strokeDasharray="4,4"
+                        {/* Все линии метрик */}
+                        {metricsWithData.map((data: any) => (
+                          <g key={data.metric.title}>
+                            <path
+                              d={data.linePath}
+                              fill="none"
+                              stroke={data.color}
+                              strokeWidth="2.5"
                               vectorEffect="non-scaling-stroke"
-                              opacity="0.7"
                             />
-                            <line
-                              x1="0"
-                              y1={normMaxY}
-                              x2="100"
-                              y2={normMaxY}
-                              stroke="#10b981"
-                              strokeWidth="2"
-                              strokeDasharray="4,4"
-                              vectorEffect="non-scaling-stroke"
-                              opacity="0.7"
-                            />
-                            {/* Заливка между линиями норм */}
-                            <rect
-                              x="0"
-                              y={normMaxY}
-                              width="100"
-                              height={normMinY - normMaxY}
-                              fill="#10b981"
-                              opacity="0.1"
-                            />
-                          </>
-                        )}
+                            {/* Линия нормы (одно значение) */}
+                            {data.normY !== null && (
+                              <line
+                                x1="0"
+                                y1={data.normY}
+                                x2="100"
+                                y2={data.normY}
+                                stroke="#ef4444"
+                                strokeWidth="2"
+                                strokeDasharray="4,4"
+                                vectorEffect="non-scaling-stroke"
+                                opacity="0.7"
+                              />
+                            )}
+                            {/* Линии норм (диапазон) */}
+                            {data.isRange && data.normMinY !== null && data.normMaxY !== null && (
+                              <>
+                                <line
+                                  x1="0"
+                                  y1={data.normMinY}
+                                  x2="100"
+                                  y2={data.normMinY}
+                                  stroke="#10b981"
+                                  strokeWidth="2"
+                                  strokeDasharray="4,4"
+                                  vectorEffect="non-scaling-stroke"
+                                  opacity="0.7"
+                                />
+                                <line
+                                  x1="0"
+                                  y1={data.normMaxY}
+                                  x2="100"
+                                  y2={data.normMaxY}
+                                  stroke="#10b981"
+                                  strokeWidth="2"
+                                  strokeDasharray="4,4"
+                                  vectorEffect="non-scaling-stroke"
+                                  opacity="0.7"
+                                />
+                                {/* Заливка между линиями норм */}
+                                <rect
+                                  x="0"
+                                  y={data.normMaxY}
+                                  width="100"
+                                  height={data.normMinY - data.normMaxY}
+                                  fill="#10b981"
+                                  opacity="0.1"
+                                />
+                              </>
+                            )}
+                          </g>
+                        ))}
                       </svg>
 
-                      {/* Метка нормы (одно значение) */}
-                      {normY !== null && (
-                        <div
-                          className="absolute left-1 pointer-events-none"
-                          style={{
-                            top: `${normY}%`,
-                            transform: 'translateY(-50%)'
-                          }}
-                        >
-                          <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
-                            Норма: {normValue as number}
-                          </div>
-                        </div>
-                      )}
-                      {/* Метки норм (диапазон) */}
-                      {isRange && normMinY !== null && normMaxY !== null && (
-                        <>
-                          <div
-                            className="absolute left-1 pointer-events-none"
-                            style={{
-                              top: `${normMinY}%`,
-                              transform: 'translateY(-50%)'
-                            }}
-                          >
-                            <div className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
-                              Мин: {(normValue as [number, number])[0]}
-                            </div>
-                          </div>
-                          <div
-                            className="absolute left-1 pointer-events-none"
-                            style={{
-                              top: `${normMaxY}%`,
-                              transform: 'translateY(-50%)'
-                            }}
-                          >
-                            <div className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
-                              Макс: {(normValue as [number, number])[1]}
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Точки */}
-                      {points.map((p: any, index: number) => {
-                        const tooltipRight = p.x > 50;
-                        return (
-                          <div
-                            key={`${metric.title}-${index}`}
-                            className="absolute group"
-                            style={{
-                              left: `${p.x}%`,
-                              bottom: `${100 - p.y}%`,
-                              transform: 'translate(-50%, 50%)'
-                            }}
-                          >
+                      {/* Метки норм как div */}
+                      {metricsWithData.map((data: any) => (
+                        <div key={`norms-${data.metric.title}`}>
+                          {/* Метка нормы (одно значение) */}
+                          {data.normY !== null && (
                             <div
-                              className="w-4 h-4 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-lg z-10"
-                              style={{ backgroundColor: color }}
-                            ></div>
-
-                            {/* Постоянное отображение значения */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
-                              <div
-                                className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
-                                style={{ backgroundColor: color }}
-                              >
-                                {p.value?.toFixed(1)}
+                              className="absolute left-1 pointer-events-none"
+                              style={{
+                                top: `${data.normY}%`,
+                                transform: 'translateY(-50%)'
+                              }}
+                            >
+                              <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                                Норма: {data.normValue as number}
                               </div>
                             </div>
+                          )}
+                          {/* Метки норм (диапазон) */}
+                          {data.isRange && data.normMinY !== null && data.normMaxY !== null && (
+                            <>
+                              <div
+                                className="absolute left-1 pointer-events-none"
+                                style={{
+                                  top: `${data.normMinY}%`,
+                                  transform: 'translateY(-50%)'
+                                }}
+                              >
+                                <div className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                                  Мин: {(data.normValue as [number, number])[0]}
+                                </div>
+                              </div>
+                              <div
+                                className="absolute left-1 pointer-events-none"
+                                style={{
+                                  top: `${data.normMaxY}%`,
+                                  transform: 'translateY(-50%)'
+                                }}
+                              >
+                                <div className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded font-mono font-semibold shadow-md">
+                                  Макс: {(data.normValue as [number, number])[1]}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
 
-                            {/* Детальный tooltip при наведении */}
+                      {/* Точки как div */}
+                      {metricsWithData.map((data: any) =>
+                        data.points.map((p: any, index: number) => {
+                          const tooltipRight = p.x > 50;
+                          return (
                             <div
-                              className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
+                              key={`${data.metric.title}-${index}`}
+                              className="absolute group"
+                              style={{
+                                left: `${p.x}%`,
+                                bottom: `${100 - p.y}%`,
+                                transform: 'translate(-50%, 50%)'
+                              }}
                             >
-                              <div className="bg-white border-2 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[220px]" style={{ borderColor: color }}>
-                                <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                              <div
+                                className="w-4 h-4 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-lg z-10"
+                                style={{ backgroundColor: data.color }}
+                              ></div>
+
+                              {/* Постоянное отображение значения */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                <div
+                                  className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                                  style={{ backgroundColor: data.color }}
+                                >
+                                  {p.value?.toFixed(1)}
+                                </div>
+                              </div>
+
+                              {/* Детальный tooltip при наведении */}
+                              <div
+                                className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
+                              >
+                                <div className="bg-white border-2 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[220px]" style={{ borderColor: data.color }}>
+                                  <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
+                                    {p.point.time}
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-xs text-slate-600">{data.metric.title}:</span>
+                                      <span className="text-lg font-bold" style={{ color: data.color }}>{p.value?.toFixed(2)} {data.metric.unit}</span>
+                                    </div>
+                                    {data.normValue !== undefined && (
+                                      <div className="pt-2 border-t border-slate-200">
+                                        <div className="text-xs text-slate-600">
+                                          Норма: {Array.isArray(data.normValue) ? `${data.normValue[0]} - ${data.normValue[1]}` : data.normValue} {data.metric.unit}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* Стрелка указатель */}
+                                <div
+                                  className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
+                                    tooltipRight
+                                      ? 'left-full border-l-[8px] border-y-transparent border-y-[8px] border-r-0'
+                                      : 'right-full border-r-[8px] border-y-transparent border-y-[8px] border-l-0'
+                                  }`}
+                                  style={{
+                                    borderLeftColor: tooltipRight ? data.color : 'transparent',
+                                    borderRightColor: tooltipRight ? 'transparent' : data.color,
+                                  }}
+                                ></div>
+                              </div>
+
+                              {index % Math.max(1, Math.floor(data.metricData.length / 12)) === 0 && (
+                                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
                                   {p.point.time}
                                 </div>
-                                <div className="space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs text-slate-600">{metric.title}:</span>
-                                    <span className="text-lg font-bold" style={{ color }}>{p.value?.toFixed(2)} {metric.unit}</span>
-                                  </div>
-                                  {normValue !== undefined && (
-                                    <div className="pt-2 border-t border-slate-200">
-                                      <div className="text-xs text-slate-600">
-                                        Норма: {Array.isArray(normValue) ? `${normValue[0]} - ${normValue[1]}` : normValue} {metric.unit}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              {/* Стрелка указатель */}
-                              <div
-                                className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
-                                  tooltipRight
-                                    ? 'left-full border-l-[8px] border-y-transparent border-y-[8px] border-r-0'
-                                    : 'right-full border-r-[8px] border-y-transparent border-y-[8px] border-l-0'
-                                }`}
-                                style={{
-                                  borderLeftColor: tooltipRight ? color : 'transparent',
-                                  borderRightColor: tooltipRight ? 'transparent' : color,
-                                }}
-                              ></div>
+                              )}
                             </div>
-
-                            {index % Math.max(1, Math.floor(metricData.length / 12)) === 0 && (
-                              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
-                                {p.point.time}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })
+                      )}
+                    </>
                   );
-                })}
+                })()}
               </div>
             </div>
           </div>
@@ -1004,15 +1086,33 @@ export default function ProductionAnalysisPage() {
 
                     {/* График месячных данных */}
                     <div className="bg-white rounded-lg border border-slate-200 p-8">
-                      <div className="mb-8 pb-4 border-b border-slate-200">
-                        <h3 className="text-2xl font-bold text-slate-900 mb-2">
-                          Динамика производства по месяцам
-                        </h3>
-                        <p className="text-sm text-slate-600">Общее производство за каждый месяц</p>
+                      <div className="mb-8 pb-4 border-b border-slate-200 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-2xl font-bold text-slate-900 mb-2">
+                            Динамика производства по месяцам
+                          </h3>
+                          <p className="text-sm text-slate-600">Общее производство за каждый месяц</p>
+                        </div>
+                        <button
+                          onClick={() => exportToExcel(
+                            monthlyData,
+                            `monthly_${startMonth}-${startYear}_${endMonth}-${endYear}`,
+                            [
+                              {key: 'month', label: 'Месяц'},
+                              {key: 'total', label: 'Производство (т)'},
+                            ]
+                          )}
+                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="text-sm font-semibold">Экспорт</span>
+                        </button>
                       </div>
 
                       <div className="relative bg-slate-50 rounded-lg p-8 border border-slate-200">
-                        <div className="relative h-96 pt-8 pb-12 px-8">
+                        <div className="relative h-96 pt-8 pb-12 px-16">
                           {(() => {
                             if (monthlyData.length === 0) return null;
 
@@ -1204,19 +1304,38 @@ export default function ProductionAnalysisPage() {
               <h3 className="text-2xl font-bold text-slate-900">
                 Динамика производства
               </h3>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showShiftsOnChart}
-                  onChange={(e) => setShowShiftsOnChart(e.target.checked)}
-                  className="w-4 h-4 cursor-pointer"
-                />
-                <span className="text-sm text-slate-700">Показать смены</span>
-              </label>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => exportToExcel(
+                    productionData,
+                    `daily_${startDate}_${endDate}`,
+                    [
+                      {key: 'date', label: 'Дата'},
+                      {key: 'total', label: 'Производство (т)'},
+                      {key: 'shift_type', label: 'Смена'},
+                    ]
+                  )}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-sm font-semibold">Экспорт</span>
+                </button>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showShiftsOnChart}
+                    onChange={(e) => setShowShiftsOnChart(e.target.checked)}
+                    className="w-4 h-4 cursor-pointer"
+                  />
+                  <span className="text-sm text-slate-700">Показать смены</span>
+                </label>
+              </div>
             </div>
 
             <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-96 pt-8 pb-12 px-8 overflow-x-auto">
+              <div className="relative h-96 pt-8 pb-12 px-16 overflow-x-auto">
                 {(() => {
                   const maxValue = Math.max(...productionData.map(d => d.total), DAILY_TARGET) * 1.15;
                   const minValue = 0;
@@ -1708,16 +1827,37 @@ export default function ProductionAnalysisPage() {
             <>
               {/* Детальный режим - 30 минутные интервалы */}
               <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h3 className="text-2xl font-bold text-slate-900 mb-6">
-                  Детальная динамика по 30 минутам
-                </h3>
-                <div className="text-sm text-slate-600 mb-4">
-                  Период: {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">
+                      Детальная динамика по 30 минутам
+                    </h3>
+                    <div className="text-sm text-slate-600">
+                      Период: {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => exportToExcel(
+                      detailedData,
+                      `detailed_${selectedDate}`,
+                      [
+                        {key: 'time', label: 'Время'},
+                        {key: 'averageSpeed', label: 'Скорость (т/ч)'},
+                        {key: 'totalProduction', label: 'Производство (т)'},
+                      ]
+                    )}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-sm font-semibold">Экспорт</span>
+                  </button>
                 </div>
 
                 {/* График */}
                 <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-                  <div className="relative h-96 pt-8 pb-12 px-8 overflow-x-auto">
+                  <div className="relative h-96 pt-8 pb-12 px-16 overflow-x-auto">
                     {(() => {
                       const maxValue = Math.max(...detailedData.map(d => d.averageSpeed || 0), 5) * 1.2;
                       const points = detailedData.map((point, index) => {
@@ -1972,9 +2112,47 @@ export default function ProductionAnalysisPage() {
               {/* Отображение кастомного графика */}
               {customTechGraphData.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-2xl font-bold text-slate-900 mb-4">
-                    Комбинированный график
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold text-slate-900">
+                      Комбинированный график
+                    </h3>
+                    <button
+                      onClick={() => {
+                        // Подготовка данных для экспорта
+                        const allTimes = new Set<string>();
+                        customTechGraphData.forEach(({ data }) => {
+                          data.forEach((d: any) => allTimes.add(d.time));
+                        });
+                        const sortedTimes = Array.from(allTimes).sort();
+
+                        const exportData = sortedTimes.map(time => {
+                          const row: any = {time};
+                          customTechGraphData.forEach(({ collection, metric, data }) => {
+                            const point = data.find((d: any) => d.time === time);
+                            const collectionTitle = techCollections.find(c => c.name === collection)?.title || collection;
+                            row[`${collectionTitle}: ${metric}`] = point?.value || '';
+                          });
+                          return row;
+                        });
+
+                        const columns = [
+                          {key: 'time', label: 'Время'},
+                          ...customTechGraphData.map(({ collection, metric }) => {
+                            const collectionTitle = techCollections.find(c => c.name === collection)?.title || collection;
+                            return {key: `${collectionTitle}: ${metric}`, label: `${collectionTitle}: ${metric}`};
+                          })
+                        ];
+
+                        exportToExcel(exportData, `custom_${startDate}_${endDate}`, columns);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="text-sm font-semibold">Экспорт</span>
+                    </button>
+                  </div>
 
                   {(() => {
                     // Подготовка данных для графика
@@ -2000,7 +2178,7 @@ export default function ProductionAnalysisPage() {
 
                     return (
                       <div className="bg-slate-50 rounded-lg p-8 border border-slate-200">
-                        <div className="relative h-96 pt-8 pb-12 px-8 overflow-visible">
+                        <div className="relative h-96 pt-8 pb-12 px-16 overflow-visible">
                           {/* SVG для всех линий */}
                           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                             {/* Сетка */}
