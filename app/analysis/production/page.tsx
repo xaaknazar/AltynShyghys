@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import TechnicalChart from './TechnicalChart';
 
 type QuickPeriod = 'week' | 'month' | 'year' | 'all' | 'custom';
 type ViewMode = 'daily' | 'detailed' | 'monthly';
@@ -2042,9 +2043,23 @@ export default function ProductionAnalysisPage() {
                   </button>
                 </div>
                 <div className="space-y-6">
-                  {techCollections.map((collection, idx) =>
-                    renderTechnicalChart(collection.collections, collection.title, collection.group, `${collection.name}_${collection.group || idx}`)
-                  )}
+                  {techCollections.map((collection, idx) => (
+                    <TechnicalChart
+                      key={`${collection.name}_${collection.group || idx}`}
+                      collections={collection.collections}
+                      title={collection.title}
+                      group={collection.group}
+                      uniqueKey={`${collection.name}_${collection.group || idx}`}
+                      techData={techData}
+                      techMetrics={techMetrics}
+                      selectedMetrics={selectedMetrics}
+                      onToggleMetric={toggleMetricSelection}
+                      onExport={exportToExcel}
+                      metricNorms={metricNorms}
+                      getMetricsForGroup={getMetricsForGroup}
+                      selectedDate={selectedDate}
+                    />
+                  ))}
                 </div>
               </div>
             </>
