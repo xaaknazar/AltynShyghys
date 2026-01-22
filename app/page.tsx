@@ -192,20 +192,16 @@ export default function HomePage() {
               </div>
               <div className="mt-2 pt-2 border-t border-slate-200">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600">Средняя на смене:</span>
-                  <span className="font-semibold text-slate-900">{shiftAverageSpeed.toFixed(1)} т/ч</span>
+                  <span className="text-slate-600">Средняя за сутки:</span>
+                  <span className="font-semibold text-slate-900">{averageSpeed.toFixed(1)} т/ч</span>
                 </div>
               </div>
               <div className="mt-2 pt-2 border-t border-slate-200">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600">План:</span>
-                  <span className={`font-bold ${
-                    currentSpeed >= TARGETS.hourly ? 'text-emerald-600' :
-                    currentSpeed >= TARGETS.hourly * 0.8 ? 'text-amber-600' :
-                    'text-red-600'
-                  }`}>
-                    {TARGETS.hourly} т/ч
+                  <span className="text-slate-600">
+                    {isNightShift ? 'Ночная смена:' : 'Дневная смена:'}
                   </span>
+                  <span className="font-semibold text-slate-900">{shiftAverageSpeed.toFixed(1)} т/ч</span>
                 </div>
               </div>
             </div>
