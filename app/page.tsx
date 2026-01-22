@@ -76,20 +76,23 @@ export default function HomePage() {
   // Вычисления для KPI и прогноза
   const currentSpeed = latestData?.speed || 0;
   const produced = currentStats.totalProduction;
-  const averageSpeed = currentStats.averageSpeed; // Средняя скорость за сутки
+
+  // Рассчитываем время с начала суток
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const hoursPassed = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
+
+  // Средняя скорость за прошедшее время суток (фактическая)
+  const averageSpeed = hoursPassed > 0 ? produced / hoursPassed : 0;
 
   // Определяем текущую смену и среднюю скорость смены
-  const now = new Date();
   const currentHour = now.getHours();
   const isNightShift = currentHour >= 20 || currentHour < 8;
 
   // Рассчитываем среднюю скорость текущей смены
-  let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за сутки
+  let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за прошедшее время
   if (currentDayData?.data) {
-    const shiftStart = isNightShift
-      ? (currentHour >= 20 ? 20 : -4) // Если ночная: с 20:00 или продолжение с предыдущего дня
-      : 8; // Дневная с 08:00
-
     const shiftData = currentDayData.data.filter(d => {
       const dataHour = new Date(d.datetime).getHours();
       if (isNightShift) {
@@ -104,17 +107,12 @@ export default function HomePage() {
     }
   }
 
-  // Рассчитываем время с начала суток
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
-  const hoursPassed = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
-
   // Рассчитываем текущий план пропорционально времени
   const currentPlan = (hoursPassed / 24) * TARGETS.daily;
   const deviation = produced - currentPlan;
   const deviationPercent = (deviation / currentPlan) * 100;
 
-  // Прогноз до конца суток - используем СРЕДНЮЮ скорость за сутки, а не текущую
+  // Прогноз до конца суток - используем СРЕДНЮЮ скорость за прошедшее время
   const endOfDay = new Date(now);
   endOfDay.setHours(23, 59, 59, 999);
   const hoursRemaining = Math.max(0, (endOfDay.getTime() - now.getTime()) / (1000 * 60 * 60));

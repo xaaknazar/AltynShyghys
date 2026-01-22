@@ -385,6 +385,12 @@ export default function ProductionAnalysisPage() {
     const selected = selectedMetrics[selectionKey] || [];
     const selectedMetricsData = metrics.filter((m: any) => selected.includes(m.title));
 
+    // Отладка
+    console.log(`[${title}] allData.length:`, allData.length);
+    console.log(`[${title}] metrics.length:`, metrics.length);
+    console.log(`[${title}] selected:`, selected);
+    console.log(`[${title}] selectedMetricsData.length:`, selectedMetricsData.length);
+
     return (
       <div key={uniqueKey} className="bg-white rounded-lg border border-slate-200 p-6">
         <h3 className="text-2xl font-bold text-slate-900 mb-4">{title}</h3>
@@ -558,7 +564,13 @@ export default function ProductionAnalysisPage() {
                     };
                   }).filter(Boolean);
 
-                  if (metricsWithData.length === 0) return null;
+                  if (metricsWithData.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-slate-500">
+                        Нет данных для выбранных метрик за указанный период
+                      </div>
+                    );
+                  }
 
                   return (
                     <>
