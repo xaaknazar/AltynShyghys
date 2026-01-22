@@ -106,11 +106,13 @@ export default function ProductionAnalysisPage() {
   }, [startDate, endDate, shiftFilter, viewMode, startMonth, startYear, endMonth, endYear]);
 
   useEffect(() => {
-    if (viewMode === 'detailed' && selectedDate) {
-      fetchDetailedData(selectedDate);
-      fetchTechnicalData(selectedDate);
+    if (viewMode === 'detailed' && startDate && endDate) {
+      // Для детального режима используем только startDate (первый день периода)
+      fetchDetailedData(startDate);
+      // Для технических параметров загружаем за весь период
+      fetchTechnicalData(startDate, endDate);
     }
-  }, [selectedDate, viewMode]);
+  }, [startDate, endDate, viewMode]);
 
   const fetchProductionData = async () => {
     setLoading(true);
@@ -126,10 +128,6 @@ export default function ProductionAnalysisPage() {
 
       if (data.success) {
         setProductionData(data.data || []);
-        // Устанавливаем первую дату как выбранную для детального просмотра
-        if (data.data && data.data.length > 0 && !selectedDate) {
-          setSelectedDate(data.data[0].date);
-        }
       }
     } catch (error) {
       console.error('Error fetching production data:', error);
@@ -181,7 +179,7 @@ export default function ProductionAnalysisPage() {
     }
   };
 
-  const fetchTechnicalData = async (date: string) => {
+  const fetchTechnicalData = async (startDate: string, endDate: string) => {
     try {
       // Получаем уникальные названия коллекций из всех элементов
       const allCollectionNames = techCollections.flatMap(c => c.collections || [c.name]);
@@ -189,11 +187,12 @@ export default function ProductionAnalysisPage() {
 
       const promises = uniqueCollectionNames.map(async (collectionName) => {
         const params = new URLSearchParams({
-          date: date,
+          start_date: startDate,
+          end_date: endDate,
           collection: collectionName,
         });
 
-        const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
+        const response = await fetch(`/api/technical-data/range?${params}`, { cache: 'no-store' });
         const data = await response.json();
 
         if (data.success) {
@@ -254,8 +253,8 @@ export default function ProductionAnalysisPage() {
   };
 
   const buildCustomTechGraph = async () => {
-    if (customTechMetrics.length === 0 || !selectedDate) {
-      alert('Выберите хотя бы один параметр');
+    if (customTechMetrics.length === 0 || !startDate || !endDate) {
+      alert('Выберите хотя бы один параметр и период');
       return;
     }
 
@@ -266,11 +265,12 @@ export default function ProductionAnalysisPage() {
 
       for (const { collection, metric } of customTechMetrics) {
         const params = new URLSearchParams({
-          date: selectedDate,
+          start_date: startDate,
+          end_date: endDate,
           collection: collection,
         });
 
-        const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
+        const response = await fetch(`/api/technical-data/range?${params}`, { cache: 'no-store' });
         const data = await response.json();
 
         if (data.success && data.data.length > 0) {
@@ -348,8 +348,8 @@ export default function ProductionAnalysisPage() {
     const selectedMetricsData = metrics.filter((m: any) => selected.includes(m.title));
 
     return (
-      <div key={uniqueKey} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="text-lg font-display font-bold text-slate-700 mb-4">{title}</h3>
+      <div key={uniqueKey} className="bg-white rounded-lg border border-slate-200 p-6">
+        <h3 className="text-2xl font-bold text-slate-900 mb-4">{title}</h3>
 
         {/* Проверка наличия данных */}
         {metrics.length === 0 ? (
@@ -368,10 +368,10 @@ export default function ProductionAnalysisPage() {
             return (
               <label
                 key={metric.title}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 cursor-pointer transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
                   isSelected
-                    ? 'bg-slate-50 border-slate-400'
-                    : 'bg-white border-slate-200 hover:border-slate-300'
+                    ? 'bg-slate-100 border-slate-400'
+                    : 'bg-white border-slate-300 hover:bg-slate-50'
                 }`}
               >
                 <input
@@ -479,13 +479,20 @@ export default function ProductionAnalysisPage() {
                     <div key={metric.title}>
                       {/* SVG для линии */}
                       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        {/* Сетка */}
+                        <defs>
+                          <pattern id={`grid-tech-${uniqueKey}`} width="10" height="10" patternUnits="userSpaceOnUse">
+                            <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                          </pattern>
+                        </defs>
+                        <rect width="100" height="100" fill={`url(#grid-tech-${uniqueKey})`} />
+
                         <path
                           d={linePath}
                           fill="none"
                           stroke={color}
-                          strokeWidth="0.8"
+                          strokeWidth="2.5"
                           vectorEffect="non-scaling-stroke"
-                          opacity="0.8"
                         />
                         {/* Линия нормы (одно значение) */}
                         {normY !== null && (
@@ -495,8 +502,8 @@ export default function ProductionAnalysisPage() {
                             x2="100"
                             y2={normY}
                             stroke="#ef4444"
-                            strokeWidth="0.5"
-                            strokeDasharray="2,2"
+                            strokeWidth="2"
+                            strokeDasharray="4,4"
                             vectorEffect="non-scaling-stroke"
                             opacity="0.7"
                           />
@@ -510,8 +517,8 @@ export default function ProductionAnalysisPage() {
                               x2="100"
                               y2={normMinY}
                               stroke="#10b981"
-                              strokeWidth="0.5"
-                              strokeDasharray="2,2"
+                              strokeWidth="2"
+                              strokeDasharray="4,4"
                               vectorEffect="non-scaling-stroke"
                               opacity="0.7"
                             />
@@ -521,8 +528,8 @@ export default function ProductionAnalysisPage() {
                               x2="100"
                               y2={normMaxY}
                               stroke="#10b981"
-                              strokeWidth="0.5"
-                              strokeDasharray="2,2"
+                              strokeWidth="2"
+                              strokeDasharray="4,4"
                               vectorEffect="non-scaling-stroke"
                               opacity="0.7"
                             />
@@ -595,7 +602,7 @@ export default function ProductionAnalysisPage() {
                             }}
                           >
                             <div
-                              className="w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"
+                              className="w-3 h-3 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"
                               style={{ backgroundColor: color }}
                             ></div>
 
@@ -675,37 +682,37 @@ export default function ProductionAnalysisPage() {
   return (
     <div className="space-y-4 sm:space-y-8">
       {/* Фильтры */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
-        <h3 className="text-base sm:text-lg font-display font-bold text-slate-700 mb-3 sm:mb-4">ФИЛЬТРЫ</h3>
+      <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-6">
+        <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3 sm:mb-4">ФИЛЬТРЫ</h3>
 
         {/* Переключатель режима просмотра */}
         <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
           <button
             onClick={() => setViewMode('daily')}
-            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border transition-all text-sm sm:text-base ${
               viewMode === 'daily'
-                ? 'bg-corporate-primary-50 border-corporate-primary-500 text-corporate-primary-700 font-semibold'
-                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-primary-300'
+                ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
+                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
             }`}
           >
             По суткам
           </button>
           <button
             onClick={() => setViewMode('monthly')}
-            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border transition-all text-sm sm:text-base ${
               viewMode === 'monthly'
-                ? 'bg-corporate-secondary-50 border-corporate-secondary-500 text-corporate-secondary-700 font-semibold'
-                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-secondary-300'
+                ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
+                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
             }`}
           >
             По месяцам
           </button>
           <button
             onClick={() => setViewMode('detailed')}
-            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border-2 transition-all text-sm sm:text-base ${
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg border transition-all text-sm sm:text-base ${
               viewMode === 'detailed'
-                ? 'bg-corporate-success-50 border-corporate-success-500 text-corporate-success-700 font-semibold'
-                : 'bg-white border-corporate-neutral-200 text-corporate-neutral-700 hover:border-corporate-success-300'
+                ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
+                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
             }`}
           >
             Технологические параметры
@@ -718,50 +725,50 @@ export default function ProductionAnalysisPage() {
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
               <button
                 onClick={() => applyQuickPeriod('week')}
-                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                className={`px-4 py-2 rounded-lg border transition-all ${
                   quickPeriod === 'week'
-                    ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                    ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 За неделю
               </button>
               <button
                 onClick={() => applyQuickPeriod('month')}
-                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                className={`px-4 py-2 rounded-lg border transition-all ${
                   quickPeriod === 'month'
-                    ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                    ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 С начала месяца
               </button>
               <button
                 onClick={() => applyQuickPeriod('year')}
-                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                className={`px-4 py-2 rounded-lg border transition-all ${
                   quickPeriod === 'year'
-                    ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                    ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 С начала года
               </button>
               <button
                 onClick={() => applyQuickPeriod('all')}
-                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                className={`px-4 py-2 rounded-lg border transition-all ${
                   quickPeriod === 'all'
-                    ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                    ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 За весь период
               </button>
               <button
                 onClick={() => setQuickPeriod('custom')}
-                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                className={`px-4 py-2 rounded-lg border transition-all ${
                   quickPeriod === 'custom'
-                    ? 'bg-blue-50 border-blue-500 text-blue-700 font-semibold'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                    ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 Произвольный период
@@ -773,7 +780,7 @@ export default function ProductionAnalysisPage() {
         {viewMode === 'daily' ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-slate-600 mb-2">Начало периода</label>
+              <label className="block text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Начало периода</label>
               <input
                 type="date"
                 value={startDate}
@@ -781,12 +788,12 @@ export default function ProductionAnalysisPage() {
                   setStartDate(e.target.value);
                   setQuickPeriod('custom');
                 }}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-slate-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-600 mb-2">Конец периода</label>
+              <label className="block text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Конец периода</label>
               <input
                 type="date"
                 value={endDate}
@@ -794,16 +801,16 @@ export default function ProductionAnalysisPage() {
                   setEndDate(e.target.value);
                   setQuickPeriod('custom');
                 }}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-slate-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-600 mb-2">Смена</label>
+              <label className="block text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Смена</label>
               <select
                 value={shiftFilter}
                 onChange={(e) => setShiftFilter(e.target.value as 'all' | 'day' | 'night')}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-slate-500 focus:outline-none"
               >
                 <option value="all">Все смены</option>
                 <option value="day">Дневная</option>
@@ -813,22 +820,22 @@ export default function ProductionAnalysisPage() {
           </div>
         ) : viewMode === 'monthly' ? (
           <div className="space-y-4">
-            <div className="bg-corporate-secondary-50 border-2 border-corporate-secondary-200 rounded-xl p-4">
-              <p className="text-sm text-corporate-secondary-700 font-medium">
-                📊 Выберите период для анализа производства по месяцам
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="text-sm text-slate-700 font-medium">
+                Выберите период для анализа производства по месяцам
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Начальный месяц */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-corporate-neutral-700">Начальный период</label>
+                <label className="block text-xs uppercase tracking-wider font-semibold text-slate-600">Начальный период</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-corporate-neutral-600 mb-1">Месяц</label>
+                    <label className="block text-xs text-slate-600 mb-1">Месяц</label>
                     <select
                       value={startMonth}
                       onChange={(e) => setStartMonth(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                      className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 font-semibold text-sm focus:border-slate-500 focus:outline-none transition-all"
                     >
                       <option value="01">Январь</option>
                       <option value="02">Февраль</option>
@@ -845,11 +852,11 @@ export default function ProductionAnalysisPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-corporate-neutral-600 mb-1">Год</label>
+                    <label className="block text-xs text-slate-600 mb-1">Год</label>
                     <select
                       value={startYear}
                       onChange={(e) => setStartYear(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                      className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 font-semibold text-sm focus:border-slate-500 focus:outline-none transition-all"
                     >
                       {Array.from({ length: 10 }, (_, i) => 2024 + i).map(year => (
                         <option key={year} value={year}>{year}</option>
@@ -861,14 +868,14 @@ export default function ProductionAnalysisPage() {
 
               {/* Конечный месяц */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-corporate-neutral-700">Конечный период</label>
+                <label className="block text-xs uppercase tracking-wider font-semibold text-slate-600">Конечный период</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-corporate-neutral-600 mb-1">Месяц</label>
+                    <label className="block text-xs text-slate-600 mb-1">Месяц</label>
                     <select
                       value={endMonth}
                       onChange={(e) => setEndMonth(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                      className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 font-semibold text-sm focus:border-slate-500 focus:outline-none transition-all"
                     >
                       <option value="01">Январь</option>
                       <option value="02">Февраль</option>
@@ -885,11 +892,11 @@ export default function ProductionAnalysisPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-corporate-neutral-600 mb-1">Год</label>
+                    <label className="block text-xs text-slate-600 mb-1">Год</label>
                     <select
                       value={endYear}
                       onChange={(e) => setEndYear(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border-2 border-corporate-neutral-300 rounded-lg text-corporate-neutral-800 font-semibold text-sm focus:border-corporate-secondary-500 focus:outline-none transition-all"
+                      className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 font-semibold text-sm focus:border-slate-500 focus:outline-none transition-all"
                     >
                       {Array.from({ length: 10 }, (_, i) => 2024 + i).map(year => (
                         <option key={year} value={year}>{year}</option>
@@ -901,48 +908,30 @@ export default function ProductionAnalysisPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-slate-600 mb-2">Выберите дату для детального просмотра</label>
-              <select
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-blue-500 focus:outline-none"
-              >
-                {(() => {
-                  // Получаем текущую дату с учетом UTC+5 и времени начала смены (20:00)
-                  const now = new Date();
-                  const localTime = new Date(now.getTime() + 5 * 60 * 60 * 1000);
-                  const localHour = localTime.getUTCHours();
-
-                  // Если сейчас до 20:00, текущая смена началась вчера в 20:00 (сутки вчерашнего дня)
-                  // Если 20:00 или позже, текущая смена началась сегодня в 20:00 (сутки сегодняшнего дня)
-                  let currentShiftDate = new Date(localTime);
-                  if (localHour < 20) {
-                    currentShiftDate.setDate(currentShiftDate.getDate() - 1);
-                  }
-                  const today = currentShiftDate.toISOString().split('T')[0];
-                  const dates = [...productionData];
-
-                  // Проверяем, есть ли сегодняшняя дата в данных
-                  const hasTodayData = dates.some(d => d.date === today);
-
-                  // Если нет, добавляем сегодняшнюю дату в начало списка
-                  if (!hasTodayData) {
-                    dates.unshift({ date: today, total: 0 });
-                  }
-
-                  return dates.map((day) => (
-                    <option key={day.date} value={day.date}>
-                      {new Date(day.date).toLocaleDateString('ru-RU', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      })}{day.total > 0 ? ` - ${day.total.toFixed(2)} т` : ' - текущая смена'}
-                    </option>
-                  ));
-                })()}
-              </select>
+              <label className="block text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Начало периода</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setQuickPeriod('custom');
+                }}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-slate-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Конец периода</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setQuickPeriod('custom');
+                }}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono text-sm focus:border-slate-500 focus:outline-none"
+              />
             </div>
           </div>
         )}
@@ -950,17 +939,17 @@ export default function ProductionAnalysisPage() {
 
       {loading ? (
         <div className="text-center py-16">
-          <div className="text-2xl text-slate-700 font-display">Загрузка данных...</div>
+          <div className="text-2xl text-slate-900 font-bold">Загрузка данных...</div>
         </div>
       ) : viewMode === 'daily' && productionData.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
-          <div className="text-slate-700 text-lg mb-2">Нет данных за выбранный период</div>
+        <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
+          <div className="text-slate-900 text-lg font-bold mb-2">Нет данных за выбранный период</div>
           <div className="text-slate-600 text-sm">Измените фильтры или добавьте новые данные</div>
         </div>
       ) : viewMode === 'detailed' && detailedData.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
-          <div className="text-slate-700 text-lg mb-2">Нет детальных данных за выбранную дату</div>
-          <div className="text-slate-600 text-sm">Выберите другую дату</div>
+        <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
+          <div className="text-slate-900 text-lg font-bold mb-2">Нет детальных данных за выбранный период</div>
+          <div className="text-slate-600 text-sm">Измените период или добавьте новые данные</div>
         </div>
       ) : (
         <div className="space-y-8">
@@ -975,60 +964,39 @@ export default function ProductionAnalysisPage() {
                 return (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="card-metric p-6 text-center group">
-                        <div className="flex items-center justify-center mb-3">
-                          <div className="w-12 h-12 rounded-lg bg-corporate-primary-100 flex items-center justify-center group-hover:bg-corporate-primary-200 transition-colors">
-                            <svg className="w-6 h-6 text-corporate-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                          </div>
-                        </div>
-                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Общее производство</div>
-                        <div className="metric-value text-4xl font-bold text-corporate-primary-600">
+                      <div className="bg-white rounded-lg border border-slate-200 p-6 text-center">
+                        <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Общее производство</div>
+                        <div className="text-4xl font-bold text-slate-900">
                           {totalMonthlyProduction.toFixed(1)}
-                          <span className="text-xl ml-2 text-corporate-neutral-500">т</span>
+                          <span className="text-xl ml-2 text-slate-500">т</span>
                         </div>
                       </div>
-                      <div className="card-metric p-6 text-center group">
-                        <div className="flex items-center justify-center mb-3">
-                          <div className="w-12 h-12 rounded-lg bg-corporate-secondary-100 flex items-center justify-center group-hover:bg-corporate-secondary-200 transition-colors">
-                            <svg className="w-6 h-6 text-corporate-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                        </div>
-                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Среднее за месяц</div>
-                        <div className="metric-value text-4xl font-bold text-corporate-secondary-600">
+                      <div className="bg-white rounded-lg border border-slate-200 p-6 text-center">
+                        <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Среднее за месяц</div>
+                        <div className="text-4xl font-bold text-slate-900">
                           {averageMonthly.toFixed(1)}
-                          <span className="text-xl ml-2 text-corporate-neutral-500">т</span>
+                          <span className="text-xl ml-2 text-slate-500">т</span>
                         </div>
                       </div>
-                      <div className="card-metric p-6 text-center group">
-                        <div className="flex items-center justify-center mb-3">
-                          <div className="w-12 h-12 rounded-lg bg-corporate-success-100 flex items-center justify-center group-hover:bg-corporate-success-200 transition-colors">
-                            <svg className="w-6 h-6 text-corporate-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                        </div>
-                        <div className="text-sm text-corporate-neutral-600 font-semibold mb-2">Месяцев в выборке</div>
-                        <div className="metric-value text-4xl font-bold text-corporate-success-600">
+                      <div className="bg-white rounded-lg border border-slate-200 p-6 text-center">
+                        <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Месяцев в выборке</div>
+                        <div className="text-4xl font-bold text-slate-900">
                           {monthlyData.length}
-                          <span className="text-xl ml-2 text-corporate-neutral-500">мес</span>
+                          <span className="text-xl ml-2 text-slate-500">мес</span>
                         </div>
                       </div>
                     </div>
 
                     {/* График месячных данных */}
-                    <div className="bg-white rounded-2xl border-2 border-corporate-neutral-200 p-8 shadow-card-lg">
-                      <div className="mb-8 pb-4 border-b-2 border-corporate-neutral-100">
-                        <h3 className="text-2xl font-display font-semibold text-corporate-neutral-900 tracking-tight mb-2">
+                    <div className="bg-white rounded-lg border border-slate-200 p-8">
+                      <div className="mb-8 pb-4 border-b border-slate-200">
+                        <h3 className="text-2xl font-bold text-slate-900 mb-2">
                           Динамика производства по месяцам
                         </h3>
-                        <p className="text-sm text-corporate-neutral-600">Общее производство за каждый месяц</p>
+                        <p className="text-sm text-slate-600">Общее производство за каждый месяц</p>
                       </div>
 
-                      <div className="relative bg-gradient-to-br from-corporate-neutral-50 to-white rounded-xl p-8 border-2 border-corporate-neutral-100">
+                      <div className="relative bg-slate-50 rounded-lg p-8 border border-slate-200">
                         <div className="relative h-96 pt-8 pb-12">
                           {(() => {
                             if (monthlyData.length === 0) return null;
@@ -1041,6 +1009,14 @@ export default function ProductionAnalysisPage() {
                               <>
                                 {/* SVG для линии графика */}
                                 <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                  {/* Сетка */}
+                                  <defs>
+                                    <pattern id="grid-monthly" width="10" height="10" patternUnits="userSpaceOnUse">
+                                      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                                    </pattern>
+                                  </defs>
+                                  <rect width="100" height="100" fill="url(#grid-monthly)" />
+
                                   {(() => {
                                     const points = monthlyData.map((point, index) => {
                                       const x = (index / (monthlyData.length - 1 || 1)) * 100;
@@ -1054,27 +1030,13 @@ export default function ProductionAnalysisPage() {
                                     }).join(' ');
 
                                     return (
-                                      <>
-                                        <path
-                                          d={linePath}
-                                          fill="none"
-                                          stroke="#0ea5e9"
-                                          strokeWidth="1"
-                                          vectorEffect="non-scaling-stroke"
-                                          opacity="0.9"
-                                        />
-                                        <path
-                                          d={`${linePath} L 100 100 L 0 100 Z`}
-                                          fill="url(#monthlyGradient)"
-                                          opacity="0.2"
-                                        />
-                                        <defs>
-                                          <linearGradient id="monthlyGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.3} />
-                                            <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0} />
-                                          </linearGradient>
-                                        </defs>
-                                      </>
+                                      <path
+                                        d={linePath}
+                                        fill="none"
+                                        stroke="#3b82f6"
+                                        strokeWidth="2.5"
+                                        vectorEffect="non-scaling-stroke"
+                                      />
                                     );
                                   })()}
                                 </svg>
@@ -1097,11 +1059,11 @@ export default function ProductionAnalysisPage() {
                                         transform: 'translate(-50%, 50%)'
                                       }}
                                     >
-                                      <div className="w-4 h-4 rounded-full bg-corporate-primary-600 border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-150 z-10"></div>
+                                      <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-150 z-10"></div>
 
                                       {/* Постоянное отображение значения */}
                                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
-                                        <div className="bg-corporate-primary-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap">
+                                        <div className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap">
                                           {point.total?.toFixed(0)}
                                         </div>
                                       </div>
@@ -1110,22 +1072,22 @@ export default function ProductionAnalysisPage() {
                                       <div
                                         className={`absolute ${tooltipRight ? 'right-full mr-3' : 'left-full ml-3'} top-1/2 -translate-y-1/2 hidden group-hover:block z-30`}
                                       >
-                                        <div className="bg-white border-2 border-corporate-primary-400 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[240px]">
-                                          <div className="text-sm text-corporate-neutral-600 mb-3 font-semibold border-b border-corporate-neutral-200 pb-2">
+                                        <div className="bg-white border border-slate-300 rounded-lg p-4 shadow-2xl whitespace-nowrap min-w-[240px]">
+                                          <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
                                             {point.month}
                                           </div>
                                           <div className="space-y-2">
                                             <div className="flex justify-between items-center">
-                                              <span className="text-xs text-corporate-neutral-600">Общее производство:</span>
-                                              <span className="text-lg font-bold text-corporate-primary-600">{point.total?.toFixed(1)} т</span>
+                                              <span className="text-xs text-slate-600">Общее производство:</span>
+                                              <span className="text-lg font-bold text-blue-600">{point.total?.toFixed(1)} т</span>
                                             </div>
                                             <div className="flex justify-between items-center">
-                                              <span className="text-xs text-corporate-neutral-600">Среднее в день:</span>
-                                              <span className="text-sm font-semibold text-corporate-secondary-600">{point.averageDaily?.toFixed(1)} т</span>
+                                              <span className="text-xs text-slate-600">Среднее в день:</span>
+                                              <span className="text-sm font-semibold text-slate-700">{point.averageDaily?.toFixed(1)} т</span>
                                             </div>
                                             <div className="flex justify-between items-center">
-                                              <span className="text-xs text-corporate-neutral-600">Дней с данными:</span>
-                                              <span className="text-sm font-semibold text-corporate-neutral-700">{point.daysCount}</span>
+                                              <span className="text-xs text-slate-600">Дней с данными:</span>
+                                              <span className="text-sm font-semibold text-slate-700">{point.daysCount}</span>
                                             </div>
                                           </div>
                                         </div>
@@ -1133,15 +1095,15 @@ export default function ProductionAnalysisPage() {
                                         <div
                                           className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-solid ${
                                             tooltipRight
-                                              ? 'left-full border-l-[8px] border-l-corporate-primary-400 border-y-transparent border-y-[8px] border-r-0'
-                                              : 'right-full border-r-[8px] border-r-corporate-primary-400 border-y-transparent border-y-[8px] border-l-0'
+                                              ? 'left-full border-l-[8px] border-l-slate-300 border-y-transparent border-y-[8px] border-r-0'
+                                              : 'right-full border-r-[8px] border-r-slate-300 border-y-transparent border-y-[8px] border-l-0'
                                           }`}
                                         ></div>
                                       </div>
 
                                       {/* Подписи месяцев снизу */}
                                       {(index % Math.max(1, Math.floor(monthlyData.length / 12)) === 0 || monthlyData.length <= 12) && (
-                                        <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 text-xs text-corporate-neutral-600 font-semibold -rotate-45 origin-top whitespace-nowrap">
+                                        <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 text-xs text-slate-600 font-semibold -rotate-45 origin-top whitespace-nowrap">
                                           {point.month}
                                         </div>
                                       )}
@@ -1156,35 +1118,35 @@ export default function ProductionAnalysisPage() {
                     </div>
 
                     {/* Таблица месячных данных */}
-                    <div className="bg-white rounded-2xl border-2 border-corporate-neutral-200 p-8 shadow-card-lg">
-                      <div className="mb-6 pb-4 border-b-2 border-corporate-neutral-100">
-                        <h3 className="text-xl font-display font-semibold text-corporate-neutral-900 tracking-tight">
+                    <div className="bg-white rounded-lg border border-slate-200 p-8">
+                      <div className="mb-6 pb-4 border-b border-slate-200">
+                        <h3 className="text-2xl font-bold text-slate-900">
                           Детальные данные по месяцам
                         </h3>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead>
-                            <tr className="border-b-2 border-corporate-neutral-200">
-                              <th className="text-left py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Месяц</th>
-                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Производство, т</th>
-                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Среднее в день, т</th>
-                              <th className="text-right py-4 px-4 text-sm font-semibold text-corporate-neutral-700">Дней</th>
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                              <th className="text-left py-4 px-4 text-xs font-semibold text-slate-600">Месяц</th>
+                              <th className="text-right py-4 px-4 text-xs font-semibold text-slate-600">Производство, т</th>
+                              <th className="text-right py-4 px-4 text-xs font-semibold text-slate-600">Среднее в день, т</th>
+                              <th className="text-right py-4 px-4 text-xs font-semibold text-slate-600">Дней</th>
                             </tr>
                           </thead>
                           <tbody>
                             {monthlyData.map((item, idx) => (
-                              <tr key={idx} className="border-b border-corporate-neutral-100 hover:bg-corporate-neutral-50 transition-colors">
-                                <td className="py-4 px-4 text-sm font-semibold text-corporate-neutral-800">
+                              <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                                <td className="py-4 px-4 text-sm font-semibold text-slate-800">
                                   {item.month}
                                 </td>
-                                <td className="py-4 px-4 text-base font-mono font-bold text-corporate-primary-600 text-right">
+                                <td className="py-4 px-4 text-base font-mono font-bold text-slate-900 text-right">
                                   {item.total?.toFixed(1)}
                                 </td>
-                                <td className="py-4 px-4 text-sm font-mono text-corporate-neutral-700 text-right">
+                                <td className="py-4 px-4 text-sm font-mono text-slate-700 text-right">
                                   {item.averageDaily?.toFixed(1)}
                                 </td>
-                                <td className="py-4 px-4 text-sm font-mono text-corporate-neutral-600 text-right">
+                                <td className="py-4 px-4 text-sm font-mono text-slate-600 text-right">
                                   {item.daysCount}
                                 </td>
                               </tr>
@@ -1201,38 +1163,38 @@ export default function ProductionAnalysisPage() {
             <>
           {/* Статистика */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <div className="text-sm text-slate-600 mb-2">Общее производство</div>
-              <div className="text-3xl font-display font-bold text-blue-600">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Общее производство</div>
+              <div className="text-3xl font-bold text-slate-900">
                 {totalProduction.toFixed(2)} т
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <div className="text-sm text-slate-600 mb-2">Среднее в сутки</div>
-              <div className="text-3xl font-display font-bold text-emerald-600">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Среднее в сутки</div>
+              <div className="text-3xl font-bold text-slate-900">
                 {averageDaily.toFixed(2)} т
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <div className="text-sm text-slate-600 mb-2">Дней в выборке</div>
-              <div className="text-3xl font-display font-bold text-slate-800">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">Дней в выборке</div>
+              <div className="text-3xl font-bold text-slate-900">
                 {productionData.length}
               </div>
             </div>
           </div>
 
           {/* График */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-display text-blue-600">
-                ДИНАМИКА ПРОИЗВОДСТВА
+              <h3 className="text-2xl font-bold text-slate-900">
+                Динамика производства
               </h3>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={showShiftsOnChart}
                   onChange={(e) => setShowShiftsOnChart(e.target.checked)}
-                  className="w-4 h-4 cursor-pointer accent-blue-600"
+                  className="w-4 h-4 cursor-pointer"
                 />
                 <span className="text-sm text-slate-700">Показать смены</span>
               </label>
@@ -1290,6 +1252,14 @@ export default function ProductionAnalysisPage() {
 
                       {/* SVG для линий и графика */}
                       <svg className="absolute left-12 top-0 w-[calc(100%-3rem)] h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        {/* Сетка */}
+                        <defs>
+                          <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                            <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                          </pattern>
+                        </defs>
+                        <rect width="100" height="100" fill="url(#grid)" />
+
                         {/* Линия нормы суточная */}
                         {!showShiftsOnChart && (
                           <line
@@ -1298,8 +1268,8 @@ export default function ProductionAnalysisPage() {
                             x2="100"
                             y2={normY}
                             stroke="#ef4444"
-                            strokeWidth="0.4"
-                            strokeDasharray="2,2"
+                            strokeWidth="2"
+                            strokeDasharray="4,4"
                             vectorEffect="non-scaling-stroke"
                             opacity="0.7"
                           />
@@ -1313,8 +1283,8 @@ export default function ProductionAnalysisPage() {
                             x2="100"
                             y2={shiftNormY}
                             stroke="#ef4444"
-                            strokeWidth="0.4"
-                            strokeDasharray="2,2"
+                            strokeWidth="2"
+                            strokeDasharray="4,4"
                             vectorEffect="non-scaling-stroke"
                             opacity="0.7"
                           />
@@ -1339,9 +1309,8 @@ export default function ProductionAnalysisPage() {
                                 d={linePath}
                                 fill="none"
                                 stroke="#3b82f6"
-                                strokeWidth="1"
+                                strokeWidth="2.5"
                                 vectorEffect="non-scaling-stroke"
-                                opacity="0.9"
                               />
                             );
                           })()
@@ -1366,9 +1335,8 @@ export default function ProductionAnalysisPage() {
                                   d={linePath}
                                   fill="none"
                                   stroke="#f59e0b"
-                                  strokeWidth="1"
+                                  strokeWidth="2.5"
                                   vectorEffect="non-scaling-stroke"
-                                  opacity="0.8"
                                 />
                               );
                             })()}
@@ -1391,9 +1359,8 @@ export default function ProductionAnalysisPage() {
                                   d={linePath}
                                   fill="none"
                                   stroke="#8b5cf6"
-                                  strokeWidth="1"
+                                  strokeWidth="2.5"
                                   vectorEffect="non-scaling-stroke"
-                                  opacity="0.8"
                                 />
                               );
                             })()}
@@ -1468,7 +1435,7 @@ export default function ProductionAnalysisPage() {
                                 }}
                               >
                                 <div
-                                  className="w-3.5 h-3.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-md z-10"
+                                  className="w-4 h-4 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-md z-10"
                                   style={{ backgroundColor: pointColor }}
                                 ></div>
 
@@ -1552,7 +1519,7 @@ export default function ProductionAnalysisPage() {
                                     transform: 'translate(-50%, -50%)'
                                   }}
                                 >
-                                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"></div>
+                                  <div className="w-3 h-3 rounded-full bg-amber-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"></div>
 
                                   {/* Постоянное отображение значения дневной смены */}
                                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
@@ -1605,7 +1572,7 @@ export default function ProductionAnalysisPage() {
                                     transform: 'translate(-50%, -50%)'
                                   }}
                                 >
-                                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"></div>
+                                  <div className="w-3 h-3 rounded-full bg-purple-500 cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"></div>
 
                                   {/* Постоянное отображение значения ночной смены */}
                                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
@@ -1686,23 +1653,23 @@ export default function ProductionAnalysisPage() {
           </div>
 
           {/* Таблица данных */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-lg font-display text-blue-600 mb-4">
-              ДЕТАЛЬНЫЕ ДАННЫЕ
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
+            <h3 className="text-2xl font-bold text-slate-900 mb-4">
+              Детальные данные
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Дата</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Дневная смена, т</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Ночная смена, т</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Всего, т</th>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600">Дата</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600">Дневная смена, т</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600">Ночная смена, т</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600">Всего, т</th>
                   </tr>
                 </thead>
                 <tbody>
                   {productionData.map((item, idx) => (
-                    <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                    <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50">
                       <td className="py-3 px-4 text-sm font-mono text-slate-800">
                         {new Date(item.date).toLocaleDateString('ru-RU')}
                       </td>
@@ -1712,7 +1679,7 @@ export default function ProductionAnalysisPage() {
                       <td className="py-3 px-4 text-sm font-mono text-slate-800 text-right">
                         {item.nightShift?.toFixed(2) || '0.00'}
                       </td>
-                      <td className="py-3 px-4 text-sm font-mono font-bold text-blue-600 text-right">
+                      <td className="py-3 px-4 text-sm font-mono font-bold text-slate-900 text-right">
                         {item.total?.toFixed(2) || '0.00'}
                       </td>
                     </tr>
@@ -1725,16 +1692,12 @@ export default function ProductionAnalysisPage() {
           ) : (
             <>
               {/* Детальный режим - 30 минутные интервалы */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                <h3 className="text-xl font-display font-bold text-blue-600 mb-6">
-                  ДЕТАЛЬНАЯ ДИНАМИКА ПО 30 МИНУТАМ
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <h3 className="text-2xl font-bold text-slate-900 mb-6">
+                  Детальная динамика по 30 минутам
                 </h3>
                 <div className="text-sm text-slate-600 mb-4">
-                  Дата: {new Date(selectedDate).toLocaleDateString('ru-RU', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
+                  Период: {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}
                 </div>
 
                 {/* График */}
@@ -1757,11 +1720,19 @@ export default function ProductionAnalysisPage() {
                         <>
                           {/* SVG для линии */}
                           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            {/* Сетка */}
+                            <defs>
+                              <pattern id="grid-detailed" width="10" height="10" patternUnits="userSpaceOnUse">
+                                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                              </pattern>
+                            </defs>
+                            <rect width="100" height="100" fill="url(#grid-detailed)" />
+
                             <path
                               d={linePath}
                               fill="none"
                               stroke="#3b82f6"
-                              strokeWidth="0.5"
+                              strokeWidth="2.5"
                               vectorEffect="non-scaling-stroke"
                             />
                           </svg>
@@ -1777,7 +1748,7 @@ export default function ProductionAnalysisPage() {
                                 transform: 'translate(-50%, 50%)'
                               }}
                             >
-                              <div className="w-2 h-2 rounded-full bg-blue-600 cursor-pointer transition-all duration-200 hover:scale-150"></div>
+                              <div className="w-3 h-3 rounded-full bg-blue-600 cursor-pointer transition-all duration-200 hover:scale-150"></div>
 
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                                 <div className="bg-white border border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
@@ -1808,27 +1779,27 @@ export default function ProductionAnalysisPage() {
               </div>
 
               {/* Таблица детальных данных */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                <h3 className="text-lg font-display text-blue-600 mb-4">
-                  ДАННЫЕ ПО 30-МИНУТНЫМ ИНТЕРВАЛАМ
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">
+                  Данные по 30-минутным интервалам
                 </h3>
                 <div className="overflow-x-auto max-h-96">
                   <table className="w-full">
-                    <thead className="sticky top-0 bg-white">
+                    <thead className="sticky top-0 bg-slate-50">
                       <tr className="border-b border-slate-200">
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Время</th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Производство, т</th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Скорость, т/ч</th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Записей</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600">Время</th>
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600">Производство, т</th>
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600">Скорость, т/ч</th>
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600">Записей</th>
                       </tr>
                     </thead>
                     <tbody>
                       {detailedData.map((item, idx) => (
-                        <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                        <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50">
                           <td className="py-3 px-4 text-sm font-mono text-slate-800">
                             {item.time}
                           </td>
-                          <td className="py-3 px-4 text-sm font-mono font-bold text-blue-600 text-right">
+                          <td className="py-3 px-4 text-sm font-mono font-bold text-slate-900 text-right">
                             {item.totalProduction?.toFixed(2)}
                           </td>
                           <td className="py-3 px-4 text-sm font-mono text-slate-800 text-right">
@@ -1847,17 +1818,17 @@ export default function ProductionAnalysisPage() {
               {/* Технические данные */}
               <div className="mt-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-display font-bold text-slate-700">
-                    ТЕХНИЧЕСКИЕ ПАРАМЕТРЫ ОБОРУДОВАНИЯ
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    Технические параметры оборудования
                   </h2>
                   <button
                     onClick={() => setShowCustomTechGraph(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-all"
                   >
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    <span className="text-sm font-bold text-blue-700">Создать график</span>
+                    <span className="text-sm font-semibold text-slate-700">Создать график</span>
                   </button>
                 </div>
                 <div className="space-y-6">
@@ -1874,10 +1845,10 @@ export default function ProductionAnalysisPage() {
       {/* Модальное окно для создания кастомного графика технических параметров */}
       {showCustomTechGraph && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl">
+          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-lg">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-display font-bold text-blue-600">СОЗДАТЬ КАСТОМНЫЙ ГРАФИК</h2>
+                <h2 className="text-2xl font-bold text-slate-900">Создать кастомный график</h2>
                 <button
                   onClick={() => {
                     setShowCustomTechGraph(false);
@@ -1894,25 +1865,25 @@ export default function ProductionAnalysisPage() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Информация о выбранной дате */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="text-sm font-semibold text-blue-800">
-                  Дата: {selectedDate ? new Date(selectedDate).toLocaleDateString('ru-RU') : 'Не выбрана'}
+              {/* Информация о выбранном периоде */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <div className="text-sm font-semibold text-slate-800">
+                  Период: {startDate && endDate ? `${new Date(startDate).toLocaleDateString('ru-RU')} - ${new Date(endDate).toLocaleDateString('ru-RU')}` : 'Не выбран'}
                 </div>
-                <div className="text-xs text-blue-600 mt-1">
-                  График будет построен для данных этой даты
+                <div className="text-xs text-slate-600 mt-1">
+                  График будет построен для данных этого периода
                 </div>
               </div>
 
               {/* Выбор параметров */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-semibold text-slate-800">
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-slate-600">
                     Выберите параметры ({customTechMetrics.length})
                   </label>
                   <button
                     onClick={() => setCustomTechMetrics([])}
-                    className="text-xs px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all"
+                    className="text-xs px-3 py-1 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg transition-all"
                   >
                     Очистить
                   </button>
@@ -1927,7 +1898,7 @@ export default function ProductionAnalysisPage() {
 
                     return (
                       <div key={`${collection.name}_${collection.group || idx}`}>
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">
+                        <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 px-2">
                           {collection.title}
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1943,17 +1914,17 @@ export default function ProductionAnalysisPage() {
                             return (
                               <label
                                 key={metric.title}
-                                className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                                   isSelected
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-slate-200 bg-white hover:border-blue-300'
+                                    ? 'border-slate-400 bg-slate-100'
+                                    : 'border-slate-300 bg-white hover:bg-slate-50'
                                 }`}
                               >
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => toggleCustomTechMetric(realCollection, metric.title)}
-                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                  className="w-4 h-4 rounded"
                                 />
                                 <span className="text-sm font-semibold text-slate-800">{metric.title}</span>
                               </label>
@@ -1970,7 +1941,7 @@ export default function ProductionAnalysisPage() {
               <button
                 onClick={buildCustomTechGraph}
                 disabled={loading || customTechMetrics.length === 0}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-lg transition-all shadow-lg"
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold text-lg rounded-lg transition-all"
               >
                 {loading ? 'Загрузка данных...' : 'Построить график'}
               </button>
@@ -1978,8 +1949,8 @@ export default function ProductionAnalysisPage() {
               {/* Отображение кастомного графика */}
               {customTechGraphData.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-lg font-display font-bold text-blue-600 mb-4">
-                    КОМБИНИРОВАННЫЙ ГРАФИК
+                  <h3 className="text-2xl font-bold text-slate-900 mb-4">
+                    Комбинированный график
                   </h3>
 
                   {(() => {
@@ -2009,6 +1980,14 @@ export default function ProductionAnalysisPage() {
                         <div className="relative h-96 overflow-visible">
                           {/* SVG для всех линий */}
                           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            {/* Сетка */}
+                            <defs>
+                              <pattern id="grid-custom" width="10" height="10" patternUnits="userSpaceOnUse">
+                                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                              </pattern>
+                            </defs>
+                            <rect width="100" height="100" fill="url(#grid-custom)" />
+
                             {customTechGraphData.map((line, lineIndex) => {
                               const points = line.data.map((point: any) => {
                                 const timeIndex = sortedTimes.indexOf(point.time);
@@ -2028,7 +2007,7 @@ export default function ProductionAnalysisPage() {
                                   d={linePath}
                                   fill="none"
                                   stroke={colors[lineIndex % colors.length]}
-                                  strokeWidth="0.3"
+                                  strokeWidth="2.5"
                                   vectorEffect="non-scaling-stroke"
                                 />
                               );
@@ -2054,7 +2033,7 @@ export default function ProductionAnalysisPage() {
                                   }}
                                 >
                                   <div
-                                    className="w-2 h-2 rounded-full cursor-pointer transition-all duration-200 hover:scale-150"
+                                    className="w-3 h-3 rounded-full cursor-pointer transition-all duration-200 hover:scale-150"
                                     style={{ backgroundColor: pointColor }}
                                   ></div>
 
