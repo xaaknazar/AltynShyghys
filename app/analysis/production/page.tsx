@@ -385,11 +385,19 @@ export default function ProductionAnalysisPage() {
     const selected = selectedMetrics[selectionKey] || [];
     const selectedMetricsData = metrics.filter((m: any) => selected.includes(m.title));
 
-    // Отладка
-    console.log(`[${title}] allData.length:`, allData.length);
-    console.log(`[${title}] metrics.length:`, metrics.length);
-    console.log(`[${title}] selected:`, selected);
-    console.log(`[${title}] selectedMetricsData.length:`, selectedMetricsData.length);
+    // Подробная отладка
+    console.log(`========== [${title}] ==========`);
+    console.log('Collections:', collections);
+    console.log('techData keys:', Object.keys(techData));
+    console.log('allData.length:', allData.length);
+    if (allData.length > 0) {
+      console.log('Sample allData item:', allData[0]);
+    }
+    console.log('allMetrics:', allMetrics);
+    console.log('metrics after filter:', metrics);
+    console.log('selected:', selected);
+    console.log('selectedMetricsData:', selectedMetricsData);
+    console.log('========== END ==========');
 
     return (
       <div key={uniqueKey} className="bg-white rounded-lg border border-slate-200 p-6">
