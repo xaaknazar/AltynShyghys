@@ -152,7 +152,7 @@ export default function TechnicalChart({
 
           {/* Контейнер графика со скроллом */}
           <div className="bg-slate-50 rounded-lg p-6 border border-slate-200 overflow-x-auto">
-            <div className="relative" style={{ width: `${graphWidth}px`, height: '500px' }}>
+            <div className="relative" style={{ width: `${graphWidth}px`, height: '500px', paddingTop: '30px', paddingBottom: '80px', paddingLeft: '60px' }}>
               {/* SVG с графиком */}
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                 {/* Сетка */}
@@ -162,6 +162,30 @@ export default function TechnicalChart({
                   </pattern>
                 </defs>
                 <rect width="100" height="100" fill={`url(#grid-${uniqueKey})`} />
+
+                {/* Оси X и Y */}
+                <g>
+                  {/* Ось Y (левая вертикальная линия) */}
+                  <line x1="2" y1="2" x2="2" y2="98" stroke="#475569" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                  {/* Ось X (нижняя горизонтальная линия) */}
+                  <line x1="2" y1="98" x2="98" y2="98" stroke="#475569" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+
+                  {/* Деления на оси Y (горизонтальные линии) */}
+                  {[0, 25, 50, 75, 100].map((tick) => (
+                    <line
+                      key={`y-tick-${tick}`}
+                      x1="2"
+                      y1={98 - (tick * 0.96)}
+                      x2="98"
+                      y2={98 - (tick * 0.96)}
+                      stroke="#94a3b8"
+                      strokeWidth="1"
+                      strokeDasharray="2,2"
+                      opacity="0.5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+                </g>
 
                 {/* Линии метрик */}
                 {selectedMetricsData.map((metric: any) => {
@@ -222,6 +246,67 @@ export default function TechnicalChart({
                 })}
               </svg>
 
+              {/* Метки на оси Y и название оси */}
+              {selectedMetricsData.length > 0 && (() => {
+                const metric = selectedMetricsData[0];
+                const metricData = allData.filter((d: any) => d[metric.title] !== undefined);
+                if (metricData.length === 0) return null;
+
+                const values = metricData.map((d: any) => d[metric.title]);
+                const dataMin = Math.min(...values);
+                const dataMax = Math.max(...values);
+                const padding = (dataMax - dataMin) * 0.1 || 1;
+                const minValue = dataMin - padding;
+                const maxValue = dataMax + padding;
+
+                return (
+                  <>
+                    {/* Название оси Y */}
+                    <div
+                      className="absolute pointer-events-none text-sm font-bold text-slate-700"
+                      style={{
+                        left: '10px',
+                        top: '-20px'
+                      }}
+                    >
+                      Значение ({metric.unit})
+                    </div>
+
+                    {/* Метки значений */}
+                    {[0, 25, 50, 75, 100].map((tick) => {
+                      const value = minValue + (tick / 100) * (maxValue - minValue);
+                      const yPos = 98 - (tick * 0.96);
+
+                      return (
+                        <div
+                          key={`y-label-${tick}`}
+                          className="absolute left-0 pointer-events-none text-xs font-mono text-slate-600 font-semibold"
+                          style={{
+                            top: `${yPos}%`,
+                            transform: 'translate(-100%, -50%)',
+                            marginLeft: '-8px'
+                          }}
+                        >
+                          {value.toFixed(1)}
+                        </div>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+
+              {/* Название оси X */}
+              <div
+                className="absolute pointer-events-none text-sm font-bold text-slate-700"
+                style={{
+                  left: '50%',
+                  bottom: '-60px',
+                  transform: 'translateX(-50%)'
+                }}
+              >
+                Время
+              </div>
+
               {/* Точки и tooltips как HTML элементы */}
               {selectedMetricsData.map((metric: any) => {
                 const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
@@ -246,11 +331,7 @@ export default function TechnicalChart({
                   return { x, y, value: point[metric.title], time: point.time };
                 });
 
-                // Показываем значения только для каждой N-ой точки
-                const step = Math.max(1, Math.floor(points.length / 20));
-
                 return points.map((p, index) => {
-                  const showValue = index % step === 0;
                   const showTime = index % Math.max(1, Math.floor(points.length / 12)) === 0;
 
                   return (
@@ -269,19 +350,17 @@ export default function TechnicalChart({
                         style={{ backgroundColor: color }}
                       />
 
-                      {/* Значение над точкой */}
-                      {showValue && (
-                        <div
-                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
-                          style={{ backgroundColor: color }}
-                        >
-                          {p.value?.toFixed(1)}
-                        </div>
-                      )}
+                      {/* Значение над точкой - ВСЕГДА показываем */}
+                      <div
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                        style={{ backgroundColor: color }}
+                      >
+                        {p.value?.toFixed(1)}
+                      </div>
 
-                      {/* Время под точкой */}
+                      {/* Метка времени на оси X */}
                       {showTime && (
-                        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
+                        <div className="absolute left-1/2 -translate-x-1/2 text-xs text-slate-600 font-mono -rotate-45 origin-top whitespace-nowrap" style={{ top: '100%', marginTop: '8px' }}>
                           {formatTime(p.time, true)}
                         </div>
                       )}
