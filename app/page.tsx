@@ -76,9 +76,35 @@ export default function HomePage() {
   // Вычисления для KPI и прогноза
   const currentSpeed = latestData?.speed || 0;
   const produced = currentStats.totalProduction;
+  const averageSpeed = currentStats.averageSpeed; // Средняя скорость за сутки
+
+  // Определяем текущую смену и среднюю скорость смены
+  const now = new Date();
+  const currentHour = now.getHours();
+  const isNightShift = currentHour >= 20 || currentHour < 8;
+
+  // Рассчитываем среднюю скорость текущей смены
+  let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за сутки
+  if (currentDayData?.data) {
+    const shiftStart = isNightShift
+      ? (currentHour >= 20 ? 20 : -4) // Если ночная: с 20:00 или продолжение с предыдущего дня
+      : 8; // Дневная с 08:00
+
+    const shiftData = currentDayData.data.filter(d => {
+      const dataHour = new Date(d.datetime).getHours();
+      if (isNightShift) {
+        return dataHour >= 20 || dataHour < 8;
+      } else {
+        return dataHour >= 8 && dataHour < 20;
+      }
+    });
+
+    if (shiftData.length > 0) {
+      shiftAverageSpeed = shiftData.reduce((sum, d) => sum + d.speed, 0) / shiftData.length;
+    }
+  }
 
   // Рассчитываем время с начала суток
-  const now = new Date();
   const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
   const hoursPassed = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
@@ -88,21 +114,22 @@ export default function HomePage() {
   const deviation = produced - currentPlan;
   const deviationPercent = (deviation / currentPlan) * 100;
 
-  // Прогноз до конца суток
+  // Прогноз до конца суток - используем СРЕДНЮЮ скорость за сутки, а не текущую
   const endOfDay = new Date(now);
   endOfDay.setHours(23, 59, 59, 999);
   const hoursRemaining = Math.max(0, (endOfDay.getTime() - now.getTime()) / (1000 * 60 * 60));
-  const forecast = produced + (currentSpeed * hoursRemaining);
+  const forecast = produced + (averageSpeed * hoursRemaining);
 
   // Определяем статус
   const status = deviationPercent >= 0 ? 'ok' :
                  deviationPercent >= -10 ? 'warning' :
                  'critical';
 
-  // Уверенность прогноза
-  const confidence = hoursRemaining > 8 ? 'low' :
-                    hoursRemaining > 4 ? 'medium' :
-                    'high';
+  // Уверенность прогноза - зависит от стабильности производства
+  // Если отклонение небольшое и производство стабильное - высокая уверенность
+  const confidence = Math.abs(deviationPercent) <= 5 ? 'high' :
+                    Math.abs(deviationPercent) <= 15 ? 'medium' :
+                    'low';
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={fetchData} />;
@@ -155,13 +182,35 @@ export default function HomePage() {
             Ключевые показатели
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPIMetricCard
-              label="Текущая скорость"
-              value={currentSpeed}
-              unit="т/ч"
-              target={TARGETS.hourly}
-              status={currentSpeed >= TARGETS.hourly ? 'normal' : currentSpeed >= TARGETS.hourly * 0.8 ? 'warning' : 'critical'}
-            />
+            <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
+              <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
+                Текущая скорость
+              </div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-4xl font-bold tabular-nums text-slate-900">
+                  {currentSpeed.toFixed(1)}
+                </span>
+                <span className="text-lg text-slate-600 font-medium">т/ч</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">Средняя на смене:</span>
+                  <span className="font-semibold text-slate-900">{shiftAverageSpeed.toFixed(1)} т/ч</span>
+                </div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">План:</span>
+                  <span className={`font-bold ${
+                    currentSpeed >= TARGETS.hourly ? 'text-emerald-600' :
+                    currentSpeed >= TARGETS.hourly * 0.8 ? 'text-amber-600' :
+                    'text-red-600'
+                  }`}>
+                    {TARGETS.hourly} т/ч
+                  </span>
+                </div>
+              </div>
+            </div>
             <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
               <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
                 Произведено за сутки
@@ -198,13 +247,38 @@ export default function HomePage() {
               unit="т"
               format="integer"
             />
-            <KPIMetricCard
-              label="Разница от плана"
-              value={Math.abs(deviation)}
-              unit="т"
-              trend={deviation >= 0 ? 'up' : 'down'}
-              status={status === 'ok' ? 'normal' : status}
-            />
+            <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
+              <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
+                Разница от плана
+              </div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className={`text-4xl font-bold tabular-nums ${
+                  deviation >= 0 ? 'text-emerald-600' : 'text-red-600'
+                }`}>
+                  {deviation >= 0 ? '+' : ''}{deviation.toFixed(1)}
+                </span>
+                <span className="text-lg text-slate-600 font-medium">т</span>
+                {deviation >= 0 ? (
+                  <span className="text-2xl text-emerald-600">↑</span>
+                ) : (
+                  <span className="text-2xl text-red-600">↓</span>
+                )}
+              </div>
+              <div className="text-xs text-slate-500 mb-2">
+                ({deviation >= 0 ? '+' : ''}{deviationPercent.toFixed(1)}%)
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-200">
+                <div className="text-xs text-center">
+                  <span className={`font-bold ${
+                    deviation >= 0 ? 'text-emerald-700' : 'text-red-700'
+                  }`}>
+                    {deviation >= 0
+                      ? '✓ Идем больше плана'
+                      : '✗ Идем меньше плана'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
