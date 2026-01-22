@@ -76,13 +76,15 @@ export default function HomePage() {
   // Вычисления для KPI и прогноза
   const currentSpeed = latestData?.speed || 0;
   const produced = currentStats.totalProduction;
-  const averageSpeed = currentStats.averageSpeed; // Средняя скорость из базы данных
 
   // Рассчитываем время с начала суток
   const now = new Date();
   const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
   const hoursPassed = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
+
+  // Средняя скорость берем из базы данных (НЕ вычисляем!)
+  const averageSpeed = currentStats.averageSpeed || 0;
 
   // Определяем текущую смену и среднюю скорость смены
   const currentHour = now.getHours();
