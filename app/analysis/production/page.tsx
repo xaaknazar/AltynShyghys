@@ -487,11 +487,16 @@ export default function ProductionAnalysisPage() {
               )}
             </div>
 
-            <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
-              <div className="relative h-96 pt-16 pb-16 px-20 overflow-x-auto">
-                {(() => {
-                  // Подготовка данных для всех метрик
-                  const metricsWithData = selectedMetricsData.map((metric: any) => {
+            <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200 overflow-x-auto">
+              {(() => {
+                // Вычисляем минимальную ширину графика в зависимости от количества точек
+                const minWidth = Math.max(800, allData.length * 15); // минимум 15px на точку
+
+                return (
+                  <div className="relative h-96 pt-16 pb-16 px-20" style={{ minWidth: `${minWidth}px` }}>
+                    {(() => {
+                      // Подготовка данных для всех метрик
+                      const metricsWithData = selectedMetricsData.map((metric: any) => {
                     const metricIndex = metrics.findIndex((m: any) => m.title === metric.title);
                     const metricData = allData.filter((d: any) => d[metric.title] !== undefined);
 
@@ -722,15 +727,17 @@ export default function ProductionAnalysisPage() {
                                 style={{ backgroundColor: data.color }}
                               ></div>
 
-                              {/* Постоянное отображение значения */}
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
-                                <div
-                                  className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
-                                  style={{ backgroundColor: data.color }}
-                                >
-                                  {p.value?.toFixed(1)}
+                              {/* Постоянное отображение значения - только для каждой N-ой точки при большом количестве данных */}
+                              {index % Math.max(1, Math.floor(data.metricData.length / 20)) === 0 && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                  <div
+                                    className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                                    style={{ backgroundColor: data.color }}
+                                  >
+                                    {p.value?.toFixed(1)}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
 
                               {/* Детальный tooltip при наведении */}
                               <div
@@ -738,7 +745,16 @@ export default function ProductionAnalysisPage() {
                               >
                                 <div className="bg-white border-2 rounded-xl p-4 shadow-2xl whitespace-nowrap min-w-[220px]" style={{ borderColor: data.color }}>
                                   <div className="text-sm text-slate-600 mb-3 font-semibold border-b border-slate-200 pb-2">
-                                    {p.point.time}
+                                    {(() => {
+                                      // Форматируем время для tooltip: "дд.мм.гггг HH:MM"
+                                      const timeStr = p.point.time;
+                                      if (timeStr.includes(' ')) {
+                                        const [datePart, timePart] = timeStr.split(' ');
+                                        const [year, month, day] = datePart.split('-');
+                                        return `${day}.${month}.${year} ${timePart}`;
+                                      }
+                                      return timeStr;
+                                    })()}
                                   </div>
                                   <div className="space-y-2">
                                     <div className="flex justify-between items-center">
@@ -770,7 +786,16 @@ export default function ProductionAnalysisPage() {
 
                               {index % Math.max(1, Math.floor(data.metricData.length / 12)) === 0 && (
                                 <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
-                                  {p.point.time}
+                                  {(() => {
+                                    // Форматируем время: "дд.мм HH:MM"
+                                    const timeStr = p.point.time;
+                                    if (timeStr.includes(' ')) {
+                                      const [datePart, timePart] = timeStr.split(' ');
+                                      const [year, month, day] = datePart.split('-');
+                                      return `${day}.${month} ${timePart}`;
+                                    }
+                                    return timeStr;
+                                  })()}
                                 </div>
                               )}
                             </div>
@@ -781,6 +806,8 @@ export default function ProductionAnalysisPage() {
                   );
                 })()}
               </div>
+            );
+          })()}
             </div>
           </div>
         )}

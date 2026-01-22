@@ -32,7 +32,8 @@ function aggregateToThirtyMinutes(data: TechDataPoint[]): AggregatedTechData[] {
     const roundedMinutes = minutes < 30 ? 0 : 30;
     localTime.setUTCMinutes(roundedMinutes, 0, 0);
 
-    const timeKey = localTime.toISOString().substring(11, 16);
+    // Используем полную дату+время как ключ (YYYY-MM-DD HH:MM)
+    const timeKey = localTime.toISOString().substring(0, 16).replace('T', ' ');
 
     if (!intervals.has(timeKey)) {
       intervals.set(timeKey, new Map());
