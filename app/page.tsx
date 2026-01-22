@@ -183,7 +183,7 @@ export default function HomePage() {
               value={Math.abs(deviation)}
               unit="т"
               trend={deviation >= 0 ? 'up' : 'down'}
-              status={status}
+              status={status === 'ok' ? 'normal' : status}
             />
           </div>
         </section>
