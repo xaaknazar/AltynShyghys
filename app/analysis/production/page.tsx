@@ -179,6 +179,18 @@ export default function ProductionAnalysisPage() {
 
   const fetchTechnicalData = async (date: string) => {
     try {
+      // Рассчитываем период смены: с 20:00 предыдущего дня до 20:00 выбранного дня
+      const selectedDate = new Date(date);
+
+      // Начало смены: 20:00 предыдущего дня
+      const shiftStart = new Date(selectedDate);
+      shiftStart.setDate(shiftStart.getDate() - 1);
+      shiftStart.setHours(20, 0, 0, 0);
+
+      // Конец смены: 20:00 выбранного дня
+      const shiftEnd = new Date(selectedDate);
+      shiftEnd.setHours(20, 0, 0, 0);
+
       // Получаем уникальные названия коллекций из всех элементов
       const allCollectionNames = techCollections.flatMap(c => c.collections || [c.name]);
       const uniqueCollectionNames = [...new Set(allCollectionNames)];
@@ -192,8 +204,14 @@ export default function ProductionAnalysisPage() {
         const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
         const data = await response.json();
 
-        if (data.success) {
-          return { name: collectionName, data: data.data || [], metrics: data.metrics || [] };
+        if (data.success && data.data) {
+          // Фильтруем данные по периоду смены
+          const filteredData = data.data.filter((item: any) => {
+            const itemDate = new Date(item.time);
+            return itemDate >= shiftStart && itemDate <= shiftEnd;
+          });
+
+          return { name: collectionName, data: filteredData, metrics: data.metrics || [] };
         }
         return { name: collectionName, data: [], metrics: [] };
       });
@@ -599,14 +617,14 @@ export default function ProductionAnalysisPage() {
                             }}
                           >
                             <div
-                              className="w-3 h-3 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-sm z-10"
+                              className="w-4 h-4 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-lg z-10"
                               style={{ backgroundColor: color }}
                             ></div>
 
                             {/* Постоянное отображение значения */}
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
                               <div
-                                className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap"
+                                className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
                                 style={{ backgroundColor: color }}
                               >
                                 {p.value?.toFixed(1)}
@@ -1701,10 +1719,10 @@ export default function ProductionAnalysisPage() {
                 <div className="relative bg-slate-50 rounded-lg p-6 border border-slate-200">
                   <div className="relative h-96 pt-8 pb-12 px-8 overflow-x-auto">
                     {(() => {
-                      const maxValue = Math.max(...detailedData.map(d => d.totalProduction), 5) * 1.2;
+                      const maxValue = Math.max(...detailedData.map(d => d.averageSpeed || 0), 5) * 1.2;
                       const points = detailedData.map((point, index) => {
                         const x = (index / (detailedData.length - 1 || 1)) * 100;
-                        const y = 100 - Math.max((point.totalProduction / maxValue) * 100, 0);
+                        const y = 100 - Math.max(((point.averageSpeed || 0) / maxValue) * 100, 0);
                         return { x, y, point };
                       });
 
@@ -1745,18 +1763,26 @@ export default function ProductionAnalysisPage() {
                                 transform: 'translate(-50%, 50%)'
                               }}
                             >
-                              <div className="w-3 h-3 rounded-full bg-blue-600 cursor-pointer transition-all duration-200 hover:scale-150"></div>
+                              <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-150 z-10"></div>
 
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                                <div className="bg-white border border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
-                                  <div className="text-xs text-slate-600 mb-1 font-mono">
+                              {/* Постоянное отображение значения скорости */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                <div className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap">
+                                  {p.point.averageSpeed?.toFixed(1)} т/ч
+                                </div>
+                              </div>
+
+                              {/* Детальный tooltip при наведении */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-12 hidden group-hover:block z-30">
+                                <div className="bg-white border-2 border-blue-500 rounded-lg p-3 shadow-2xl whitespace-nowrap">
+                                  <div className="text-xs text-slate-600 mb-2 font-mono font-semibold">
                                     {p.point.time}
                                   </div>
-                                  <div className="text-base font-bold text-blue-600">
-                                    {p.point.totalProduction?.toFixed(2)} т
+                                  <div className="text-lg font-bold text-blue-600 mb-1">
+                                    {p.point.averageSpeed?.toFixed(2)} т/ч
                                   </div>
                                   <div className="text-xs text-slate-600">
-                                    Скорость: {p.point.averageSpeed?.toFixed(2)} т/ч
+                                    Производство: {p.point.totalProduction?.toFixed(2)} т
                                   </div>
                                 </div>
                               </div>
@@ -2030,22 +2056,32 @@ export default function ProductionAnalysisPage() {
                                   }}
                                 >
                                   <div
-                                    className="w-3 h-3 rounded-full cursor-pointer transition-all duration-200 hover:scale-150"
+                                    className="w-4 h-4 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-lg z-10"
                                     style={{ backgroundColor: pointColor }}
                                   ></div>
 
-                                  {/* Tooltip */}
+                                  {/* Постоянное отображение значения */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                    <div
+                                      className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                                      style={{ backgroundColor: pointColor }}
+                                    >
+                                      {point.value.toFixed(1)}
+                                    </div>
+                                  </div>
+
+                                  {/* Детальный tooltip при наведении */}
                                   <div className={`absolute hidden group-hover:block z-30 ${
                                     x < 20 ? 'left-full ml-3' : x > 80 ? 'right-full mr-3' : x < 50 ? 'left-full ml-2' : 'right-full mr-2'
                                   } ${
                                     y < 20 ? 'top-0' : y > 80 ? 'bottom-0' : y < 50 ? 'top-0' : 'bottom-0'
                                   }`}>
-                                    <div className="bg-white border-2 border-slate-300 rounded-lg p-3 shadow-2xl whitespace-nowrap">
-                                      <div className="text-xs text-slate-600 mb-1">{line.metric}</div>
-                                      <div className="text-xs text-slate-500 mb-1 font-mono">
+                                    <div className="bg-white border-2 rounded-lg p-3 shadow-2xl whitespace-nowrap" style={{ borderColor: pointColor }}>
+                                      <div className="text-xs text-slate-600 mb-1 font-semibold">{line.metric}</div>
+                                      <div className="text-xs text-slate-500 mb-2 font-mono">
                                         {point.time}
                                       </div>
-                                      <div className="text-base font-bold" style={{ color: pointColor }}>
+                                      <div className="text-lg font-bold" style={{ color: pointColor }}>
                                         {point.value.toFixed(2)}
                                       </div>
                                     </div>
