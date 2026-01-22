@@ -75,25 +75,38 @@ export default function HomePage() {
 
   // Вычисления для KPI и прогноза
   const currentSpeed = latestData?.speed || 0;
-  const produced = currentStats.totalProduction;
 
-  // Рассчитываем время с начала суток
+  // Рассчитываем время с начала суток (00:00)
   const now = new Date();
   const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
   const hoursPassed = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
 
-  // Средняя скорость берем из базы данных (НЕ вычисляем!)
-  const averageSpeed = currentStats.averageSpeed || 0;
+  // ВАЖНО: Фильтруем данные только с 00:00 текущего дня (календарные сутки)
+  // API возвращает данные за производственные сутки (20:00-20:00),
+  // но на главной странице показываем календарные сутки (00:00-23:59)
+  const todayData = currentDayData?.data?.filter(d => {
+    const itemDate = new Date(d.datetime);
+    return itemDate >= startOfDay;
+  }) || [];
+
+  // Производство с 00:00 текущего дня
+  const produced = todayData.reduce((sum, d) => {
+    const diff = d.difference || 0;
+    return sum + (diff > 0 ? diff : 0);
+  }, 0);
+
+  // Средняя скорость за календарные сутки (с 00:00)
+  const averageSpeed = hoursPassed > 0 ? produced / hoursPassed : 0;
 
   // Определяем текущую смену и среднюю скорость смены
   const currentHour = now.getHours();
   const isNightShift = currentHour >= 20 || currentHour < 8;
 
-  // Рассчитываем среднюю скорость текущей смены
+  // Рассчитываем среднюю скорость текущей смены (используем todayData с 00:00)
   let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за прошедшее время
-  if (currentDayData?.data) {
-    const shiftData = currentDayData.data.filter(d => {
+  if (todayData.length > 0) {
+    const shiftData = todayData.filter(d => {
       const dataHour = new Date(d.datetime).getHours();
       if (isNightShift) {
         return dataHour >= 20 || dataHour < 8;
