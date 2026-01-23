@@ -2569,7 +2569,7 @@ export default function ProductionAnalysisPage() {
                                       return { x, y, value: point.value, time: point.time };
                                     });
 
-                                    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                                    const linePath = points.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
                                     return (
                                       <path
