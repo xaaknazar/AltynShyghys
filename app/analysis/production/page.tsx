@@ -32,6 +32,8 @@ export default function ProductionAnalysisPage() {
   const [showCustomTechGraph, setShowCustomTechGraph] = useState(false);
   const [customTechMetrics, setCustomTechMetrics] = useState<{collection: string; metric: string}[]>([]);
   const [customTechGraphData, setCustomTechGraphData] = useState<any[]>([]);
+  const [customGraphFullscreen, setCustomGraphFullscreen] = useState(false);
+  const [customGraphScale, setCustomGraphScale] = useState(1);
 
   const DAILY_TARGET = 1200; // Целевое производство в сутки (тонн)
   const SHIFT_TARGET = 600; // Целевое производство за смену (тонн)
@@ -2231,42 +2233,56 @@ export default function ProductionAnalysisPage() {
                     <h3 className="text-2xl font-bold text-slate-900">
                       Комбинированный график
                     </h3>
-                    <button
-                      onClick={() => {
-                        // Подготовка данных для экспорта
-                        const allTimes = new Set<string>();
-                        customTechGraphData.forEach(({ data }) => {
-                          data.forEach((d: any) => allTimes.add(d.time));
-                        });
-                        const sortedTimes = Array.from(allTimes).sort();
+                    <div className="flex items-center gap-3">
+                      {/* Кнопка полноэкранного режима */}
+                      <button
+                        onClick={() => setCustomGraphFullscreen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                        <span className="text-sm font-semibold">Полный экран</span>
+                      </button>
 
-                        const exportData = sortedTimes.map(time => {
-                          const row: any = {time};
-                          customTechGraphData.forEach(({ collection, metric, data }) => {
-                            const point = data.find((d: any) => d.time === time);
-                            const collectionTitle = techCollections.find(c => c.name === collection)?.title || collection;
-                            row[`${collectionTitle}: ${metric}`] = point?.value || '';
+                      {/* Кнопка экспорта */}
+                      <button
+                        onClick={() => {
+                          // Подготовка данных для экспорта
+                          const allTimes = new Set<string>();
+                          customTechGraphData.forEach(({ data }) => {
+                            data.forEach((d: any) => allTimes.add(d.time));
                           });
-                          return row;
-                        });
+                          const sortedTimes = Array.from(allTimes).sort();
 
-                        const columns = [
-                          {key: 'time', label: 'Время'},
-                          ...customTechGraphData.map(({ collection, metric }) => {
-                            const collectionTitle = techCollections.find(c => c.name === collection)?.title || collection;
-                            return {key: `${collectionTitle}: ${metric}`, label: `${collectionTitle}: ${metric}`};
-                          })
-                        ];
+                          const exportData = sortedTimes.map(time => {
+                            const row: any = {time};
+                            customTechGraphData.forEach(({ collection, metric, data }) => {
+                              const point = data.find((d: any) => d.time === time);
+                              const collectionTitle = techCollections.find(c => c.name === collection)?.title || collection;
+                              row[`${collectionTitle}: ${metric}`] = point?.value || '';
+                            });
+                            return row;
+                          });
 
-                        exportToExcel(exportData, `custom_${startDate}_${endDate}`, columns);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span className="text-sm font-semibold">Экспорт</span>
-                    </button>
+                          const columns = [
+                            {key: 'time', label: 'Время'},
+                            ...customTechGraphData.map(({ collection, metric }) => {
+                              const collectionTitle = techCollections.find(c => c.name === collection)?.title || collection;
+                              return {key: `${collectionTitle}: ${metric}`, label: `${collectionTitle}: ${metric}`};
+                            })
+                          ];
+
+                          exportToExcel(exportData, `custom_${startDate}_${endDate}`, columns);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-sm font-semibold">Экспорт</span>
+                      </button>
+                    </div>
                   </div>
 
                   {(() => {
@@ -2409,6 +2425,185 @@ export default function ProductionAnalysisPage() {
               {customTechGraphData.length === 0 && customTechMetrics.length > 0 && !loading && (
                 <div className="text-center py-8 text-slate-500">
                   Нажмите "Построить график" для загрузки данных
+                </div>
+              )}
+
+              {/* Модальное окно для полноэкранного режима */}
+              {customGraphFullscreen && customTechGraphData.length > 0 && (
+                <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col">
+                  {/* Панель управления */}
+                  <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <h3 className="text-lg font-bold">Комбинированный график</h3>
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm">Масштаб:</label>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="3"
+                          step="0.1"
+                          value={customGraphScale}
+                          onChange={(e) => setCustomGraphScale(parseFloat(e.target.value))}
+                          className="w-48"
+                        />
+                        <span className="text-sm font-mono w-16">{(customGraphScale * 100).toFixed(0)}%</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCustomGraphFullscreen(false)}
+                      className="text-white hover:bg-slate-700 p-2 rounded transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* График в полноэкранном режиме */}
+                  <div className="flex-1 overflow-auto p-8">
+                    <div
+                      style={{
+                        transform: `scale(${customGraphScale})`,
+                        transformOrigin: 'top center',
+                        transition: 'transform 0.2s ease'
+                      }}
+                    >
+                      {(() => {
+                        // Подготовка данных для графика
+                        const colors = [
+                          '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+                          '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#14b8a6'
+                        ];
+
+                        // Находим все уникальные временные точки
+                        const allTimes = new Set<string>();
+                        customTechGraphData.forEach(({ data }) => {
+                          data.forEach((d: any) => allTimes.add(d.time));
+                        });
+                        const sortedTimes = Array.from(allTimes).sort();
+
+                        // Находим min и max для масштабирования
+                        const allValues = customTechGraphData.flatMap(({ data }) =>
+                          data.map((d: any) => d.value)
+                        );
+                        const minValue = Math.min(...allValues);
+                        const maxValue = Math.max(...allValues);
+                        const valueRange = maxValue - minValue || 1;
+
+                        return (
+                          <div className="bg-slate-50 rounded-lg p-8 border border-slate-200">
+                            <div className="relative h-96 pt-8 pb-12 px-16 overflow-visible">
+                              {/* SVG для всех линий */}
+                              <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                {/* Сетка */}
+                                <defs>
+                                  <pattern id="grid-custom-fullscreen" width="10" height="10" patternUnits="userSpaceOnUse">
+                                    <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                                  </pattern>
+                                </defs>
+                                <rect width="100" height="100" fill="url(#grid-custom-fullscreen)" />
+
+                                {customTechGraphData.map((line, lineIndex) => {
+                                  const points = line.data.map((point: any) => {
+                                    const timeIndex = sortedTimes.indexOf(point.time);
+                                    const x = (timeIndex / (sortedTimes.length - 1 || 1)) * 100;
+                                    const y = 100 - ((point.value - minValue) / valueRange) * 100;
+                                    return { x, y, point };
+                                  });
+
+                                  const linePath = points.map((p: any, index: number) => {
+                                    const command = index === 0 ? 'M' : 'L';
+                                    return `${command} ${p.x} ${p.y}`;
+                                  }).join(' ');
+
+                                  return (
+                                    <path
+                                      key={lineIndex}
+                                      d={linePath}
+                                      fill="none"
+                                      stroke={colors[lineIndex % colors.length]}
+                                      strokeWidth="2.5"
+                                      vectorEffect="non-scaling-stroke"
+                                    />
+                                  );
+                                })}
+                              </svg>
+
+                              {/* Точки для всех линий */}
+                              {customTechGraphData.map((line, lineIndex) => {
+                                return line.data.map((point: any, pointIndex: number) => {
+                                  const timeIndex = sortedTimes.indexOf(point.time);
+                                  const x = (timeIndex / (sortedTimes.length - 1 || 1)) * 100;
+                                  const y = 100 - ((point.value - minValue) / valueRange) * 100;
+                                  const pointColor = colors[lineIndex % colors.length];
+
+                                  return (
+                                    <div
+                                      key={`${lineIndex}-${pointIndex}`}
+                                      className="absolute group"
+                                      style={{
+                                        left: `${x}%`,
+                                        bottom: `${100 - y}%`,
+                                        transform: 'translate(-50%, 50%)'
+                                      }}
+                                    >
+                                      <div
+                                        className="w-4 h-4 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-lg z-10"
+                                        style={{ backgroundColor: pointColor }}
+                                      ></div>
+
+                                      {/* Постоянное отображение значения */}
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+                                        <div
+                                          className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                                          style={{ backgroundColor: pointColor }}
+                                        >
+                                          {point.value.toFixed(1)}
+                                        </div>
+                                      </div>
+
+                                      {/* Детальный tooltip при наведении */}
+                                      <div className={`absolute hidden group-hover:block z-30 ${
+                                        x < 20 ? 'left-full ml-3' : x > 80 ? 'right-full mr-3' : x < 50 ? 'left-full ml-2' : 'right-full mr-2'
+                                      } ${
+                                        y < 20 ? 'top-0' : y > 80 ? 'bottom-0' : y < 50 ? 'top-0' : 'bottom-0'
+                                      }`}>
+                                        <div className="bg-white border-2 rounded-lg p-3 shadow-2xl whitespace-nowrap" style={{ borderColor: pointColor }}>
+                                          <div className="text-xs text-slate-600 mb-1 font-semibold">{line.metric}</div>
+                                          <div className="text-xs text-slate-500 mb-2 font-mono">
+                                            {point.time}
+                                          </div>
+                                          <div className="text-lg font-bold" style={{ color: pointColor }}>
+                                            {point.value.toFixed(2)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                });
+                              })}
+                            </div>
+
+                            {/* Легенда */}
+                            <div className="mt-6 flex flex-wrap gap-4 justify-center">
+                              {customTechGraphData.map((line, index) => {
+                                const collectionTitle = techCollections.find(c => c.name === line.collection)?.title || line.collection;
+                                return (
+                                  <div key={index} className="flex items-center gap-2">
+                                    <div
+                                      className="w-3 h-3 rounded"
+                                      style={{ backgroundColor: colors[index % colors.length] }}
+                                    ></div>
+                                    <span className="text-xs text-slate-700">{collectionTitle}: {line.metric}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
