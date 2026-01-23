@@ -2433,10 +2433,10 @@ export default function ProductionAnalysisPage() {
                 <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col">
                   {/* Панель управления */}
                   <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+                    <h2 className="text-2xl font-bold">Комбинированный график</h2>
                     <div className="flex items-center gap-4">
-                      <h3 className="text-lg font-bold">Комбинированный график</h3>
                       <div className="flex items-center gap-3">
-                        <label className="text-sm">Масштаб:</label>
+                        <span className="text-sm">Масштаб:</span>
                         <input
                           type="range"
                           min="0.5"
@@ -2444,30 +2444,27 @@ export default function ProductionAnalysisPage() {
                           step="0.1"
                           value={customGraphScale}
                           onChange={(e) => setCustomGraphScale(parseFloat(e.target.value))}
-                          className="w-48"
+                          className="w-32"
                         />
-                        <span className="text-sm font-mono w-16">{(customGraphScale * 100).toFixed(0)}%</span>
+                        <span className="text-sm font-mono w-12">{(customGraphScale * 100).toFixed(0)}%</span>
                       </div>
+                      <button
+                        onClick={() => {
+                          setCustomGraphFullscreen(false);
+                          setCustomGraphScale(1);
+                        }}
+                        className="text-white hover:text-red-400 transition-colors"
+                      >
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setCustomGraphFullscreen(false)}
-                      className="text-white hover:bg-slate-700 p-2 rounded transition-colors"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
                   </div>
 
                   {/* График в полноэкранном режиме */}
-                  <div className="flex-1 overflow-auto p-8">
-                    <div
-                      style={{
-                        transform: `scale(${customGraphScale})`,
-                        transformOrigin: 'top center',
-                        transition: 'transform 0.2s ease'
-                      }}
-                    >
+                  <div className="flex-1 overflow-auto p-8 bg-slate-50">
+                    <div className="bg-white rounded-lg border border-slate-200 p-6 h-full">
                       {(() => {
                         // Подготовка данных для графика
                         const colors = [
@@ -2490,116 +2487,214 @@ export default function ProductionAnalysisPage() {
                         const maxValue = Math.max(...allValues);
                         const valueRange = maxValue - minValue || 1;
 
+                        // Вычисляем ширину графика: минимум 20px на точку
+                        const graphWidth = Math.max(1400, sortedTimes.length * 20);
+
+                        // Функция для форматирования времени
+                        const formatTime = (timeStr: string, short = false) => {
+                          if (!timeStr.includes(' ')) return timeStr;
+                          const [datePart, timePart] = timeStr.split(' ');
+                          const [year, month, day] = datePart.split('-');
+                          if (short) {
+                            return `${day}.${month} ${timePart}`;
+                          }
+                          return `${day}.${month}.${year} ${timePart}`;
+                        };
+
                         return (
-                          <div className="bg-slate-50 rounded-lg p-8 border border-slate-200">
-                            <div className="relative h-96 pt-8 pb-12 px-16 overflow-visible">
-                              {/* SVG для всех линий */}
-                              <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                {/* Сетка */}
-                                <defs>
-                                  <pattern id="grid-custom-fullscreen" width="10" height="10" patternUnits="userSpaceOnUse">
-                                    <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
-                                  </pattern>
-                                </defs>
-                                <rect width="100" height="100" fill="url(#grid-custom-fullscreen)" />
-
-                                {customTechGraphData.map((line, lineIndex) => {
-                                  const points = line.data.map((point: any) => {
-                                    const timeIndex = sortedTimes.indexOf(point.time);
-                                    const x = (timeIndex / (sortedTimes.length - 1 || 1)) * 100;
-                                    const y = 100 - ((point.value - minValue) / valueRange) * 100;
-                                    return { x, y, point };
-                                  });
-
-                                  const linePath = points.map((p: any, index: number) => {
-                                    const command = index === 0 ? 'M' : 'L';
-                                    return `${command} ${p.x} ${p.y}`;
-                                  }).join(' ');
-
-                                  return (
-                                    <path
-                                      key={lineIndex}
-                                      d={linePath}
-                                      fill="none"
-                                      stroke={colors[lineIndex % colors.length]}
-                                      strokeWidth="2.5"
-                                      vectorEffect="non-scaling-stroke"
-                                    />
-                                  );
-                                })}
-                              </svg>
-
-                              {/* Точки для всех линий */}
-                              {customTechGraphData.map((line, lineIndex) => {
-                                return line.data.map((point: any, pointIndex: number) => {
-                                  const timeIndex = sortedTimes.indexOf(point.time);
-                                  const x = (timeIndex / (sortedTimes.length - 1 || 1)) * 100;
-                                  const y = 100 - ((point.value - minValue) / valueRange) * 100;
-                                  const pointColor = colors[lineIndex % colors.length];
-
-                                  return (
-                                    <div
-                                      key={`${lineIndex}-${pointIndex}`}
-                                      className="absolute group"
-                                      style={{
-                                        left: `${x}%`,
-                                        bottom: `${100 - y}%`,
-                                        transform: 'translate(-50%, 50%)'
-                                      }}
-                                    >
-                                      <div
-                                        className="w-4 h-4 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 border-2 border-white shadow-lg z-10"
-                                        style={{ backgroundColor: pointColor }}
-                                      ></div>
-
-                                      {/* Постоянное отображение значения */}
-                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
-                                        <div
-                                          className="text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
-                                          style={{ backgroundColor: pointColor }}
-                                        >
-                                          {point.value.toFixed(1)}
-                                        </div>
-                                      </div>
-
-                                      {/* Детальный tooltip при наведении */}
-                                      <div className={`absolute hidden group-hover:block z-30 ${
-                                        x < 20 ? 'left-full ml-3' : x > 80 ? 'right-full mr-3' : x < 50 ? 'left-full ml-2' : 'right-full mr-2'
-                                      } ${
-                                        y < 20 ? 'top-0' : y > 80 ? 'bottom-0' : y < 50 ? 'top-0' : 'bottom-0'
-                                      }`}>
-                                        <div className="bg-white border-2 rounded-lg p-3 shadow-2xl whitespace-nowrap" style={{ borderColor: pointColor }}>
-                                          <div className="text-xs text-slate-600 mb-1 font-semibold">{line.metric}</div>
-                                          <div className="text-xs text-slate-500 mb-2 font-mono">
-                                            {point.time}
-                                          </div>
-                                          <div className="text-lg font-bold" style={{ color: pointColor }}>
-                                            {point.value.toFixed(2)}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                });
-                              })}
-                            </div>
-
+                          <>
                             {/* Легенда */}
-                            <div className="mt-6 flex flex-wrap gap-4 justify-center">
+                            <div className="flex flex-wrap gap-4 mb-4">
                               {customTechGraphData.map((line, index) => {
                                 const collectionTitle = techCollections.find(c => c.name === line.collection)?.title || line.collection;
                                 return (
                                   <div key={index} className="flex items-center gap-2">
                                     <div
-                                      className="w-3 h-3 rounded"
+                                      className="w-4 h-4 rounded-full"
                                       style={{ backgroundColor: colors[index % colors.length] }}
                                     ></div>
-                                    <span className="text-xs text-slate-700">{collectionTitle}: {line.metric}</span>
+                                    <span className="text-base font-medium text-slate-700">
+                                      {collectionTitle}: {line.metric}
+                                    </span>
                                   </div>
                                 );
                               })}
                             </div>
-                          </div>
+
+                            {/* График с масштабом */}
+                            <div className="overflow-auto" style={{ height: 'calc(100% - 60px)' }}>
+                              <div
+                                className="relative"
+                                style={{
+                                  width: `${graphWidth * customGraphScale}px`,
+                                  height: `${600 * customGraphScale}px`,
+                                  paddingTop: `${30 * customGraphScale}px`,
+                                  paddingBottom: `${80 * customGraphScale}px`,
+                                  paddingLeft: `${60 * customGraphScale}px`
+                                }}
+                              >
+                                {/* SVG с графиком */}
+                                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                  <defs>
+                                    <pattern id="grid-custom-fullscreen" width="10" height="10" patternUnits="userSpaceOnUse">
+                                      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                                    </pattern>
+                                  </defs>
+                                  <rect width="100" height="100" fill="url(#grid-custom-fullscreen)" />
+
+                                  <g>
+                                    {[0, 25, 50, 75, 100].map((tick) => (
+                                      <line
+                                        key={`y-tick-${tick}`}
+                                        x1="2"
+                                        y1={98 - (tick * 0.96)}
+                                        x2="98"
+                                        y2={98 - (tick * 0.96)}
+                                        stroke="#94a3b8"
+                                        strokeWidth="1"
+                                        strokeDasharray="2,2"
+                                        opacity="0.3"
+                                        vectorEffect="non-scaling-stroke"
+                                      />
+                                    ))}
+                                  </g>
+
+                                  {/* Линии для каждой метрики */}
+                                  {customTechGraphData.map((line, lineIndex) => {
+                                    const color = colors[lineIndex % colors.length];
+                                    const points = line.data.map((point: any, index: number) => {
+                                      const x = 2 + (index / Math.max(1, line.data.length - 1)) * 96;
+                                      const normalizedValue = valueRange !== 0 ? ((point.value - minValue) / valueRange) : 0.5;
+                                      const y = 98 - (normalizedValue * 96);
+                                      return { x, y, value: point.value, time: point.time };
+                                    });
+
+                                    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+                                    return (
+                                      <path
+                                        key={lineIndex}
+                                        d={linePath}
+                                        fill="none"
+                                        stroke={color}
+                                        strokeWidth="2.5"
+                                        vectorEffect="non-scaling-stroke"
+                                      />
+                                    );
+                                  })}
+                                </svg>
+
+                                {/* Метки Y */}
+                                {[0, 25, 50, 75, 100].map((tick) => {
+                                  const value = minValue + (tick / 100) * (maxValue - minValue);
+                                  const yPos = 98 - (tick * 0.96);
+
+                                  return (
+                                    <div
+                                      key={`y-label-fs-${tick}`}
+                                      className="absolute left-0 pointer-events-none text-sm font-mono text-slate-700 font-bold bg-white px-2 py-1 rounded border border-slate-300"
+                                      style={{
+                                        top: `${yPos}%`,
+                                        transform: 'translate(-100%, -50%)',
+                                        marginLeft: '-8px',
+                                        fontSize: `${12 * customGraphScale}px`
+                                      }}
+                                    >
+                                      {value.toFixed(1)}
+                                    </div>
+                                  );
+                                })}
+
+                                {/* Точки */}
+                                {customTechGraphData.map((line, lineIndex) => {
+                                  const color = colors[lineIndex % colors.length];
+
+                                  return line.data.map((point: any, index: number) => {
+                                    const x = 2 + (index / Math.max(1, line.data.length - 1)) * 96;
+                                    const normalizedValue = valueRange !== 0 ? ((point.value - minValue) / valueRange) : 0.5;
+                                    const y = 2 + (1 - normalizedValue) * 96;
+
+                                    const showTime = index % Math.max(1, Math.floor(line.data.length / 10)) === 0;
+                                    const currentDate = point.time.split(' ')[0];
+                                    const prevDate = index > 0 ? line.data[index - 1].time.split(' ')[0] : '';
+                                    const isNewDay = currentDate !== prevDate;
+
+                                    return (
+                                      <div
+                                        key={`${lineIndex}-fs-${index}`}
+                                        className="absolute group"
+                                        style={{
+                                          left: `${x}%`,
+                                          top: `${y}%`,
+                                          transform: 'translate(-50%, -50%)'
+                                        }}
+                                      >
+                                        <div
+                                          className="rounded-full cursor-pointer transition-all hover:scale-150 border-2 border-white shadow-lg"
+                                          style={{
+                                            backgroundColor: color,
+                                            width: `${12 * customGraphScale}px`,
+                                            height: `${12 * customGraphScale}px`
+                                          }}
+                                        />
+
+                                        <div
+                                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none text-white font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                                          style={{
+                                            backgroundColor: color,
+                                            fontSize: `${12 * customGraphScale}px`
+                                          }}
+                                        >
+                                          {point.value.toFixed(1)}
+                                        </div>
+
+                                        {isNewDay && (
+                                          <>
+                                            <div
+                                              className="absolute pointer-events-none"
+                                              style={{
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                                width: '2px',
+                                                height: `${600 * customGraphScale}px`,
+                                                backgroundColor: '#ef4444',
+                                                opacity: 0.3,
+                                                zIndex: 1
+                                              }}
+                                            />
+                                            <div
+                                              className="absolute left-1/2 -translate-x-1/2 font-bold text-red-600 bg-white px-3 py-1 rounded border-2 border-red-600 shadow-lg whitespace-nowrap"
+                                              style={{
+                                                top: '100%',
+                                                marginTop: '8px',
+                                                fontSize: `${14 * customGraphScale}px`
+                                              }}
+                                            >
+                                              {formatTime(point.time, false)}
+                                            </div>
+                                          </>
+                                        )}
+
+                                        {showTime && !isNewDay && (
+                                          <div
+                                            className="absolute left-1/2 -translate-x-1/2 text-slate-700 font-semibold font-mono whitespace-nowrap"
+                                            style={{
+                                              top: '100%',
+                                              marginTop: '8px',
+                                              fontSize: `${12 * customGraphScale}px`
+                                            }}
+                                          >
+                                            {point.time.split(' ')[1]}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  });
+                                })}
+                              </div>
+                            </div>
+                          </>
                         );
                       })()}
                     </div>
