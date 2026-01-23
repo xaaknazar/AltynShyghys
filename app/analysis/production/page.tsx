@@ -316,19 +316,41 @@ export default function ProductionAnalysisPage() {
       // Загружаем данные для выбранных метрик
       const allData: any[] = [];
 
+      // Генерируем все даты в диапазоне
+      const dates: string[] = [];
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split('T')[0]);
+      }
+
+      console.log(`📅 Loading custom tech graph for ${dates.length} days: ${dates[0]} to ${dates[dates.length - 1]}`);
+
       for (const { collection, metric } of customTechMetrics) {
-        const params = new URLSearchParams({
-          start_date: startDate,
-          end_date: endDate,
-          collection: collection,
+        // Загружаем данные для каждого дня
+        const dailyPromises = dates.map(async (date) => {
+          const params = new URLSearchParams({
+            date: date,
+            collection: collection,
+          });
+
+          const response = await fetch(`/api/technical-data/detailed?${params}`, { cache: 'no-store' });
+          const data = await response.json();
+
+          if (data.success && data.data) {
+            return data.data;
+          }
+          return [];
         });
 
-        const response = await fetch(`/api/technical-data/range?${params}`, { cache: 'no-store' });
-        const data = await response.json();
+        const dailyResults = await Promise.all(dailyPromises);
+        // Объединяем данные за все дни
+        const combinedData = dailyResults.flat();
 
-        if (data.success && data.data.length > 0) {
+        if (combinedData.length > 0) {
           // Извлекаем данные для этой метрики из агрегированных данных
-          const metricData = data.data
+          const metricData = combinedData
             .map((timePoint: any) => ({
               time: timePoint.time,
               value: timePoint[metric]
