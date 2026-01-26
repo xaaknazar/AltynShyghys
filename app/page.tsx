@@ -12,7 +12,7 @@ import KPIMetricCard from '@/app/components/KPIMetricCard';
 import ForecastBlock from '@/app/components/ForecastBlock';
 import LoadingState from '@/app/components/LoadingState';
 import ErrorState from '@/app/components/ErrorState';
-import { ProductionData, calculateDailyStats, DailyGroupedData, TARGETS } from '@/lib/utils';
+import { ProductionData, calculateDailyStats, DailyGroupedData, TARGETS, isPPRDay, countWorkingDays } from '@/lib/utils';
 
 interface LatestDataResponse {
   success: boolean;
@@ -314,8 +314,13 @@ export default function HomePage() {
           {/* Общие показатели за месяц */}
           {(() => {
             const totalProduced = dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0);
-            const totalPlan = dailyGrouped.length * TARGETS.daily;
-            const totalCompletion = (totalProduced / totalPlan) * 100;
+
+            // Подсчитываем рабочие дни (исключая ППР)
+            const allDates = dailyGrouped.map(day => day.date);
+            const workingDaysCount = countWorkingDays(allDates);
+            const totalPlan = workingDaysCount * TARGETS.daily;
+
+            const totalCompletion = totalPlan > 0 ? (totalProduced / totalPlan) * 100 : 0;
 
             return (
               <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-5 mb-4">
@@ -370,6 +375,7 @@ export default function HomePage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {dailyGrouped.reverse().map((day, idx) => {
+                  const isPPR = isPPRDay(day.date);
                   const completion = (day.stats.totalProduction / TARGETS.daily) * 100;
                   // Парсим дату локально, избегая проблем с часовыми поясами
                   const [year, month, dayNum] = day.date.split('-').map(Number);
@@ -381,21 +387,34 @@ export default function HomePage() {
                           day: '2-digit',
                           month: 'short'
                         })}
+                        {isPPR && (
+                          <span className="ml-2 text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-0.5 rounded">
+                            ППР
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-slate-900 text-right tabular-nums">
                         {day.stats.totalProduction.toFixed(0)}
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-slate-600 text-right tabular-nums">
-                        {TARGETS.daily.toFixed(0)}
+                        {isPPR ? (
+                          <span className="text-orange-600 font-semibold">—</span>
+                        ) : (
+                          TARGETS.daily.toFixed(0)
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-right tabular-nums">
-                        <span className={
-                          completion >= 100 ? 'text-emerald-600' :
-                          completion >= 80 ? 'text-amber-600' :
-                          'text-red-600'
-                        }>
-                          {completion.toFixed(0)}%
-                        </span>
+                        {isPPR ? (
+                          <span className="text-orange-600">—</span>
+                        ) : (
+                          <span className={
+                            completion >= 100 ? 'text-emerald-600' :
+                            completion >= 80 ? 'text-amber-600' :
+                            'text-red-600'
+                          }>
+                            {completion.toFixed(0)}%
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
