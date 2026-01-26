@@ -14,10 +14,14 @@ export async function GET(request: NextRequest) {
 
     const { start, end } = getProductionMonthBounds();
 
-    console.log('🔍 Fetching monthly data (shift_report):', {
-      start: start.toISOString(),
-      end: end.toISOString(),
-    });
+    const localStart = new Date(start.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const localEnd = new Date(end.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+
+    console.log('\n\n🚀 ========== ЗАПРОС МЕСЯЧНЫХ ДАННЫХ ==========');
+    console.log('🔍 Период загрузки данных:');
+    console.log(`   UTC: ${start.toISOString()} → ${end.toISOString()}`);
+    console.log(`   Местное: ${localStart.toISOString()} → ${localEnd.toISOString()}`);
+    console.log('===============================================\n');
 
     // Получаем shift_report документы за месяц для правильного расчета production
     const shiftReports = await shiftReportCollection
@@ -40,7 +44,8 @@ export async function GET(request: NextRequest) {
       nightShiftSpeed: number;
     }>();
 
-    shiftReports.forEach((doc) => {
+    console.log('\n🔍 ========== ОБРАБОТКА SHIFT REPORTS ==========');
+    shiftReports.forEach((doc, index) => {
       const docDate = new Date(doc.datetime);
       const localTime = new Date(docDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
       const hour = localTime.getUTCHours();
@@ -72,6 +77,14 @@ export async function GET(request: NextRequest) {
       }
 
       const dateKey = productionDate.toISOString().split('T')[0];
+
+      // ЛОГИРОВАНИЕ КАЖДОГО SHIFT REPORT
+      console.log(`\n📄 Shift Report #${index + 1}:`);
+      console.log(`   UTC время: ${doc.datetime.toISOString()}`);
+      console.log(`   Местное время: ${localTime.toISOString()} (час: ${hour})`);
+      console.log(`   Смена: ${isNightShift ? 'НОЧНАЯ' : 'ДНЕВНАЯ'}`);
+      console.log(`   Производство: ${difference.toFixed(1)}т, Скорость: ${speed.toFixed(1)}т/ч`);
+      console.log(`   ➡️  Группируется как: ${dateKey}`);
 
       if (!productionDaysMap.has(dateKey)) {
         productionDaysMap.set(dateKey, {
@@ -140,6 +153,7 @@ export async function GET(request: NextRequest) {
     // Создаем DailyGroupedData из shift_report данных и сырых данных
     const dailyGrouped: DailyGroupedData[] = [];
 
+    console.log('\n\n📊 ========== СОЗДАНИЕ ПРОИЗВОДСТВЕННЫХ ДНЕЙ ==========');
     productionDaysMap.forEach((shiftData, dateKey) => {
       const totalProduction = shiftData.dayShift + shiftData.nightShift;
 
@@ -183,6 +197,14 @@ export async function GET(request: NextRequest) {
         data: dayRawData,
         stats,
       });
+
+      // ЛОГИРОВАНИЕ СОЗДАННОГО ДНЯ
+      console.log(`\n📅 Производственный день: ${dateKey}`);
+      console.log(`   Ночная смена: ${shiftData.nightShift.toFixed(1)}т (${shiftData.nightShiftSpeed.toFixed(1)}т/ч)`);
+      console.log(`   Дневная смена: ${shiftData.dayShift.toFixed(1)}т (${shiftData.dayShiftSpeed.toFixed(1)}т/ч)`);
+      console.log(`   Итого производство: ${totalProduction.toFixed(1)}т`);
+      console.log(`   Средняя скорость: ${averageSpeed.toFixed(1)}т/ч`);
+      console.log(`   Raw данных: ${dayRawData.length} записей`);
     });
 
     // Сортируем по дате
@@ -203,14 +225,22 @@ export async function GET(request: NextRequest) {
     }
     const currentDateKey = currentProductionDate.toISOString().split('T')[0];
 
-    console.log(`🕐 Current production day: ${currentDateKey} (local hour: ${localHour})`);
+    console.log('\n\n⚡ ========== ОБРАБОТКА ТЕКУЩЕГО ДНЯ ==========');
+    console.log(`   Местное время СЕЙЧАС: ${localNow.toISOString()} (час: ${localHour})`);
+    console.log(`   Текущий производственный день: ${currentDateKey}`);
+    if (localHour < 20) {
+      console.log(`   ℹ️  Час < 20, значит сутки начались вчера в 20:00`);
+    } else {
+      console.log(`   ℹ️  Час >= 20, значит сутки начались сегодня в 20:00`);
+    }
 
     // Проверяем есть ли текущие сутки в shift_report данных
     const currentDayIndex = dailyGrouped.findIndex(d => d.date === currentDateKey);
+    console.log(`   Индекс в dailyGrouped: ${currentDayIndex} (${currentDayIndex !== -1 ? 'УЖЕ ЕСТЬ' : 'НЕТ'})`);
 
     // Для текущего дня используем real-time данные (они содержат ВСЕ данные за сутки)
     if (rawDataByDay.has(currentDateKey)) {
-      console.log(`⚡ Using real-time data for current day ${currentDateKey} (shift in progress)`);
+      console.log(`   ✅ Есть raw данные для ${currentDateKey}`);
 
       const currentDayRawData = rawDataByDay.get(currentDateKey)!;
 
@@ -253,16 +283,32 @@ export async function GET(request: NextRequest) {
 
       // Если день уже существует (из shift_report), заменяем его real-time данными
       // Иначе добавляем новый день
+      console.log(`\n   📊 ДАННЫЕ ТЕКУЩЕГО ДНЯ ${currentDateKey}:`);
+      console.log(`      Raw записей: ${currentDayRawData.length}`);
+      console.log(`      Производство: ${totalProduction.toFixed(1)}т`);
+      console.log(`      Средняя скорость: ${averageSpeed.toFixed(1)}т/ч`);
+      console.log(`      Текущая скорость: ${currentSpeed.toFixed(1)}т/ч`);
+
       if (currentDayIndex !== -1) {
+        console.log(`   🔄 ЗАМЕНЯЕМ существующий день на индексе ${currentDayIndex}`);
         dailyGrouped[currentDayIndex] = currentDayData;
-        console.log(`✅ Updated current day with real-time data: ${currentDateKey}, production: ${totalProduction.toFixed(1)}t`);
       } else {
+        console.log(`   ➕ ДОБАВЛЯЕМ новый день в конец массива`);
         dailyGrouped.push(currentDayData);
         // Пересортируем после добавления
         dailyGrouped.sort((a, b) => a.date.localeCompare(b.date));
-        console.log(`✅ Added current day: ${currentDateKey}, production: ${totalProduction.toFixed(1)}t`);
       }
+    } else {
+      console.log(`   ❌ НЕТ raw данных для текущего дня ${currentDateKey}`);
     }
+
+    // ФИНАЛЬНОЕ ЛОГИРОВАНИЕ
+    console.log('\n\n✅ ========== ИТОГОВЫЙ СПИСОК ДНЕЙ ==========');
+    console.log(`Всего дней в массиве: ${dailyGrouped.length}`);
+    dailyGrouped.forEach((day, index) => {
+      console.log(`${index + 1}. ${day.date} - ${day.stats.totalProduction.toFixed(1)}т (${day.data.length} записей)`);
+    });
+    console.log('==============================================\n');
 
     const response = NextResponse.json({
       success: true,
