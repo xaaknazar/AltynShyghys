@@ -316,10 +316,12 @@ export default function HomePage() {
 
           {/* Общие показатели за месяц */}
           {(() => {
-            const totalProduced = dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0);
+            // Исключаем текущий день из сводки (последний элемент)
+            const completedDays = dailyGrouped.slice(0, -1);
+            const totalProduced = completedDays.reduce((sum, day) => sum + day.stats.totalProduction, 0);
 
             // Подсчитываем рабочие дни (исключая ППР)
-            const allDates = dailyGrouped.map(day => day.date);
+            const allDates = completedDays.map(day => day.date);
             const workingDaysCount = countWorkingDays(allDates);
             const totalPlan = workingDaysCount * TARGETS.daily;
 
@@ -377,7 +379,7 @@ export default function HomePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {dailyGrouped.reverse().map((day, idx) => {
+                {dailyGrouped.slice(0, -1).reverse().map((day, idx) => {
                   const isPPR = isPPRDay(day.date);
                   const completion = (day.stats.totalProduction / TARGETS.daily) * 100;
                   // Парсим дату локально, избегая проблем с часовыми поясами
