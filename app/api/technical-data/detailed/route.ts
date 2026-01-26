@@ -32,7 +32,8 @@ function aggregateToThirtyMinutes(data: TechDataPoint[]): AggregatedTechData[] {
     const roundedMinutes = minutes < 30 ? 0 : 30;
     localTime.setUTCMinutes(roundedMinutes, 0, 0);
 
-    const timeKey = localTime.toISOString().substring(11, 16);
+    // Используем полную дату+время как ключ (YYYY-MM-DD HH:MM)
+    const timeKey = localTime.toISOString().substring(0, 16).replace('T', ' ');
 
     if (!intervals.has(timeKey)) {
       intervals.set(timeKey, new Map());
@@ -106,19 +107,19 @@ export async function GET(request: NextRequest) {
     const db = client.db('scheduler-sync-pro');
     const coll = db.collection(collection);
 
-    // Производственный день начинается в 20:00 текущего дня (ночная смена)
-    // и заканчивается в 20:00 следующего дня (конец дневной смены)
+    // Производственный день начинается в 20:00 ПРЕДЫДУЩЕГО дня (ночная смена)
+    // и заканчивается в 20:00 ТЕКУЩЕГО дня (конец дневной смены)
     const dateObj = new Date(date);
 
-    // Начало: текущий день в 20:00 по местному времени
-    const startDateTime = new Date(`${date}T20:00:00`);
+    // Начало: ПРЕДЫДУЩИЙ день в 20:00 по местному времени
+    const prevDate = new Date(dateObj);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const startDateStr = prevDate.toISOString().split('T')[0];
+    const startDateTime = new Date(`${startDateStr}T20:00:00`);
     const startUTC = new Date(startDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
-    // Конец: следующий день в 20:00 по местному времени
-    const nextDate = new Date(dateObj);
-    nextDate.setDate(nextDate.getDate() + 1);
-    const endDateStr = nextDate.toISOString().split('T')[0];
-    const endDateTime = new Date(`${endDateStr}T20:00:00`);
+    // Конец: ТЕКУЩИЙ день в 20:00 по местному времени
+    const endDateTime = new Date(`${date}T20:00:00`);
     const endUTC = new Date(endDateTime.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
     const data = await coll

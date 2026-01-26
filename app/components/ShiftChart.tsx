@@ -26,52 +26,67 @@ export default function ShiftChart({ data, shiftType, events = [] }: ShiftChartP
     );
   }
 
-  // Группируем данные по 15-минутным интервалам для детализации смены
-  const intervals = new Map<number, {
+  // Вычисляем среднюю скорость за всю смену
+  const totalSpeed = data.reduce((sum, item) => sum + item.speed, 0);
+  const averageSpeed = totalSpeed / data.length;
+
+  // Создаем все временные слоты с 5-минутным интервалом для всей смены
+  const now = new Date();
+  const shiftStartHour = shiftType === 'day' ? 8 : 20;
+  const shiftEndHour = shiftType === 'day' ? 20 : 8;
+
+  // Создаем начало смены
+  const shiftStart = new Date(now);
+  shiftStart.setHours(shiftStartHour, 0, 0, 0);
+
+  // Если ночная смена и сейчас до 08:00, значит смена началась вчера
+  if (shiftType === 'night' && now.getHours() < 8) {
+    shiftStart.setDate(shiftStart.getDate() - 1);
+  }
+
+  // Создаем все 5-минутные интервалы (12 часов * 12 интервалов в час = 144 интервала)
+  const allIntervals: Array<{
     timestamp: number;
     displayTime: string;
     speeds: number[];
-    production: number;
-    count: number;
-  }>();
+  }> = [];
 
+  for (let i = 0; i < 144; i++) {
+    const intervalTime = new Date(shiftStart.getTime() + i * 5 * 60 * 1000);
+    const hour = intervalTime.getHours();
+    const minute = intervalTime.getMinutes();
+    const displayTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+
+    allIntervals.push({
+      timestamp: intervalTime.getTime(),
+      displayTime,
+      speeds: []
+    });
+  }
+
+  // Заполняем данные в соответствующие интервалы
   data.forEach((item) => {
     const itemDate = new Date(item.datetime);
-    const localTime = new Date(itemDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
-    const minute = localTime.getUTCMinutes();
+    const itemTimestamp = itemDate.getTime();
 
-    // Округляем до ближайшего 15-минутного интервала
-    const intervalMinute = Math.floor(minute / 15) * 15;
+    // Находим ближайший 5-минутный интервал
+    const matchingInterval = allIntervals.find((interval, idx) => {
+      const nextInterval = allIntervals[idx + 1];
+      if (!nextInterval) return itemTimestamp >= interval.timestamp;
+      return itemTimestamp >= interval.timestamp && itemTimestamp < nextInterval.timestamp;
+    });
 
-    const intervalDate = new Date(localTime);
-    intervalDate.setUTCMinutes(intervalMinute, 0, 0);
-    const intervalTimestamp = intervalDate.getTime();
-
-    const hour = intervalDate.getUTCHours();
-    const displayTime = `${hour.toString().padStart(2, '0')}:${intervalMinute.toString().padStart(2, '0')}`;
-
-    if (!intervals.has(intervalTimestamp)) {
-      intervals.set(intervalTimestamp, {
-        timestamp: intervalTimestamp,
-        displayTime,
-        speeds: [],
-        production: 0,
-        count: 0
-      });
+    if (matchingInterval) {
+      matchingInterval.speeds.push(item.speed);
     }
-
-    const interval = intervals.get(intervalTimestamp)!;
-    interval.speeds.push(item.speed);
-    interval.production += item.difference || 0;
-    interval.count++;
   });
 
-  // Сортируем интервалы
-  const sortedIntervals = Array.from(intervals.values()).sort((a, b) => a.timestamp - b.timestamp);
-
   const maxSpeed = Math.max(
-    ...sortedIntervals.map((i) => i.speeds.reduce((sum, s) => sum + s, 0) / i.speeds.length),
-    TARGETS.hourly * 1.2
+    ...allIntervals
+      .filter(i => i.speeds.length > 0)
+      .map((i) => i.speeds.reduce((sum, s) => sum + s, 0) / i.speeds.length),
+    TARGETS.hourly * 1.2,
+    60
   );
 
   return (
@@ -80,8 +95,8 @@ export default function ShiftChart({ data, shiftType, events = [] }: ShiftChartP
         <h3 className="text-lg font-display text-slate-700 tracking-wider">
           ГРАФИК СМЕНЫ ({shiftType === 'day' ? 'ДНЕВНАЯ 08:00-20:00' : 'НОЧНАЯ 20:00-08:00'})
         </h3>
-        <div className="text-sm text-slate-600 font-mono">
-          15-минутные интервалы
+        <div className="text-sm font-semibold text-blue-600">
+          Средняя скорость: {formatNumber(averageSpeed, 1)} т/ч
         </div>
       </div>
 
@@ -96,24 +111,25 @@ export default function ShiftChart({ data, shiftType, events = [] }: ShiftChartP
         </div>
 
         {/* Линейный график с точками */}
-        <div className="relative h-96 overflow-x-auto pb-2">
+        <div className="relative h-96 overflow-x-auto pb-12 pt-8">
           {(() => {
+            // Фильтруем только интервалы с данными
+            const intervalsWithData = allIntervals.filter(i => i.speeds.length > 0);
+
+            if (intervalsWithData.length === 0) {
+              return <div className="text-center text-slate-600 py-8">Нет данных для отображения</div>;
+            }
+
             // Вычисляем позиции точек
-            const points = sortedIntervals.map((interval, index) => {
-              const averageSpeed = interval.speeds.reduce((sum, s) => sum + s, 0) / interval.speeds.length;
-              const x = (index / (sortedIntervals.length - 1 || 1)) * 100;
-              const y = 100 - Math.max((averageSpeed / maxSpeed) * 100, 0);
-              const isAboveNorm = averageSpeed >= TARGETS.hourly;
-              const isNearNorm = averageSpeed >= TARGETS.hourly * 0.8;
+            const points = intervalsWithData.map((interval, index) => {
+              const intervalAvgSpeed = interval.speeds.reduce((sum, s) => sum + s, 0) / interval.speeds.length;
+              const x = (index / (intervalsWithData.length - 1 || 1)) * 100;
+              const y = 100 - Math.max((intervalAvgSpeed / maxSpeed) * 100, 0);
+              const isAboveNorm = intervalAvgSpeed >= TARGETS.hourly;
+              const isNearNorm = intervalAvgSpeed >= TARGETS.hourly * 0.8;
               const color = isAboveNorm ? '#10b981' : isNearNorm ? '#f59e0b' : '#ef4444';
 
-              // Проверяем, есть ли события в этот интервал
-              const intervalEvents = events.filter(e => {
-                const eventTime = new Date(e.time).getTime();
-                return eventTime >= interval.timestamp && eventTime < interval.timestamp + 15 * 60 * 1000;
-              });
-
-              return { x, y, interval, averageSpeed, color, isAboveNorm, isNearNorm, intervalEvents };
+              return { x, y, interval, intervalAvgSpeed, color, isAboveNorm, isNearNorm };
             });
 
             // Создаем SVG путь для линии
@@ -130,16 +146,16 @@ export default function ShiftChart({ data, shiftType, events = [] }: ShiftChartP
                     d={linePath}
                     fill="none"
                     stroke="#3b82f6"
-                    strokeWidth="0.3"
+                    strokeWidth="0.5"
                     vectorEffect="non-scaling-stroke"
                   />
                 </svg>
 
-                {/* Точки с интерактивностью */}
+                {/* Точки со значениями */}
                 {points.map((p: typeof points[0], index: number) => (
                   <div
                     key={p.interval.timestamp}
-                    className="absolute group"
+                    className="absolute"
                     style={{
                       left: `${p.x}%`,
                       bottom: `${100 - p.y}%`,
@@ -148,33 +164,20 @@ export default function ShiftChart({ data, shiftType, events = [] }: ShiftChartP
                   >
                     {/* Точка */}
                     <div
-                      className={`w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-150 ${
-                        p.intervalEvents.length > 0 ? 'ring-2 ring-blue-500 ring-opacity-70' : ''
-                      }`}
+                      className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: p.color }}
                     ></div>
 
-                    {/* Всплывающая подсказка */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                      <div className="bg-white border border-slate-300 rounded-lg p-3 shadow-xl whitespace-nowrap">
-                        <div className="text-xs text-slate-600 mb-1 font-mono">{p.interval.displayTime}</div>
-                        <div className="text-sm font-bold text-blue-600">
-                          {formatNumber(p.averageSpeed, 1)} т/ч
-                        </div>
-                        <div className="text-xs text-slate-600 mt-1">
-                          Произведено: {formatNumber(p.interval.production, 1)} т
-                        </div>
-                        {p.intervalEvents.length > 0 && (
-                          <div className="text-xs text-blue-600 mt-2 border-t border-slate-200 pt-2">
-                            📝 События: {p.intervalEvents.length}
-                          </div>
-                        )}
+                    {/* Значение на точке */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 pointer-events-none">
+                      <div className="bg-blue-600 text-white text-xs font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
+                        {formatNumber(p.intervalAvgSpeed, 1)}
                       </div>
                     </div>
 
-                    {/* Метка времени (каждый 8-й интервал) */}
-                    {index % 8 === 0 && (
-                      <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono -rotate-45 origin-top whitespace-nowrap">
+                    {/* Метка времени (каждый 12-й интервал, т.е. каждый час) */}
+                    {index % 12 === 0 && (
+                      <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 text-xs text-slate-500 font-mono whitespace-nowrap">
                         {p.interval.displayTime}
                       </div>
                     )}
@@ -203,7 +206,7 @@ export default function ShiftChart({ data, shiftType, events = [] }: ShiftChartP
           </div>
         </div>
         <div className="text-xs text-slate-500 font-mono">
-          Всего интервалов: {sortedIntervals.length}
+          Интервалы по 5 минут
         </div>
       </div>
     </div>
