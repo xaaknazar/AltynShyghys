@@ -137,10 +137,13 @@ export async function GET(request: NextRequest) {
       const localHour = localTime.getUTCHours();
       const localDate = new Date(localTime);
 
-      // Производственные сутки начинаются в 20:00
-      if (localHour < 20) {
-        localDate.setUTCDate(localDate.getUTCDate() - 1);
+      // ВАЖНО: Производственный день называется по дню ОКОНЧАНИЯ суток
+      // Пример: сутки 26 января = 25.01 20:00 → 26.01 20:00
+      if (localHour >= 20) {
+        // Если 20:00 или позже, данные относятся к ЗАВТРАШНИМ суткам
+        localDate.setUTCDate(localDate.getUTCDate() + 1);
       }
+      // Если час < 20, оставляем текущую дату (сутки завершатся сегодня)
 
       const dateKey = localDate.toISOString().split('T')[0];
 
