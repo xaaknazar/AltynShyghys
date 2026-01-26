@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Создаем DailyGroupedData из shift_report данных и сырых данных
-    const dailyGrouped: DailyGroupedData[] = [];
+    let dailyGrouped: DailyGroupedData[] = [];
 
     console.log('\n\n📊 ========== СОЗДАНИЕ ПРОИЗВОДСТВЕННЫХ ДНЕЙ ==========');
     productionDaysMap.forEach((shiftData, dateKey) => {
@@ -211,6 +211,28 @@ export async function GET(request: NextRequest) {
     dailyGrouped.sort((a, b) => a.date.localeCompare(b.date));
 
     console.log(`📊 Created ${dailyGrouped.length} daily groups from shift reports`);
+
+    // Фильтруем только дни текущего месяца (исключаем декабрьские дни из январской таблицы)
+    const filterNow = new Date();
+    const filterLocalNow = new Date(filterNow.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const currentMonth = filterLocalNow.getUTCMonth();
+    const currentYear = filterLocalNow.getUTCFullYear();
+
+    console.log('\n🔍 ========== ФИЛЬТРАЦИЯ ПО МЕСЯЦУ ==========');
+    console.log(`   Текущий месяц: ${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
+    console.log(`   До фильтрации: ${dailyGrouped.length} дней`);
+
+    dailyGrouped = dailyGrouped.filter(day => {
+      const [year, month] = day.date.split('-').map(Number);
+      const belongsToCurrentMonth = year === currentYear && month - 1 === currentMonth;
+      if (!belongsToCurrentMonth) {
+        console.log(`   ❌ Исключен: ${day.date} (не относится к текущему месяцу)`);
+      }
+      return belongsToCurrentMonth;
+    });
+
+    console.log(`   После фильтрации: ${dailyGrouped.length} дней`);
+    console.log('=============================================\n');
 
     // Добавляем ТЕКУЩИЕ производственные сутки из сырых данных (если их нет в shift_report)
     const now = new Date();
