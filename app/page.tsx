@@ -78,11 +78,16 @@ export default function HomePage() {
 
   // Рассчитываем время с начала ПРОИЗВОДСТВЕННЫХ суток (20:00 вчера)
   const now = new Date();
+
+  // Используем местное время UTC+5 для всех расчетов
+  const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+  const currentHour = localNow.getUTCHours();
+
   const startOfProductionDay = new Date(now);
 
   // Если сейчас до 20:00, то сутки начались вчера в 20:00
   // Если после 20:00, то сутки начались сегодня в 20:00
-  if (now.getHours() < 20) {
+  if (currentHour < 20) {
     startOfProductionDay.setDate(startOfProductionDay.getDate() - 1);
   }
   startOfProductionDay.setHours(20, 0, 0, 0);
@@ -94,10 +99,6 @@ export default function HomePage() {
 
   // Средняя скорость берем из базы данных
   const averageSpeed = currentStats.averageSpeed || 0;
-
-  // Определяем текущую смену и среднюю скорость смены (используем местное время UTC+5)
-  const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
-  const currentHour = localNow.getUTCHours();
   const isNightShift = currentHour >= 20 || currentHour < 8;
 
   // Рассчитываем среднюю скорость текущей смены

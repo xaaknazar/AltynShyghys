@@ -240,20 +240,23 @@ export async function GET(request: NextRequest) {
     const localHour = localNow.getUTCHours();
 
     // Определяем дату текущих производственных суток
+    // ВАЖНО: Производственный день называется по дню ОКОНЧАНИЯ суток (не начала!)
+    // Пример: сутки 26 января = 25.01 20:00 → 26.01 20:00
     const currentProductionDate = new Date(localNow);
-    if (localHour < 20) {
-      // Если до 20:00, сутки начались вчера
-      currentProductionDate.setUTCDate(currentProductionDate.getUTCDate() - 1);
+    if (localHour >= 20) {
+      // Если 20:00 или позже, сутки только начались, завершатся завтра
+      currentProductionDate.setUTCDate(currentProductionDate.getUTCDate() + 1);
     }
+    // Если час < 20, оставляем сегодняшнюю дату (сутки завершатся сегодня в 20:00)
     const currentDateKey = currentProductionDate.toISOString().split('T')[0];
 
     console.log('\n\n⚡ ========== ОБРАБОТКА ТЕКУЩЕГО ДНЯ ==========');
     console.log(`   Местное время СЕЙЧАС: ${localNow.toISOString()} (час: ${localHour})`);
     console.log(`   Текущий производственный день: ${currentDateKey}`);
-    if (localHour < 20) {
-      console.log(`   ℹ️  Час < 20, значит сутки начались вчера в 20:00`);
+    if (localHour >= 20) {
+      console.log(`   ℹ️  Час >= 20, сутки только начались, завершатся завтра в 20:00`);
     } else {
-      console.log(`   ℹ️  Час >= 20, значит сутки начались сегодня в 20:00`);
+      console.log(`   ℹ️  Час < 20, сутки идут, начались вчера в 20:00, завершатся сегодня в 20:00`);
     }
 
     // Проверяем есть ли текущие сутки в shift_report данных
