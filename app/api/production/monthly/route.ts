@@ -49,22 +49,23 @@ export async function GET(request: NextRequest) {
 
       // Определяем к какому производственному дню относится документ
       // Производственные сутки: 20:00 - 20:00
+      // Shift report приходит В КОНЦЕ смены
       let productionDate: Date;
       let isNightShift = false;
 
-      // Производственные сутки: 20:00 - 20:00
-      // Ночная смена (заканчивается около 08:00) → относится к предыдущему дню
+      // Ночная смена заканчивается утром (около 08:00)
+      // Пример: shift report 01.01 08:00 → производственные сутки 01 января
       if (hour >= 6 && hour <= 10) {
         isNightShift = true;
         productionDate = new Date(localTime);
-        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
+        // НЕ вычитаем день - shift report в конце смены относится к ЭТОМУ производственному дню
       }
-      // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню
-      // так как сутки начинаются в 20:00 предыдущего дня
+      // Дневная смена заканчивается вечером (около 20:00)
+      // Пример: shift report 01.01 20:00 → производственные сутки 01 января
       else if (hour >= 18 && hour <= 22) {
         isNightShift = false;
         productionDate = new Date(localTime);
-        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
+        // НЕ вычитаем день - shift report в конце смены относится к ЭТОМУ производственному дню
       } else {
         console.warn(`⚠️ Документ вне времени смены: ${doc.datetime.toISOString()} (час: ${hour})`);
         return;
