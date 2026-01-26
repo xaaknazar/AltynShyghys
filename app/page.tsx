@@ -328,9 +328,11 @@ export default function HomePage() {
 
             const totalCompletion = totalPlan > 0 ? (totalProduced / totalPlan) * 100 : 0;
 
+            const averagePerDay = workingDaysCount > 0 ? totalProduced / workingDaysCount : 0;
+
             return (
               <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-5 mb-4">
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-4 gap-6">
                   {/* Произведено */}
                   <div>
                     <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
@@ -362,6 +364,16 @@ export default function HomePage() {
                       'text-red-600'
                     }`}>
                       {totalCompletion.toFixed(1)}%
+                    </div>
+                  </div>
+
+                  {/* Среднее за сутки */}
+                  <div>
+                    <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
+                      Среднее за сутки, т
+                    </div>
+                    <div className="text-2xl font-bold tabular-nums text-slate-900">
+                      {averagePerDay.toFixed(0)}
                     </div>
                   </div>
                 </div>
