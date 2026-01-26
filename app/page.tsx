@@ -12,7 +12,7 @@ import KPIMetricCard from '@/app/components/KPIMetricCard';
 import ForecastBlock from '@/app/components/ForecastBlock';
 import LoadingState from '@/app/components/LoadingState';
 import ErrorState from '@/app/components/ErrorState';
-import { ProductionData, calculateDailyStats, DailyGroupedData, TARGETS, isPPRDay, countWorkingDays } from '@/lib/utils';
+import { ProductionData, calculateDailyStats, DailyGroupedData, TARGETS, isPPRDay, countWorkingDays, TIMEZONE_OFFSET } from '@/lib/utils';
 
 interface LatestDataResponse {
   success: boolean;
@@ -95,15 +95,18 @@ export default function HomePage() {
   // Средняя скорость берем из базы данных
   const averageSpeed = currentStats.averageSpeed || 0;
 
-  // Определяем текущую смену и среднюю скорость смены
-  const currentHour = now.getHours();
+  // Определяем текущую смену и среднюю скорость смены (используем местное время UTC+5)
+  const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+  const currentHour = localNow.getUTCHours();
   const isNightShift = currentHour >= 20 || currentHour < 8;
 
   // Рассчитываем среднюю скорость текущей смены
   let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за производственные сутки
   if (currentDayData?.data && currentDayData.data.length > 0) {
     const shiftData = currentDayData.data.filter(d => {
-      const dataHour = new Date(d.datetime).getHours();
+      const dataDateTime = new Date(d.datetime);
+      const localDataTime = new Date(dataDateTime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+      const dataHour = localDataTime.getUTCHours();
       if (isNightShift) {
         return dataHour >= 20 || dataHour < 8;
       } else {
