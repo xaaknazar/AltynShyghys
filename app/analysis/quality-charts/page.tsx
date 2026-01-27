@@ -43,14 +43,14 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '⚙️',
     color: '#10b981',
     metrics: [
-      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Влажность,%' },
-      { label: 'Недорушенные', dataKey: 'underCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Недорушенные,%' },
-      { label: 'Необрушенные', dataKey: 'unCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Необрушенные,%' },
-      { label: 'Целяк', dataKey: 'whole', unit: '%', sourceType: 'rvo', sourceColumn: 'Целяк,%' },
-      { label: 'Лузга', dataKey: 'husk', unit: '%', sourceType: 'rvo', sourceColumn: 'Лузга,%' },
-      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'Сор,%' },
-      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'Масличная пыль,%' },
-      { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'rvo', sourceColumn: 'Лузжистость,%' },
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Влажность,%' },
+      { label: 'Недорушенные', dataKey: 'underCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Недорушенные,%' },
+      { label: 'Необрушенные', dataKey: 'unCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Необрушенные,%' },
+      { label: 'Целяк', dataKey: 'whole', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Целяк,%' },
+      { label: 'Лузга', dataKey: 'husk', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Лузга,%' },
+      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Сор,%' },
+      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Масличная пыль,%' },
+      { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Лузжистость,%' },
     ],
   },
   {
@@ -59,12 +59,12 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '🟤',
     color: '#f59e0b',
     metrics: [
-      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Влажность,%' },
-      { label: 'Вынос ядра', dataKey: 'kernelOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'Вынос ядра,%' },
-      { label: 'Вынос подсолнечника', dataKey: 'sunflowerOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'Вынос подсолнечника,%' },
-      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'Масличная пыль,%' },
-      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'Сор,%' },
-      { label: 'Средняя масличность', dataKey: 'avgOilContent', unit: '%', sourceType: 'rvo', sourceColumn: 'Средняя масличность за смену, %' },
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Влажность,%' },
+      { label: 'Вынос ядра', dataKey: 'kernelOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Вынос ядра,%' },
+      { label: 'Вынос подсолнечника', dataKey: 'sunflowerOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Вынос подсолнечника,%' },
+      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Масличная пыль,%' },
+      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Сор,%' },
+      { label: 'Средняя масличность', dataKey: 'avgOilContent', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Средняя масличность за смену, %' },
     ],
   },
   {
@@ -95,9 +95,9 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '🛢️',
     color: '#f97316',
     metrics: [
-      { label: 'Кислотное число', dataKey: 'acidNumber', unit: '', sourceType: 'extraction', sourceColumn: 'Кислотное число,%' },
-      { label: 'Температура вспышки', dataKey: 'flashTemp', unit: '°С', sourceType: 'extraction', sourceColumn: 'Температура вспышки,°С' },
-      { label: 'Содержание гексана', dataKey: 'hexaneContent', unit: 'ppm', sourceType: 'extraction', sourceColumn: 'Содержание гексана,ppm' },
+      { label: 'Кислотное число', dataKey: 'acidNumber', unit: '', sourceType: 'extraction', sourceColumn: 'Масло Кислотное число,%' },
+      { label: 'Температура вспышки', dataKey: 'flashTemp', unit: '°С', sourceType: 'extraction', sourceColumn: 'Масло Температура вспышки,°С' },
+      { label: 'Содержание гексана', dataKey: 'hexaneContent', unit: 'ppm', sourceType: 'extraction', sourceColumn: 'Масло содержание гексана,ppm' },
     ],
   },
   {
@@ -106,11 +106,8 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '🧪',
     color: '#06b6d4',
     metrics: [
-      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'extraction', sourceColumn: 'Влага,%' },
-      { label: 'Масличность', dataKey: 'oilContent', unit: '%', sourceType: 'extraction', sourceColumn: 'Масличность,%' },
-      { label: 'Экспресс протеин', dataKey: 'protein', unit: '%', sourceType: 'extraction', sourceColumn: 'Экспресс протеин,%' },
-      { label: 'Клетчатка', dataKey: 'fiber', unit: '%', sourceType: 'extraction', sourceColumn: 'Клетчатка,%' },
-      { label: 'Общая зольность', dataKey: 'totalAsh', unit: '%', sourceType: 'extraction', sourceColumn: 'Общая зольность,%' },
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'extraction', sourceColumn: 'Шрот влага,%' },
+      { label: 'Масличность', dataKey: 'oilContent', unit: '%', sourceType: 'extraction', sourceColumn: 'Шрот масличность,%' },
     ],
   },
   {
@@ -119,7 +116,7 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '💧',
     color: '#14b8a6',
     metrics: [
-      { label: 'Концентрация', dataKey: 'concentration', unit: '%', sourceType: 'extraction', sourceColumn: 'Концентрация,%' },
+      { label: 'Концентрация', dataKey: 'concentration', unit: '%', sourceType: 'extraction', sourceColumn: 'Мисцелла концентрация,%' },
     ],
   },
   {
