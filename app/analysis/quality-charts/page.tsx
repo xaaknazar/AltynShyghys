@@ -215,9 +215,11 @@ export default function QualityChartsPage() {
     }
 
     // Логируем названия колонок для отладки
-    if (sourceData.length > 0 && selectedCategory === 'cake') {
-      console.log('Available columns for press data:', Object.keys(sourceData[0]));
+    if (sourceData.length > 0) {
+      console.log(`=== ${selectedCategory} (${category.metrics[0].sourceType}) ===`);
+      console.log('Available columns:', Object.keys(sourceData[0]));
       console.log('Looking for columns:', category.metrics.map(m => m.sourceColumn));
+      console.log('Sample row:', sourceData[0]);
     }
 
     // Парсим и объединяем дату и время
