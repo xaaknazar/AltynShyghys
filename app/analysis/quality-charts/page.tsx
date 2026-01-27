@@ -58,8 +58,8 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '🔥',
     color: '#ef4444',
     metrics: [
-      { label: 'Влажность Ж1', dataKey: 'moisture1', unit: '%', sourceType: 'press', sourceColumn: '"Жаровня 1\nВлажность,%"' },
-      { label: 'Влажность Ж2', dataKey: 'moisture2', unit: '%', sourceType: 'press', sourceColumn: '"Жаровня 2\nВлажность,%"' },
+      { label: 'Влажность Ж1', dataKey: 'moisture1', unit: '%', sourceType: 'press', sourceColumn: 'Жаровня 1\nВлажность,%' },
+      { label: 'Влажность Ж2', dataKey: 'moisture2', unit: '%', sourceType: 'press', sourceColumn: 'Жаровня 2\nВлажность,%' },
     ],
   },
   {
@@ -68,10 +68,10 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '🏭',
     color: '#8b5cf6',
     metrics: [
-      { label: 'Влажность П1', dataKey: 'moisture1', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 1\nСодержание влаги,%"' },
-      { label: 'Жир П1', dataKey: 'fat1', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 1\nСодержание жира,%"' },
-      { label: 'Влажность П2', dataKey: 'moisture2', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 2\nСодержание влаги,%"' },
-      { label: 'Жир П2', dataKey: 'fat2', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 2\nСодержание жира,%"' },
+      { label: 'Влажность П1', dataKey: 'moisture1', unit: '%', sourceType: 'press', sourceColumn: 'Пресс 1\nСодержание влаги,%' },
+      { label: 'Жир П1', dataKey: 'fat1', unit: '%', sourceType: 'press', sourceColumn: 'Пресс 1\nСодержание жира,%' },
+      { label: 'Влажность П2', dataKey: 'moisture2', unit: '%', sourceType: 'press', sourceColumn: 'Пресс 2\nСодержание влаги,%' },
+      { label: 'Жир П2', dataKey: 'fat2', unit: '%', sourceType: 'press', sourceColumn: 'Пресс 2\nСодержание жира,%' },
     ],
   },
   {
@@ -151,6 +151,12 @@ export default function QualityChartsPage() {
     if (!category || !allData[category.metrics[0].sourceType]) return [];
 
     const sourceData = allData[category.metrics[0].sourceType];
+
+    // Логируем названия колонок для отладки
+    if (sourceData.length > 0 && selectedCategory === 'cake') {
+      console.log('Available columns for press data:', Object.keys(sourceData[0]));
+      console.log('Looking for columns:', category.metrics.map(m => m.sourceColumn));
+    }
 
     // Парсим и объединяем дату и время
     const parsedData = sourceData.map((row, index) => {
