@@ -102,7 +102,7 @@ const CATEGORIES: CategoryConfig[] = [
   },
   {
     id: 'meal',
-    label: 'Шрот',
+    label: 'Тостированный шрот',
     icon: '🧪',
     color: '#06b6d4',
     metrics: [
@@ -375,6 +375,24 @@ export default function QualityChartsPage() {
     return points.join(' ');
   };
 
+  // Получить координаты точек для метрики
+  const getPoints = (metricLabel: string): Array<{ x: number; y: number; value: number }> => {
+    const points: Array<{ x: number; y: number; value: number }> = [];
+
+    chartData.forEach((point, index) => {
+      const value = point[metricLabel];
+      const normalizedValue = normalizeValue(value, metricLabel);
+
+      if (normalizedValue !== null && value !== null) {
+        const x = (index / (chartData.length - 1)) * 96 + 2;
+        const y = 98 - (normalizedValue * 0.96);
+        points.push({ x, y, value });
+      }
+    });
+
+    return points;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Навигация */}
@@ -532,21 +550,48 @@ export default function QualityChartsPage() {
                         ))}
                       </g>
 
-                      {/* Линии метрик */}
+                      {/* Линии метрик с точками и значениями */}
                       {selectedMetricsData.map((metric, idx) => {
                         const metricIndex = category.metrics.findIndex(m => m.label === metric.label);
                         const color = COLORS[metricIndex % COLORS.length];
                         const path = createPath(metric.label);
+                        const points = getPoints(metric.label);
 
                         return (
-                          <path
-                            key={metric.label}
-                            d={path}
-                            fill="none"
-                            stroke={color}
-                            strokeWidth="2"
-                            vectorEffect="non-scaling-stroke"
-                          />
+                          <g key={metric.label}>
+                            {/* Линия */}
+                            <path
+                              d={path}
+                              fill="none"
+                              stroke={color}
+                              strokeWidth="2"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                            {/* Точки */}
+                            {points.map((point, pointIdx) => (
+                              <g key={pointIdx}>
+                                <circle
+                                  cx={point.x}
+                                  cy={point.y}
+                                  r="0.8"
+                                  fill={color}
+                                  vectorEffect="non-scaling-stroke"
+                                />
+                                {/* Значение над точкой */}
+                                <text
+                                  x={point.x}
+                                  y={point.y - 2}
+                                  fontSize="2.5"
+                                  fill={color}
+                                  textAnchor="middle"
+                                  fontWeight="600"
+                                  style={{ pointerEvents: 'none' }}
+                                >
+                                  {point.value.toFixed(1)}
+                                </text>
+                              </g>
+                            ))}
+                          </g>
                         );
                       })}
                     </svg>
