@@ -91,7 +91,7 @@ const CATEGORIES: CategoryConfig[] = [
   },
   {
     id: 'oil',
-    label: 'Масло',
+    label: 'Экстракционное масло',
     icon: '🛢️',
     color: '#f97316',
     metrics: [
