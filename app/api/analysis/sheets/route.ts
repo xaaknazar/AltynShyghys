@@ -37,7 +37,7 @@ async function fetchSheetData(gid: string): Promise<string> {
  * Парсинг CSV в массив объектов с использованием papaparse
  */
 function parseCSV(csv: string): any[] {
-  const result = Papa.parse(csv, {
+  const result = Papa.parse<Record<string, string>>(csv, {
     header: true, // Первая строка - заголовки
     skipEmptyLines: true, // Пропускаем пустые строки
     dynamicTyping: false, // Оставляем все как строки (чтобы избежать ошибок с числами)
