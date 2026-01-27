@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 // Типы категорий оборудования
-type Category = 'raw-material' | 'husk' | 'groats' | 'mash' | 'cake' | 'meal' | 'miscella';
+type Category = 'raw-material' | 'groats' | 'husk' | 'mash' | 'cake' | 'oil' | 'meal' | 'miscella' | 'granules-meal' | 'granules-husk';
 
 interface CategoryConfig {
   id: Category;
@@ -15,7 +15,7 @@ interface CategoryConfig {
     label: string;
     dataKey: string;
     unit: string;
-    sourceType: 'top0' | 'rvo' | 'extraction' | 'press';
+    sourceType: 'top0' | 'rvo' | 'extraction' | 'press' | 'granulation';
     sourceColumn: string;
   }[];
 }
@@ -23,33 +23,48 @@ interface CategoryConfig {
 const CATEGORIES: CategoryConfig[] = [
   {
     id: 'raw-material',
-    label: 'Входящее сырье',
+    label: 'Входящее сырье (Топ 0)',
     icon: '🌾',
     color: '#3b82f6',
     metrics: [
       { label: 'Влага', dataKey: 'moisture', unit: '%', sourceType: 'top0', sourceColumn: 'W,%' },
-      { label: 'Масличность', dataKey: 'oilContent', unit: '%', sourceType: 'top0', sourceColumn: 'Массовая доля сырого жира,%' },
-    ],
-  },
-  {
-    id: 'husk',
-    label: 'Лузга',
-    icon: '🟤',
-    color: '#f59e0b',
-    metrics: [
-      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Влажность,%' },
-      { label: 'Жир', dataKey: 'fat', unit: '%', sourceType: 'rvo', sourceColumn: 'Средняя масличность за смену, %' },
-      { label: 'Вынос ядра', dataKey: 'kernelOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'Вынос ядра,%' },
+      { label: 'Сорная примесь', dataKey: 'weedImpurity', unit: '%', sourceType: 'top0', sourceColumn: 'Сорная примесь,%' },
+      { label: 'Масличная примесь', dataKey: 'oilImpurity', unit: '%', sourceType: 'top0', sourceColumn: 'Масличная примесь,%' },
+      { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'top0', sourceColumn: 'Лузжистость ,%' },
+      { label: 'Кислотное число', dataKey: 'acidNumber', unit: 'КОН/г', sourceType: 'top0', sourceColumn: 'Определение кислотного числа (КОН/г)' },
+      { label: 'Массовая доля жира', dataKey: 'oilContent', unit: '%', sourceType: 'top0', sourceColumn: 'Массовая доля сырого жира,%' },
+      { label: 'Недозрелые', dataKey: 'immature', unit: '%', sourceType: 'top0', sourceColumn: 'Недозрелые,%' },
+      { label: 'Протеин', dataKey: 'protein', unit: '%', sourceType: 'top0', sourceColumn: 'Протеин' },
     ],
   },
   {
     id: 'groats',
-    label: 'Рушанка',
+    label: 'Рушанка (Топ 4)',
     icon: '⚙️',
     color: '#10b981',
     metrics: [
       { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Влажность,%' },
+      { label: 'Недорушенные', dataKey: 'underCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Недорушенные,%' },
+      { label: 'Необрушенные', dataKey: 'unCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Необрушенные,%' },
+      { label: 'Целяк', dataKey: 'whole', unit: '%', sourceType: 'rvo', sourceColumn: 'Целяк,%' },
+      { label: 'Лузга', dataKey: 'husk', unit: '%', sourceType: 'rvo', sourceColumn: 'Лузга,%' },
+      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'Сор,%' },
+      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'Масличная пыль,%' },
       { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'rvo', sourceColumn: 'Лузжистость,%' },
+    ],
+  },
+  {
+    id: 'husk',
+    label: 'Лузга (Топ 5)',
+    icon: '🟤',
+    color: '#f59e0b',
+    metrics: [
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Влажность,%' },
+      { label: 'Вынос ядра', dataKey: 'kernelOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'Вынос ядра,%' },
+      { label: 'Вынос подсолнечника', dataKey: 'sunflowerOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'Вынос подсолнечника,%' },
+      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'Масличная пыль,%' },
+      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'Сор,%' },
+      { label: 'Средняя масличность', dataKey: 'avgOilContent', unit: '%', sourceType: 'rvo', sourceColumn: 'Средняя масличность за смену, %' },
     ],
   },
   {
@@ -75,6 +90,17 @@ const CATEGORIES: CategoryConfig[] = [
     ],
   },
   {
+    id: 'oil',
+    label: 'Масло',
+    icon: '🛢️',
+    color: '#f97316',
+    metrics: [
+      { label: 'Кислотное число', dataKey: 'acidNumber', unit: '', sourceType: 'extraction', sourceColumn: 'Кислотное число,%' },
+      { label: 'Температура вспышки', dataKey: 'flashTemp', unit: '°С', sourceType: 'extraction', sourceColumn: 'Температура вспышки,°С' },
+      { label: 'Содержание гексана', dataKey: 'hexaneContent', unit: 'ppm', sourceType: 'extraction', sourceColumn: 'Содержание гексана,ppm' },
+    ],
+  },
+  {
     id: 'meal',
     label: 'Шрот',
     icon: '🧪',
@@ -82,6 +108,9 @@ const CATEGORIES: CategoryConfig[] = [
     metrics: [
       { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'extraction', sourceColumn: 'Влага,%' },
       { label: 'Масличность', dataKey: 'oilContent', unit: '%', sourceType: 'extraction', sourceColumn: 'Масличность,%' },
+      { label: 'Экспресс протеин', dataKey: 'protein', unit: '%', sourceType: 'extraction', sourceColumn: 'Экспресс протеин,%' },
+      { label: 'Клетчатка', dataKey: 'fiber', unit: '%', sourceType: 'extraction', sourceColumn: 'Клетчатка,%' },
+      { label: 'Общая зольность', dataKey: 'totalAsh', unit: '%', sourceType: 'extraction', sourceColumn: 'Общая зольность,%' },
     ],
   },
   {
@@ -93,9 +122,34 @@ const CATEGORIES: CategoryConfig[] = [
       { label: 'Концентрация', dataKey: 'concentration', unit: '%', sourceType: 'extraction', sourceColumn: 'Концентрация,%' },
     ],
   },
+  {
+    id: 'granules-meal',
+    label: 'Шрот гранулированный',
+    icon: '⚫',
+    color: '#84cc16',
+    metrics: [
+      { label: 'Влага', dataKey: 'moisture', unit: '%', sourceType: 'granulation', sourceColumn: 'Влага,%' },
+      { label: 'Насыпная плотность', dataKey: 'bulkDensity', unit: 'кг/м³', sourceType: 'granulation', sourceColumn: 'Насыпная плотность,кг/м3' },
+      { label: 'М/д мелочи', dataKey: 'fines', unit: '%', sourceType: 'granulation', sourceColumn: 'М/д мелочи,%' },
+      { label: 'Механическая прочность', dataKey: 'strength', unit: '%', sourceType: 'granulation', sourceColumn: 'Механическая прочность %' },
+      { label: 'Экспресс протеин', dataKey: 'protein', unit: '%', sourceType: 'granulation', sourceColumn: 'Экспресс протеин' },
+    ],
+  },
+  {
+    id: 'granules-husk',
+    label: 'Лузга гранулированная',
+    icon: '🟫',
+    color: '#a16207',
+    metrics: [
+      { label: 'Влага', dataKey: 'moisture', unit: '%', sourceType: 'granulation', sourceColumn: 'Влага,%' },
+      { label: 'Насыпная плотность', dataKey: 'bulkDensity', unit: 'кг/м³', sourceType: 'granulation', sourceColumn: 'Насыпная плотность,кг/м3' },
+      { label: 'М/д мелочи', dataKey: 'fines', unit: '%', sourceType: 'granulation', sourceColumn: 'М/д мелочи,%' },
+      { label: 'Механическая прочность', dataKey: 'strength', unit: '%', sourceType: 'granulation', sourceColumn: 'Механическая прочность %' },
+    ],
+  },
 ];
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#14b8a6'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#14b8a6', '#f97316', '#84cc16', '#a16207'];
 
 export default function QualityChartsPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('raw-material');
@@ -112,7 +166,7 @@ export default function QualityChartsPage() {
       setError(null);
 
       try {
-        const types = ['top0', 'rvo', 'extraction', 'press'];
+        const types = ['top0', 'rvo', 'extraction', 'press', 'granulation'];
         const promises = types.map(type =>
           fetch(`/api/analysis/sheets?type=${type}`).then(res => res.json())
         );
@@ -150,7 +204,15 @@ export default function QualityChartsPage() {
   const prepareChartData = () => {
     if (!category || !allData[category.metrics[0].sourceType]) return [];
 
-    const sourceData = allData[category.metrics[0].sourceType];
+    let sourceData = allData[category.metrics[0].sourceType];
+
+    // Для гранулирования фильтруем по наименованию
+    if (category.metrics[0].sourceType === 'granulation') {
+      const targetName = selectedCategory === 'granules-meal' ? 'шрот гранулированный' : 'лузга гранулированная';
+      sourceData = sourceData.filter(row =>
+        (row['Наименование'] || '').toString().toLowerCase().includes(targetName)
+      );
+    }
 
     // Логируем названия колонок для отладки
     if (sourceData.length > 0 && selectedCategory === 'cake') {
@@ -349,7 +411,7 @@ export default function QualityChartsPage() {
         ) : (
           <>
             {/* Категории */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
               {CATEGORIES.map(cat => (
                 <button
                   key={cat.id}
