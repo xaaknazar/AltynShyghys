@@ -41,7 +41,6 @@ function parseCSV(csv: string): any[] {
     header: true, // Первая строка - заголовки
     skipEmptyLines: true, // Пропускаем пустые строки
     dynamicTyping: false, // Оставляем все как строки (чтобы избежать ошибок с числами)
-    trimHeaders: true, // Убираем пробелы из заголовков
   });
 
   if (result.errors.length > 0) {
