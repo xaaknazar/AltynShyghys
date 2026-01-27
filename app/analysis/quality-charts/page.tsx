@@ -152,10 +152,20 @@ export default function QualityChartsPage() {
 
     const sourceData = allData[category.metrics[0].sourceType];
 
+    // Запоминаем последнюю непустую дату
+    let lastDate = '';
+
     // Парсим и объединяем дату и время
     const parsedData = sourceData.map((row, index) => {
-      const dateStr = (row['Дата'] || '').toString().trim();
+      let dateStr = (row['Дата'] || '').toString().trim();
       const timeStr = (row['Время'] || '').toString().trim();
+
+      // Если дата пустая, используем последнюю известную дату
+      if (!dateStr && lastDate) {
+        dateStr = lastDate;
+      } else if (dateStr) {
+        lastDate = dateStr;
+      }
 
       // Создаем timestamp для сортировки
       let timestamp = '';
@@ -182,8 +192,12 @@ export default function QualityChartsPage() {
               year = dateParts[2].toString();
             }
 
-            timestamp = `${year}-${month}-${day} ${timeStr}`;
-            displayTime = `${day}.${month} ${timeStr}`;
+            // Убираем секунды из времени если они есть (20:00:00 -> 20:00)
+            const timeParts = timeStr.split(':');
+            const shortTime = timeParts.length >= 2 ? `${timeParts[0]}:${timeParts[1]}` : timeStr;
+
+            timestamp = `${year}-${month}-${day} ${shortTime}`;
+            displayTime = `${day}.${month} ${shortTime}`;
           } else {
             timestamp = `${index}`;
           }
@@ -209,7 +223,7 @@ export default function QualityChartsPage() {
       });
 
       return point;
-    }).filter(point => point.time); // Фильтруем пустые записи
+    }).filter(point => point.time && point.time !== `${sourceData.indexOf(point)}`); // Фильтруем записи без валидного времени
 
     // Сортируем по времени
     parsedData.sort((a, b) => a.time.localeCompare(b.time));
