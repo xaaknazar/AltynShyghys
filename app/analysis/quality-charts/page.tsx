@@ -154,36 +154,50 @@ export default function QualityChartsPage() {
 
     // Парсим и объединяем дату и время
     const parsedData = sourceData.map((row, index) => {
-      const dateStr = row['Дата'] || '';
-      const timeStr = row['Время'] || '';
+      const dateStr = (row['Дата'] || '').toString().trim();
+      const timeStr = (row['Время'] || '').toString().trim();
 
       // Создаем timestamp для сортировки
       let timestamp = '';
+      let displayTime = `Запись ${index + 1}`;
+
       if (dateStr && timeStr) {
-        // Парсим дату (может быть в формате M/D/YYYY или DD.MM.YYYY)
-        const dateParts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('.');
-        let year, month, day;
+        try {
+          // Парсим дату (может быть в формате M/D/YYYY или DD.MM.YYYY)
+          const dateParts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('.');
 
-        if (dateStr.includes('/')) {
-          // M/D/YYYY
-          month = dateParts[0].padStart(2, '0');
-          day = dateParts[1].padStart(2, '0');
-          year = dateParts[2];
-        } else {
-          // DD.MM.YYYY
-          day = dateParts[0].padStart(2, '0');
-          month = dateParts[1].padStart(2, '0');
-          year = dateParts[2];
+          // Проверяем что есть все части даты
+          if (dateParts.length >= 3 && dateParts[0] && dateParts[1] && dateParts[2]) {
+            let year, month, day;
+
+            if (dateStr.includes('/')) {
+              // M/D/YYYY
+              month = dateParts[0].toString().padStart(2, '0');
+              day = dateParts[1].toString().padStart(2, '0');
+              year = dateParts[2].toString();
+            } else {
+              // DD.MM.YYYY
+              day = dateParts[0].toString().padStart(2, '0');
+              month = dateParts[1].toString().padStart(2, '0');
+              year = dateParts[2].toString();
+            }
+
+            timestamp = `${year}-${month}-${day} ${timeStr}`;
+            displayTime = `${day}.${month} ${timeStr}`;
+          } else {
+            timestamp = `${index}`;
+          }
+        } catch (e) {
+          console.warn('Error parsing date:', dateStr, e);
+          timestamp = `${index}`;
         }
-
-        timestamp = `${year}-${month}-${day} ${timeStr}`;
       } else {
         timestamp = `${index}`;
       }
 
       const point: any = {
         time: timestamp,
-        displayTime: timeStr ? `${dateStr.split('/')[1] || dateStr.split('.')[0]}.${dateStr.split('/')[0] || dateStr.split('.')[1]} ${timeStr}` : `Запись ${index + 1}`,
+        displayTime: displayTime,
       };
 
       category.metrics.forEach(metric => {
