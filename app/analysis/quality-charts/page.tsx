@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Типы категорий оборудования
 type Category = 'raw-material' | 'husk' | 'groats' | 'mash' | 'cake' | 'meal' | 'miscella';
@@ -26,7 +25,7 @@ const CATEGORIES: CategoryConfig[] = [
     id: 'raw-material',
     label: 'Входящее сырье',
     icon: '🌾',
-    color: 'blue',
+    color: '#3b82f6',
     metrics: [
       { label: 'Влага', dataKey: 'moisture', unit: '%', sourceType: 'top0', sourceColumn: 'W,%' },
       { label: 'Масличность', dataKey: 'oilContent', unit: '%', sourceType: 'top0', sourceColumn: 'Массовая доля сырого жира,%' },
@@ -36,7 +35,7 @@ const CATEGORIES: CategoryConfig[] = [
     id: 'husk',
     label: 'Лузга',
     icon: '🟤',
-    color: 'amber',
+    color: '#f59e0b',
     metrics: [
       { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Влажность,%' },
       { label: 'Жир', dataKey: 'fat', unit: '%', sourceType: 'rvo', sourceColumn: 'Средняя масличность за смену, %' },
@@ -47,7 +46,7 @@ const CATEGORIES: CategoryConfig[] = [
     id: 'groats',
     label: 'Рушанка',
     icon: '⚙️',
-    color: 'green',
+    color: '#10b981',
     metrics: [
       { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Влажность,%' },
       { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'rvo', sourceColumn: 'Лузжистость,%' },
@@ -57,26 +56,29 @@ const CATEGORIES: CategoryConfig[] = [
     id: 'mash',
     label: 'Мезга с жаровни',
     icon: '🔥',
-    color: 'red',
+    color: '#ef4444',
     metrics: [
-      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'press', sourceColumn: '"Жаровня 1\nВлажность,%"' },
+      { label: 'Влажность Ж1', dataKey: 'moisture1', unit: '%', sourceType: 'press', sourceColumn: '"Жаровня 1\nВлажность,%"' },
+      { label: 'Влажность Ж2', dataKey: 'moisture2', unit: '%', sourceType: 'press', sourceColumn: '"Жаровня 2\nВлажность,%"' },
     ],
   },
   {
     id: 'cake',
     label: 'Жмых с пресса',
     icon: '🏭',
-    color: 'purple',
+    color: '#8b5cf6',
     metrics: [
-      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 1\nСодержание влаги,%"' },
-      { label: 'Жир', dataKey: 'fat', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 1\nСодержание жира,%"' },
+      { label: 'Влажность П1', dataKey: 'moisture1', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 1\nСодержание влаги,%"' },
+      { label: 'Жир П1', dataKey: 'fat1', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 1\nСодержание жира,%"' },
+      { label: 'Влажность П2', dataKey: 'moisture2', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 2\nСодержание влаги,%"' },
+      { label: 'Жир П2', dataKey: 'fat2', unit: '%', sourceType: 'press', sourceColumn: '"Пресс 2\nСодержание жира,%"' },
     ],
   },
   {
     id: 'meal',
     label: 'Шрот',
     icon: '🧪',
-    color: 'emerald',
+    color: '#06b6d4',
     metrics: [
       { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'extraction', sourceColumn: 'Влага,%' },
       { label: 'Масличность', dataKey: 'oilContent', unit: '%', sourceType: 'extraction', sourceColumn: 'Масличность,%' },
@@ -86,18 +88,22 @@ const CATEGORIES: CategoryConfig[] = [
     id: 'miscella',
     label: 'Мисцелла',
     icon: '💧',
-    color: 'cyan',
+    color: '#14b8a6',
     metrics: [
       { label: 'Концентрация', dataKey: 'concentration', unit: '%', sourceType: 'extraction', sourceColumn: 'Концентрация,%' },
     ],
   },
 ];
 
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#14b8a6'];
+
 export default function QualityChartsPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('raw-material');
   const [allData, setAllData] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Загрузка всех данных
   useEffect(() => {
@@ -133,37 +139,81 @@ export default function QualityChartsPage() {
   // Получить конфигурацию выбранной категории
   const category = CATEGORIES.find(c => c.id === selectedCategory);
 
+  // При смене категории выбираем все метрики
+  useEffect(() => {
+    if (category) {
+      setSelectedMetrics(category.metrics.map(m => m.label));
+    }
+  }, [selectedCategory, category]);
+
   // Подготовить данные для графика
   const prepareChartData = () => {
     if (!category || !allData[category.metrics[0].sourceType]) return [];
 
     const sourceData = allData[category.metrics[0].sourceType];
 
-    return sourceData.map((row, index) => {
+    // Парсим и объединяем дату и время
+    const parsedData = sourceData.map((row, index) => {
+      const dateStr = row['Дата'] || '';
+      const timeStr = row['Время'] || '';
+
+      // Создаем timestamp для сортировки
+      let timestamp = '';
+      if (dateStr && timeStr) {
+        // Парсим дату (может быть в формате M/D/YYYY или DD.MM.YYYY)
+        const dateParts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('.');
+        let year, month, day;
+
+        if (dateStr.includes('/')) {
+          // M/D/YYYY
+          month = dateParts[0].padStart(2, '0');
+          day = dateParts[1].padStart(2, '0');
+          year = dateParts[2];
+        } else {
+          // DD.MM.YYYY
+          day = dateParts[0].padStart(2, '0');
+          month = dateParts[1].padStart(2, '0');
+          year = dateParts[2];
+        }
+
+        timestamp = `${year}-${month}-${day} ${timeStr}`;
+      } else {
+        timestamp = `${index}`;
+      }
+
       const point: any = {
-        name: row['Дата'] || row['Время'] || `Запись ${index + 1}`,
+        time: timestamp,
+        displayTime: timeStr ? `${dateStr.split('/')[1] || dateStr.split('.')[0]}.${dateStr.split('/')[0] || dateStr.split('.')[1]} ${timeStr}` : `Запись ${index + 1}`,
       };
 
       category.metrics.forEach(metric => {
-        const value = parseFloat(row[metric.sourceColumn]) || 0;
-        point[metric.dataKey] = value;
+        const valueStr = row[metric.sourceColumn] || '';
+        // Удаляем кавычки и парсим число
+        const cleanValue = valueStr.toString().replace(/"/g, '').trim();
+        const value = parseFloat(cleanValue);
+        point[metric.label] = isNaN(value) ? null : value;
       });
 
       return point;
-    }).filter(point => point.name); // Фильтруем пустые записи
+    }).filter(point => point.time); // Фильтруем пустые записи
+
+    // Сортируем по времени
+    parsedData.sort((a, b) => a.time.localeCompare(b.time));
+
+    return parsedData;
   };
 
   const chartData = prepareChartData();
 
-  // Вычислить средние значения для карточек
+  // Вычислить средние значения
   const calculateAverages = () => {
     if (chartData.length === 0) return {};
 
     const averages: Record<string, number> = {};
 
     category?.metrics.forEach(metric => {
-      const values = chartData.map(d => d[metric.dataKey]).filter(v => v > 0);
-      averages[metric.dataKey] = values.length > 0
+      const values = chartData.map(d => d[metric.label]).filter(v => v !== null && v > 0);
+      averages[metric.label] = values.length > 0
         ? values.reduce((sum, v) => sum + v, 0) / values.length
         : 0;
     });
@@ -172,6 +222,60 @@ export default function QualityChartsPage() {
   };
 
   const averages = calculateAverages();
+
+  // Toggle метрики
+  const toggleMetric = (metricLabel: string) => {
+    setSelectedMetrics(prev =>
+      prev.includes(metricLabel)
+        ? prev.filter(m => m !== metricLabel)
+        : [...prev, metricLabel]
+    );
+  };
+
+  // Получить выбранные метрики
+  const selectedMetricsData = category?.metrics.filter(m => selectedMetrics.includes(m.label)) || [];
+
+  // Вычисляем ширину графика
+  const graphWidth = Math.max(1400, chartData.length * 20);
+
+  // Нормализация значений для SVG (0-100)
+  const normalizeValue = (value: number | null, metricLabel: string): number | null => {
+    if (value === null) return null;
+
+    // Находим min и max для этой метрики
+    const values = chartData.map(d => d[metricLabel]).filter((v): v is number => v !== null && v > 0);
+    if (values.length === 0) return null;
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    if (max === min) return 50; // Если все значения одинаковые
+
+    return ((value - min) / (max - min)) * 100;
+  };
+
+  // Создать путь для SVG линии
+  const createPath = (metricLabel: string): string => {
+    const points: string[] = [];
+
+    chartData.forEach((point, index) => {
+      const value = point[metricLabel];
+      const normalizedValue = normalizeValue(value, metricLabel);
+
+      if (normalizedValue !== null) {
+        const x = (index / (chartData.length - 1)) * 96 + 2;
+        const y = 98 - (normalizedValue * 0.96);
+
+        if (points.length === 0) {
+          points.push(`M ${x} ${y}`);
+        } else {
+          points.push(`L ${x} ${y}`);
+        }
+      }
+    });
+
+    return points.join(' ');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -217,7 +321,7 @@ export default function QualityChartsPage() {
                     p-4 rounded-xl border-2 transition-all text-center
                     ${
                       selectedCategory === cat.id
-                        ? `border-${cat.color}-500 bg-${cat.color}-50`
+                        ? 'border-blue-500 bg-blue-50'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }
                   `}
@@ -230,12 +334,12 @@ export default function QualityChartsPage() {
 
             {/* Карточки показателей */}
             {category && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
                 {category.metrics.map(metric => (
                   <div key={metric.dataKey} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <div className="text-sm text-slate-600 mb-1">{metric.label}</div>
                     <div className="text-3xl font-bold text-slate-900">
-                      {averages[metric.dataKey]?.toFixed(1) || '—'}
+                      {averages[metric.label]?.toFixed(1) || '—'}
                       <span className="text-lg text-slate-600 ml-1">{metric.unit}</span>
                     </div>
                     <div className="text-xs text-slate-500 mt-2">Среднее значение</div>
@@ -250,26 +354,136 @@ export default function QualityChartsPage() {
                 <h2 className="text-xl font-bold text-slate-900 mb-4">
                   {category.label} - Динамика показателей
                 </h2>
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    {category.metrics.map((metric, index) => (
-                      <Line
-                        key={metric.dataKey}
-                        type="monotone"
-                        dataKey={metric.dataKey}
-                        name={`${metric.label} (${metric.unit})`}
-                        stroke={`hsl(${index * 120}, 70%, 50%)`}
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
+
+                {/* Выбор метрик */}
+                <div className="mb-6 flex flex-wrap gap-3">
+                  {category.metrics.map((metric, idx) => {
+                    const isSelected = selectedMetrics.includes(metric.label);
+                    const color = COLORS[idx % COLORS.length];
+
+                    return (
+                      <label
+                        key={metric.label}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-slate-100 border-slate-400'
+                            : 'bg-white border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleMetric(metric.label)}
+                          className="w-4 h-4"
+                          style={{ accentColor: color }}
+                        />
+                        <span className="text-sm font-medium text-slate-700">{metric.label}</span>
+                        <span className="text-xs text-slate-500 font-mono">({metric.unit})</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Легенда */}
+                {selectedMetricsData.length > 0 && (
+                  <div className="flex flex-wrap gap-4 mb-4">
+                    {selectedMetricsData.map((metric, idx) => {
+                      const metricIndex = category.metrics.findIndex(m => m.label === metric.label);
+                      const color = COLORS[metricIndex % COLORS.length];
+
+                      return (
+                        <div key={metric.label} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
+                          <span className="text-sm font-medium text-slate-700">
+                            {metric.label} ({metric.unit})
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Контейнер графика со скроллом */}
+                <div className="bg-slate-50 rounded-lg p-6 border border-slate-200 overflow-x-auto">
+                  <div className="relative" style={{ width: `${graphWidth}px`, height: '500px', paddingTop: '30px', paddingBottom: '80px', paddingLeft: '60px' }}>
+                    {/* SVG с графиком */}
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {/* Сетка */}
+                      <defs>
+                        <pattern id={`grid-${selectedCategory}`} width="10" height="10" patternUnits="userSpaceOnUse">
+                          <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                        </pattern>
+                      </defs>
+                      <rect width="100" height="100" fill={`url(#grid-${selectedCategory})`} />
+
+                      {/* Горизонтальные линии-сетка */}
+                      <g>
+                        {[0, 25, 50, 75, 100].map((tick) => (
+                          <line
+                            key={`y-tick-${tick}`}
+                            x1="2"
+                            y1={98 - (tick * 0.96)}
+                            x2="98"
+                            y2={98 - (tick * 0.96)}
+                            stroke="#94a3b8"
+                            strokeWidth="1"
+                            strokeDasharray="2,2"
+                            opacity="0.3"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        ))}
+                      </g>
+
+                      {/* Линии метрик */}
+                      {selectedMetricsData.map((metric, idx) => {
+                        const metricIndex = category.metrics.findIndex(m => m.label === metric.label);
+                        const color = COLORS[metricIndex % COLORS.length];
+                        const path = createPath(metric.label);
+
+                        return (
+                          <path
+                            key={metric.label}
+                            d={path}
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="2"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {/* Метки времени (внизу) */}
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-slate-600" style={{ height: '60px', paddingLeft: '60px' }}>
+                      {chartData.filter((_, i) => i % Math.ceil(chartData.length / 10) === 0).map((point, idx) => (
+                        <div key={idx} className="flex flex-col items-center">
+                          <div className="transform -rotate-45 origin-top-left whitespace-nowrap">
+                            {point.displayTime}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Шкала значений (слева) */}
+                    {selectedMetricsData.length > 0 && (
+                      <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-slate-600" style={{ width: '50px', paddingTop: '30px', paddingBottom: '80px' }}>
+                        {[100, 75, 50, 25, 0].map((tick) => {
+                          const metric = selectedMetricsData[0];
+                          const values = chartData.map(d => d[metric.label]).filter((v): v is number => v !== null && v > 0);
+                          const min = Math.min(...values);
+                          const max = Math.max(...values);
+                          const value = min + ((max - min) * tick / 100);
+
+                          return (
+                            <div key={tick} className="text-right pr-2">
+                              {value.toFixed(1)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
