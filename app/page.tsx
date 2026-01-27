@@ -12,7 +12,7 @@ import KPIMetricCard from '@/app/components/KPIMetricCard';
 import ForecastBlock from '@/app/components/ForecastBlock';
 import LoadingState from '@/app/components/LoadingState';
 import ErrorState from '@/app/components/ErrorState';
-import { ProductionData, calculateDailyStats, DailyGroupedData, TARGETS } from '@/lib/utils';
+import { ProductionData, calculateDailyStats, DailyGroupedData, TARGETS, isPPRDay, countWorkingDays, TIMEZONE_OFFSET } from '@/lib/utils';
 
 interface LatestDataResponse {
   success: boolean;
@@ -78,11 +78,16 @@ export default function HomePage() {
 
   // Рассчитываем время с начала ПРОИЗВОДСТВЕННЫХ суток (20:00 вчера)
   const now = new Date();
+
+  // Используем местное время UTC+5 для всех расчетов
+  const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+  const currentHour = localNow.getUTCHours();
+
   const startOfProductionDay = new Date(now);
 
   // Если сейчас до 20:00, то сутки начались вчера в 20:00
   // Если после 20:00, то сутки начались сегодня в 20:00
-  if (now.getHours() < 20) {
+  if (currentHour < 20) {
     startOfProductionDay.setDate(startOfProductionDay.getDate() - 1);
   }
   startOfProductionDay.setHours(20, 0, 0, 0);
@@ -94,16 +99,15 @@ export default function HomePage() {
 
   // Средняя скорость берем из базы данных
   const averageSpeed = currentStats.averageSpeed || 0;
-
-  // Определяем текущую смену и среднюю скорость смены
-  const currentHour = now.getHours();
   const isNightShift = currentHour >= 20 || currentHour < 8;
 
   // Рассчитываем среднюю скорость текущей смены
   let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за производственные сутки
   if (currentDayData?.data && currentDayData.data.length > 0) {
     const shiftData = currentDayData.data.filter(d => {
-      const dataHour = new Date(d.datetime).getHours();
+      const dataDateTime = new Date(d.datetime);
+      const localDataTime = new Date(dataDateTime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+      const dataHour = localDataTime.getUTCHours();
       if (isNightShift) {
         return dataHour >= 20 || dataHour < 8;
       } else {
@@ -313,13 +317,22 @@ export default function HomePage() {
 
           {/* Общие показатели за месяц */}
           {(() => {
-            const totalProduced = dailyGrouped.reduce((sum, day) => sum + day.stats.totalProduction, 0);
-            const totalPlan = dailyGrouped.length * TARGETS.daily;
-            const totalCompletion = (totalProduced / totalPlan) * 100;
+            // Исключаем текущий день из сводки (последний элемент)
+            const completedDays = dailyGrouped.slice(0, -1);
+            const totalProduced = completedDays.reduce((sum, day) => sum + day.stats.totalProduction, 0);
+
+            // Подсчитываем рабочие дни (исключая ППР)
+            const allDates = completedDays.map(day => day.date);
+            const workingDaysCount = countWorkingDays(allDates);
+            const totalPlan = workingDaysCount * TARGETS.daily;
+
+            const totalCompletion = totalPlan > 0 ? (totalProduced / totalPlan) * 100 : 0;
+
+            const averagePerDay = workingDaysCount > 0 ? totalProduced / workingDaysCount : 0;
 
             return (
               <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-5 mb-4">
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-4 gap-6">
                   {/* Произведено */}
                   <div>
                     <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
@@ -353,6 +366,16 @@ export default function HomePage() {
                       {totalCompletion.toFixed(1)}%
                     </div>
                   </div>
+
+                  {/* Среднее за сутки */}
+                  <div>
+                    <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
+                      Среднее за сутки, т
+                    </div>
+                    <div className="text-2xl font-bold tabular-nums text-slate-900">
+                      {averagePerDay.toFixed(0)}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -369,7 +392,8 @@ export default function HomePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {dailyGrouped.reverse().map((day, idx) => {
+                {dailyGrouped.slice(0, -1).reverse().map((day, idx) => {
+                  const isPPR = isPPRDay(day.date);
                   const completion = (day.stats.totalProduction / TARGETS.daily) * 100;
                   // Парсим дату локально, избегая проблем с часовыми поясами
                   const [year, month, dayNum] = day.date.split('-').map(Number);
@@ -381,21 +405,34 @@ export default function HomePage() {
                           day: '2-digit',
                           month: 'short'
                         })}
+                        {isPPR && (
+                          <span className="ml-2 text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-0.5 rounded">
+                            ППР
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-slate-900 text-right tabular-nums">
                         {day.stats.totalProduction.toFixed(0)}
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-slate-600 text-right tabular-nums">
-                        {TARGETS.daily.toFixed(0)}
+                        {isPPR ? (
+                          <span className="text-orange-600 font-semibold">—</span>
+                        ) : (
+                          TARGETS.daily.toFixed(0)
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-right tabular-nums">
-                        <span className={
-                          completion >= 100 ? 'text-emerald-600' :
-                          completion >= 80 ? 'text-amber-600' :
-                          'text-red-600'
-                        }>
-                          {completion.toFixed(0)}%
-                        </span>
+                        {isPPR ? (
+                          <span className="text-orange-600">—</span>
+                        ) : (
+                          <span className={
+                            completion >= 100 ? 'text-emerald-600' :
+                            completion >= 80 ? 'text-amber-600' :
+                            'text-red-600'
+                          }>
+                            {completion.toFixed(0)}%
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );

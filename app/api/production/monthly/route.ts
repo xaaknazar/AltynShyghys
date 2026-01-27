@@ -14,10 +14,14 @@ export async function GET(request: NextRequest) {
 
     const { start, end } = getProductionMonthBounds();
 
-    console.log('🔍 Fetching monthly data (shift_report):', {
-      start: start.toISOString(),
-      end: end.toISOString(),
-    });
+    const localStart = new Date(start.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const localEnd = new Date(end.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+
+    console.log('\n\n🚀 ========== ЗАПРОС МЕСЯЧНЫХ ДАННЫХ ==========');
+    console.log('🔍 Период загрузки данных:');
+    console.log(`   UTC: ${start.toISOString()} → ${end.toISOString()}`);
+    console.log(`   Местное: ${localStart.toISOString()} → ${localEnd.toISOString()}`);
+    console.log('===============================================\n');
 
     // Получаем shift_report документы за месяц для правильного расчета production
     const shiftReports = await shiftReportCollection
@@ -40,7 +44,8 @@ export async function GET(request: NextRequest) {
       nightShiftSpeed: number;
     }>();
 
-    shiftReports.forEach((doc) => {
+    console.log('\n🔍 ========== ОБРАБОТКА SHIFT REPORTS ==========');
+    shiftReports.forEach((doc, index) => {
       const docDate = new Date(doc.datetime);
       const localTime = new Date(docDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
       const hour = localTime.getUTCHours();
@@ -49,28 +54,37 @@ export async function GET(request: NextRequest) {
 
       // Определяем к какому производственному дню относится документ
       // Производственные сутки: 20:00 - 20:00
+      // Shift report приходит В КОНЦЕ смены
       let productionDate: Date;
       let isNightShift = false;
 
-      // Производственные сутки: 20:00 - 20:00
-      // Ночная смена (заканчивается около 08:00) → относится к предыдущему дню
+      // Ночная смена заканчивается утром (около 08:00)
+      // Пример: shift report 01.01 08:00 → производственные сутки 01 января
       if (hour >= 6 && hour <= 10) {
         isNightShift = true;
         productionDate = new Date(localTime);
-        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
+        // НЕ вычитаем день - shift report в конце смены относится к ЭТОМУ производственному дню
       }
-      // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню
-      // так как сутки начинаются в 20:00 предыдущего дня
+      // Дневная смена заканчивается вечером (около 20:00)
+      // Пример: shift report 01.01 20:00 → производственные сутки 01 января
       else if (hour >= 18 && hour <= 22) {
         isNightShift = false;
         productionDate = new Date(localTime);
-        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
+        // НЕ вычитаем день - shift report в конце смены относится к ЭТОМУ производственному дню
       } else {
         console.warn(`⚠️ Документ вне времени смены: ${doc.datetime.toISOString()} (час: ${hour})`);
         return;
       }
 
       const dateKey = productionDate.toISOString().split('T')[0];
+
+      // ЛОГИРОВАНИЕ КАЖДОГО SHIFT REPORT
+      console.log(`\n📄 Shift Report #${index + 1}:`);
+      console.log(`   UTC время: ${doc.datetime.toISOString()}`);
+      console.log(`   Местное время: ${localTime.toISOString()} (час: ${hour})`);
+      console.log(`   Смена: ${isNightShift ? 'НОЧНАЯ' : 'ДНЕВНАЯ'}`);
+      console.log(`   Производство: ${difference.toFixed(1)}т, Скорость: ${speed.toFixed(1)}т/ч`);
+      console.log(`   ➡️  Группируется как: ${dateKey}`);
 
       if (!productionDaysMap.has(dateKey)) {
         productionDaysMap.set(dateKey, {
@@ -123,10 +137,13 @@ export async function GET(request: NextRequest) {
       const localHour = localTime.getUTCHours();
       const localDate = new Date(localTime);
 
-      // Производственные сутки начинаются в 20:00
-      if (localHour < 20) {
-        localDate.setUTCDate(localDate.getUTCDate() - 1);
+      // ВАЖНО: Производственный день называется по дню ОКОНЧАНИЯ суток
+      // Пример: сутки 26 января = 25.01 20:00 → 26.01 20:00
+      if (localHour >= 20) {
+        // Если 20:00 или позже, данные относятся к ЗАВТРАШНИМ суткам
+        localDate.setUTCDate(localDate.getUTCDate() + 1);
       }
+      // Если час < 20, оставляем текущую дату (сутки завершатся сегодня)
 
       const dateKey = localDate.toISOString().split('T')[0];
 
@@ -137,8 +154,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Создаем DailyGroupedData из shift_report данных и сырых данных
-    const dailyGrouped: DailyGroupedData[] = [];
+    let dailyGrouped: DailyGroupedData[] = [];
 
+    console.log('\n\n📊 ========== СОЗДАНИЕ ПРОИЗВОДСТВЕННЫХ ДНЕЙ ==========');
     productionDaysMap.forEach((shiftData, dateKey) => {
       const totalProduction = shiftData.dayShift + shiftData.nightShift;
 
@@ -182,6 +200,14 @@ export async function GET(request: NextRequest) {
         data: dayRawData,
         stats,
       });
+
+      // ЛОГИРОВАНИЕ СОЗДАННОГО ДНЯ
+      console.log(`\n📅 Производственный день: ${dateKey}`);
+      console.log(`   Ночная смена: ${shiftData.nightShift.toFixed(1)}т (${shiftData.nightShiftSpeed.toFixed(1)}т/ч)`);
+      console.log(`   Дневная смена: ${shiftData.dayShift.toFixed(1)}т (${shiftData.dayShiftSpeed.toFixed(1)}т/ч)`);
+      console.log(`   Итого производство: ${totalProduction.toFixed(1)}т`);
+      console.log(`   Средняя скорость: ${averageSpeed.toFixed(1)}т/ч`);
+      console.log(`   Raw данных: ${dayRawData.length} записей`);
     });
 
     // Сортируем по дате
@@ -189,27 +215,60 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Created ${dailyGrouped.length} daily groups from shift reports`);
 
+    // Фильтруем только дни текущего месяца (исключаем декабрьские дни из январской таблицы)
+    const filterNow = new Date();
+    const filterLocalNow = new Date(filterNow.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+    const currentMonth = filterLocalNow.getUTCMonth();
+    const currentYear = filterLocalNow.getUTCFullYear();
+
+    console.log('\n🔍 ========== ФИЛЬТРАЦИЯ ПО МЕСЯЦУ ==========');
+    console.log(`   Текущий месяц: ${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
+    console.log(`   До фильтрации: ${dailyGrouped.length} дней`);
+
+    dailyGrouped = dailyGrouped.filter(day => {
+      const [year, month] = day.date.split('-').map(Number);
+      const belongsToCurrentMonth = year === currentYear && month - 1 === currentMonth;
+      if (!belongsToCurrentMonth) {
+        console.log(`   ❌ Исключен: ${day.date} (не относится к текущему месяцу)`);
+      }
+      return belongsToCurrentMonth;
+    });
+
+    console.log(`   После фильтрации: ${dailyGrouped.length} дней`);
+    console.log('=============================================\n');
+
     // Добавляем ТЕКУЩИЕ производственные сутки из сырых данных (если их нет в shift_report)
     const now = new Date();
     const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
     const localHour = localNow.getUTCHours();
 
     // Определяем дату текущих производственных суток
+    // ВАЖНО: Производственный день называется по дню ОКОНЧАНИЯ суток (не начала!)
+    // Пример: сутки 26 января = 25.01 20:00 → 26.01 20:00
     const currentProductionDate = new Date(localNow);
-    if (localHour < 20) {
-      // Если до 20:00, сутки начались вчера
-      currentProductionDate.setUTCDate(currentProductionDate.getUTCDate() - 1);
+    if (localHour >= 20) {
+      // Если 20:00 или позже, сутки только начались, завершатся завтра
+      currentProductionDate.setUTCDate(currentProductionDate.getUTCDate() + 1);
     }
+    // Если час < 20, оставляем сегодняшнюю дату (сутки завершатся сегодня в 20:00)
     const currentDateKey = currentProductionDate.toISOString().split('T')[0];
 
-    console.log(`🕐 Current production day: ${currentDateKey} (local hour: ${localHour})`);
+    console.log('\n\n⚡ ========== ОБРАБОТКА ТЕКУЩЕГО ДНЯ ==========');
+    console.log(`   Местное время СЕЙЧАС: ${localNow.toISOString()} (час: ${localHour})`);
+    console.log(`   Текущий производственный день: ${currentDateKey}`);
+    if (localHour >= 20) {
+      console.log(`   ℹ️  Час >= 20, сутки только начались, завершатся завтра в 20:00`);
+    } else {
+      console.log(`   ℹ️  Час < 20, сутки идут, начались вчера в 20:00, завершатся сегодня в 20:00`);
+    }
 
     // Проверяем есть ли текущие сутки в shift_report данных
     const currentDayIndex = dailyGrouped.findIndex(d => d.date === currentDateKey);
+    console.log(`   Индекс в dailyGrouped: ${currentDayIndex} (${currentDayIndex !== -1 ? 'УЖЕ ЕСТЬ' : 'НЕТ'})`);
 
     // Для текущего дня используем real-time данные (они содержат ВСЕ данные за сутки)
     if (rawDataByDay.has(currentDateKey)) {
-      console.log(`⚡ Using real-time data for current day ${currentDateKey} (shift in progress)`);
+      console.log(`   ✅ Есть raw данные для ${currentDateKey}`);
 
       const currentDayRawData = rawDataByDay.get(currentDateKey)!;
 
@@ -252,16 +311,32 @@ export async function GET(request: NextRequest) {
 
       // Если день уже существует (из shift_report), заменяем его real-time данными
       // Иначе добавляем новый день
+      console.log(`\n   📊 ДАННЫЕ ТЕКУЩЕГО ДНЯ ${currentDateKey}:`);
+      console.log(`      Raw записей: ${currentDayRawData.length}`);
+      console.log(`      Производство: ${totalProduction.toFixed(1)}т`);
+      console.log(`      Средняя скорость: ${averageSpeed.toFixed(1)}т/ч`);
+      console.log(`      Текущая скорость: ${currentSpeed.toFixed(1)}т/ч`);
+
       if (currentDayIndex !== -1) {
+        console.log(`   🔄 ЗАМЕНЯЕМ существующий день на индексе ${currentDayIndex}`);
         dailyGrouped[currentDayIndex] = currentDayData;
-        console.log(`✅ Updated current day with real-time data: ${currentDateKey}, production: ${totalProduction.toFixed(1)}t`);
       } else {
+        console.log(`   ➕ ДОБАВЛЯЕМ новый день в конец массива`);
         dailyGrouped.push(currentDayData);
         // Пересортируем после добавления
         dailyGrouped.sort((a, b) => a.date.localeCompare(b.date));
-        console.log(`✅ Added current day: ${currentDateKey}, production: ${totalProduction.toFixed(1)}t`);
       }
+    } else {
+      console.log(`   ❌ НЕТ raw данных для текущего дня ${currentDateKey}`);
     }
+
+    // ФИНАЛЬНОЕ ЛОГИРОВАНИЕ
+    console.log('\n\n✅ ========== ИТОГОВЫЙ СПИСОК ДНЕЙ ==========');
+    console.log(`Всего дней в массиве: ${dailyGrouped.length}`);
+    dailyGrouped.forEach((day, index) => {
+      console.log(`${index + 1}. ${day.date} - ${day.stats.totalProduction.toFixed(1)}т (${day.data.length} записей)`);
+    });
+    console.log('==============================================\n');
 
     const response = NextResponse.json({
       success: true,

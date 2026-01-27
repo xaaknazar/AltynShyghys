@@ -27,6 +27,30 @@ export const TARGETS = {
 export const TIMEZONE_OFFSET = 5; // UTC+5 (или можно сделать +6 если нужно)
 
 /**
+ * ППР дни (планово-предупредительный ремонт) - дни когда не нужно считать план
+ * Формат: 'YYYY-MM-DD'
+ * Добавляйте даты ППР дней в этот массив
+ */
+export const PPR_DAYS: string[] = [
+  '2026-01-05', // ППР январь
+  '2026-01-06', // ППР январь
+];
+
+/**
+ * Проверяет является ли день ППР днем
+ */
+export function isPPRDay(date: string): boolean {
+  return PPR_DAYS.includes(date);
+}
+
+/**
+ * Подсчитывает количество рабочих дней (исключая ППР) в массиве дат
+ */
+export function countWorkingDays(dates: string[]): number {
+  return dates.filter(date => !isPPRDay(date)).length;
+}
+
+/**
  * Получить начало и конец производственных суток (20:00 - 20:00) в UTC
  */
 export function getProductionDayBounds(date: Date = new Date()) {
@@ -136,33 +160,43 @@ export function formatNumber(num: number, decimals: number = 1): string {
 }
 
 /**
- * Получить начало и конец месяца (производственные сутки 20:00 - 20:00) в UTC
+ * Получить начало и конец месяца (производственные сутки 20:00-20:00) в UTC
+ * ВКЛЮЧАЕТ текущий день для загрузки данных, исключение делается в API при формировании таблицы
  */
 export function getProductionMonthBounds(date: Date = new Date()) {
   // Текущее время в UTC
   const nowUTC = new Date(date);
 
   // Преобразуем в местное время (UTC + offset)
-  const localYear = nowUTC.getUTCFullYear();
-  const localMonth = nowUTC.getUTCMonth();
+  const localTime = new Date(nowUTC.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+  const localYear = localTime.getUTCFullYear();
+  const localMonth = localTime.getUTCMonth();
 
-  // Начало месяца в местном времени (первое число в 20:00)
-  const monthStartLocal = new Date(Date.UTC(localYear, localMonth, 1));
+  // Начало месяца = последний день предыдущего месяца в 20:00
+  // Это начало производственных суток 1-го числа текущего месяца
+  const firstDayOfMonth = new Date(Date.UTC(localYear, localMonth, 1));
+  const lastDayOfPrevMonth = new Date(firstDayOfMonth.getTime() - 24 * 60 * 60 * 1000);
 
-  // Устанавливаем 20:00 местного времени = (20 - offset) UTC
-  const utcHourForStart = (20 - TIMEZONE_OFFSET + 24) % 24;
-  monthStartLocal.setUTCHours(utcHourForStart, 0, 0, 0);
+  const monthStartLocal = new Date(Date.UTC(
+    lastDayOfPrevMonth.getUTCFullYear(),
+    lastDayOfPrevMonth.getUTCMonth(),
+    lastDayOfPrevMonth.getUTCDate(),
+    20, 0, 0, 0
+  ));
+  const monthStartUTC = new Date(monthStartLocal.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
 
-  // Конец месяца - первое число следующего месяца в 20:00
-  const monthEndLocal = new Date(Date.UTC(localYear, localMonth + 1, 1));
-  monthEndLocal.setUTCHours(utcHourForStart, 0, 0, 0);
+  // Конец месяца = СЕЙЧАС (для загрузки всех данных включая текущий день)
+  // Фильтрация текущего дня происходит в API при формировании таблицы для фронта
+  const monthEndUTC = nowUTC;
 
-  console.log('📅 Production month (local 20:00-20:00):', {
-    startUTC: monthStartLocal.toISOString(),
-    endUTC: monthEndLocal.toISOString(),
+  console.log('📅 Production month (production days 20:00-20:00, data includes current day):', {
+    startUTC: monthStartUTC.toISOString(),
+    endUTC: monthEndUTC.toISOString(),
+    localStart: new Date(monthStartUTC.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
+    localEnd: new Date(monthEndUTC.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
   });
 
-  return { start: monthStartLocal, end: monthEndLocal };
+  return { start: monthStartUTC, end: monthEndUTC };
 }
 
 /**
