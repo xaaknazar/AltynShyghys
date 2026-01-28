@@ -78,7 +78,7 @@ export default function OTKListPage() {
 
       if (data.success) {
         setAllAnalyses(data.analyses);
-        // Группируем по производственным суткам (20:00-20:00)
+        // Группируем по производственным суткам (08:00-08:00)
         groupByProductionDay(data.analyses);
       }
     } catch (error) {
@@ -97,9 +97,9 @@ export default function OTKListPage() {
       const localTime = new Date(sampleTime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
       const localHour = localTime.getUTCHours();
 
-      // Производственные сутки начинаются в 20:00
+      // Производственные сутки начинаются в 08:00
       const productionDay = new Date(localTime);
-      if (localHour < 20) {
+      if (localHour < 8) {
         productionDay.setUTCDate(productionDay.getUTCDate() - 1);
       }
 
@@ -361,7 +361,7 @@ export default function OTKListPage() {
                 <div key={dayKey} className="bg-white rounded-2xl border border-slate-200 shadow-sm">
                   <div className="bg-gradient-to-r from-blue-50 to-slate-50 border-b border-slate-200 px-6 py-4">
                     <h3 className="text-lg font-display font-bold text-blue-600">
-                      Производственные сутки: {displayDate} 20:00 - {new Date(dayDate.getTime() + 24*60*60*1000).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} 20:00
+                      Производственные сутки: {displayDate} 08:00 - {new Date(dayDate.getTime() + 24*60*60*1000).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} 08:00
                     </h3>
                     <p className="text-xs text-slate-600 mt-1">
                       Всего анализов: {analyses.length}

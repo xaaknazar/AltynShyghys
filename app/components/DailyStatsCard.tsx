@@ -29,15 +29,15 @@ export default function DailyStatsCard({ totalProduction, averageSpeed, progress
       const isDayShift = localHour >= 8 && localHour < 20;
       setCurrentShift(isDayShift ? 'day' : 'night');
 
-      // Конец суток: следующий день в 20:00 (производственные сутки 20:00-20:00)
+      // Конец суток: следующий день в 08:00 (производственные сутки 08:00-08:00)
       const dayEnd = new Date(localTime);
-      if (localHour < 20) {
-        // Если до 20:00, конец суток сегодня в 20:00
-        dayEnd.setUTCHours(20, 0, 0, 0);
+      if (localHour < 8) {
+        // Если до 08:00, конец суток сегодня в 08:00
+        dayEnd.setUTCHours(8, 0, 0, 0);
       } else {
-        // Если после 20:00, конец суток завтра в 20:00
+        // Если после 08:00, конец суток завтра в 08:00
         dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-        dayEnd.setUTCHours(20, 0, 0, 0);
+        dayEnd.setUTCHours(8, 0, 0, 0);
       }
 
       // Конец смены: ближайшие 08:00 или 20:00
@@ -125,7 +125,7 @@ export default function DailyStatsCard({ totalProduction, averageSpeed, progress
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
-            <div className="text-sm font-semibold text-corporate-neutral-600 uppercase tracking-wide">Произведено</div>
+            <div className="text-sm font-semibold text-corporate-neutral-600 uppercase tracking-wide">Переработано</div>
           </div>
           <div className="metric-value text-5xl font-bold text-corporate-primary-600 mb-2">
             {formatNumber(totalProduction, 1)}

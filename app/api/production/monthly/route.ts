@@ -53,24 +53,25 @@ export async function GET(request: NextRequest) {
       const speed = doc.speed || 0;
 
       // Определяем к какому производственному дню относится документ
-      // Производственные сутки: 20:00 - 20:00
+      // Производственные сутки: 08:00 - 08:00
       // Shift report приходит В КОНЦЕ смены
       let productionDate: Date;
       let isNightShift = false;
 
       // Ночная смена заканчивается утром (около 08:00)
-      // Пример: shift report 01.01 08:00 → производственные сутки 01 января
+      // Пример: shift report 01.01 08:00 → относится к производственным суткам 31.12 (ночь 31.12-01.01)
       if (hour >= 6 && hour <= 10) {
         isNightShift = true;
         productionDate = new Date(localTime);
-        // НЕ вычитаем день - shift report в конце смены относится к ЭТОМУ производственному дню
+        // Вычитаем день - ночная смена относится к производственным суткам предыдущего дня
+        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
       }
       // Дневная смена заканчивается вечером (около 20:00)
-      // Пример: shift report 01.01 20:00 → производственные сутки 01 января
+      // Пример: shift report 01.01 20:00 → производственные сутки 01 января (день 01.01)
       else if (hour >= 18 && hour <= 22) {
         isNightShift = false;
         productionDate = new Date(localTime);
-        // НЕ вычитаем день - shift report в конце смены относится к ЭТОМУ производственному дню
+        // НЕ вычитаем день - дневная смена относится к текущему производственному дню
       } else {
         console.warn(`⚠️ Документ вне времени смены: ${doc.datetime.toISOString()} (час: ${hour})`);
         return;
@@ -137,13 +138,13 @@ export async function GET(request: NextRequest) {
       const localHour = localTime.getUTCHours();
       const localDate = new Date(localTime);
 
-      // ВАЖНО: Производственный день называется по дню ОКОНЧАНИЯ суток
-      // Пример: сутки 26 января = 25.01 20:00 → 26.01 20:00
-      if (localHour >= 20) {
-        // Если 20:00 или позже, данные относятся к ЗАВТРАШНИМ суткам
-        localDate.setUTCDate(localDate.getUTCDate() + 1);
+      // ВАЖНО: Производственный день называется по дню НАЧАЛА суток
+      // Пример: сутки 1 января = 1.01 08:00 → 2.01 08:00
+      if (localHour < 8) {
+        // Если до 08:00, данные относятся к ВЧЕРАШНИМ суткам
+        localDate.setUTCDate(localDate.getUTCDate() - 1);
       }
-      // Если час < 20, оставляем текущую дату (сутки завершатся сегодня)
+      // Если час >= 8, оставляем текущую дату (сутки начались сегодня)
 
       const dateKey = localDate.toISOString().split('T')[0];
 
@@ -243,23 +244,23 @@ export async function GET(request: NextRequest) {
     const localHour = localNow.getUTCHours();
 
     // Определяем дату текущих производственных суток
-    // ВАЖНО: Производственный день называется по дню ОКОНЧАНИЯ суток (не начала!)
-    // Пример: сутки 26 января = 25.01 20:00 → 26.01 20:00
+    // ВАЖНО: Производственный день называется по дню НАЧАЛА суток
+    // Пример: сутки 1 января = 1.01 08:00 → 2.01 08:00
     const currentProductionDate = new Date(localNow);
-    if (localHour >= 20) {
-      // Если 20:00 или позже, сутки только начались, завершатся завтра
-      currentProductionDate.setUTCDate(currentProductionDate.getUTCDate() + 1);
+    if (localHour < 8) {
+      // Если до 08:00, сутки начались вчера, завершатся сегодня
+      currentProductionDate.setUTCDate(currentProductionDate.getUTCDate() - 1);
     }
-    // Если час < 20, оставляем сегодняшнюю дату (сутки завершатся сегодня в 20:00)
+    // Если час >= 8, оставляем сегодняшнюю дату (сутки начались сегодня в 08:00)
     const currentDateKey = currentProductionDate.toISOString().split('T')[0];
 
     console.log('\n\n⚡ ========== ОБРАБОТКА ТЕКУЩЕГО ДНЯ ==========');
     console.log(`   Местное время СЕЙЧАС: ${localNow.toISOString()} (час: ${localHour})`);
     console.log(`   Текущий производственный день: ${currentDateKey}`);
-    if (localHour >= 20) {
-      console.log(`   ℹ️  Час >= 20, сутки только начались, завершатся завтра в 20:00`);
+    if (localHour < 8) {
+      console.log(`   ℹ️  Час < 8, сутки начались вчера в 08:00, завершатся сегодня в 08:00`);
     } else {
-      console.log(`   ℹ️  Час < 20, сутки идут, начались вчера в 20:00, завершатся сегодня в 20:00`);
+      console.log(`   ℹ️  Час >= 8, сутки начались сегодня в 08:00, завершатся завтра в 08:00`);
     }
 
     // Проверяем есть ли текущие сутки в shift_report данных

@@ -98,7 +98,7 @@ export default function DayDetailModal({ dayData, onClose }: DayDetailModalProps
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-              <div className="text-xs text-slate-600 mb-1">Произведено</div>
+              <div className="text-xs text-slate-600 mb-1">Переработано</div>
               <div className="text-3xl font-display font-bold text-blue-600">
                 {formatNumber(dayData.stats.totalProduction, 1)}
                 <span className="text-lg ml-1 text-slate-500">т</span>
@@ -222,7 +222,7 @@ export default function DayDetailModal({ dayData, onClose }: DayDetailModalProps
                                 {formatNumber(point.interval.averageSpeed, 1)} т/ч
                               </div>
                               <div className="text-xs text-slate-600 mt-1.5">
-                                Произведено: {formatNumber(point.interval.totalProduction, 1)} т
+                                Переработано: {formatNumber(point.interval.totalProduction, 1)} т
                               </div>
                               <div className="text-xs text-slate-500">
                                 Записей: {point.interval.recordCount}

@@ -60,23 +60,23 @@ export function getProductionDayBounds(date: Date = new Date()) {
   // Преобразуем в местное время (UTC + offset)
   const localHour = (nowUTC.getUTCHours() + TIMEZONE_OFFSET) % 24;
 
-  // Начало суток в местном времени: 20:00
+  // Начало суток в местном времени: 08:00
   const dayStartLocal = new Date(nowUTC);
 
-  // Если сейчас до 20:00 местного времени, то сутки начались вчера
-  if (localHour < 20) {
+  // Если сейчас до 08:00 местного времени, то сутки начались вчера
+  if (localHour < 8) {
     dayStartLocal.setUTCDate(dayStartLocal.getUTCDate() - 1);
   }
 
-  // Устанавливаем 20:00 местного времени = (20 - offset) UTC
-  const utcHourForStart = (20 - TIMEZONE_OFFSET + 24) % 24;
+  // Устанавливаем 08:00 местного времени = (8 - offset) UTC
+  const utcHourForStart = (8 - TIMEZONE_OFFSET + 24) % 24;
   dayStartLocal.setUTCHours(utcHourForStart, 0, 0, 0);
 
-  // Конец суток - следующий день в 20:00
+  // Конец суток - следующий день в 08:00
   const dayEndLocal = new Date(dayStartLocal);
   dayEndLocal.setUTCDate(dayEndLocal.getUTCDate() + 1);
 
-  console.log('🕐 Production day (local 20:00-20:00):', {
+  console.log('🕐 Production day (local 08:00-08:00):', {
     startUTC: dayStartLocal.toISOString(),
     endUTC: dayEndLocal.toISOString(),
     startLocal: new Date(dayStartLocal.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000).toISOString(),
