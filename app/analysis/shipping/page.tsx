@@ -240,10 +240,9 @@ export default function ShippingPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Отгрузка масла</h1>
             <p className="text-sm text-slate-500 mt-1">
-              Данные из Google Sheets
               {lastUpdated && (
-                <span className="ml-2">
-                  • Обновлено: {formatLastUpdated(lastUpdated)}
+                <span>
+                  Обновлено: {formatLastUpdated(lastUpdated)}
                 </span>
               )}
             </p>
