@@ -415,23 +415,37 @@ export default function QualityChartsPage() {
 
   const compareData = compareMode ? prepareCompareData() : [];
 
-  // Вычислить средние значения
-  const calculateAverages = () => {
-    if (chartData.length === 0) return {};
+  // Вычислить средние и медианные значения
+  const calculateStats = () => {
+    if (chartData.length === 0) return { averages: {}, medians: {} };
 
     const averages: Record<string, number> = {};
+    const medians: Record<string, number> = {};
 
     category?.metrics.forEach(metric => {
       const values = chartData.map(d => d[metric.label]).filter(v => v !== null && v > 0);
+
+      // Среднее
       averages[metric.label] = values.length > 0
         ? values.reduce((sum, v) => sum + v, 0) / values.length
         : 0;
+
+      // Медиана
+      if (values.length > 0) {
+        const sorted = [...values].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        medians[metric.label] = sorted.length % 2 === 0
+          ? (sorted[mid - 1] + sorted[mid]) / 2
+          : sorted[mid];
+      } else {
+        medians[metric.label] = 0;
+      }
     });
 
-    return averages;
+    return { averages, medians };
   };
 
-  const averages = calculateAverages();
+  const { averages, medians } = calculateStats();
 
   // Toggle метрики
   const toggleMetric = (metricLabel: string) => {
@@ -658,12 +672,23 @@ export default function QualityChartsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
                 {category.metrics.map(metric => (
                   <div key={metric.dataKey} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <div className="text-sm text-slate-600 mb-1">{metric.label}</div>
-                    <div className="text-3xl font-bold text-slate-900">
-                      {averages[metric.label]?.toFixed(1) || '—'}
-                      <span className="text-lg text-slate-600 ml-1">{metric.unit}</span>
+                    <div className="text-sm text-slate-600 mb-2">{metric.label}</div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="text-2xl font-bold text-slate-900">
+                          {averages[metric.label]?.toFixed(1) || '—'}
+                          <span className="text-base text-slate-600 ml-1">{metric.unit}</span>
+                        </div>
+                        <div className="text-xs text-slate-500">Среднее</div>
+                      </div>
+                      <div>
+                        <div className="text-xl font-semibold text-blue-600">
+                          {medians[metric.label]?.toFixed(1) || '—'}
+                          <span className="text-sm text-slate-500 ml-1">{metric.unit}</span>
+                        </div>
+                        <div className="text-xs text-slate-500">Медиана</div>
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-500 mt-2">Среднее значение</div>
                   </div>
                 ))}
               </div>
