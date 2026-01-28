@@ -34,31 +34,58 @@ export default function ShippingPage() {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Загрузка данных из API
-  useEffect(() => {
-    const fetchShippingData = async () => {
-      try {
+  // Функция загрузки данных
+  const fetchShippingData = async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) {
+        setIsRefreshing(true);
+      } else {
         setLoading(true);
-        setError(null);
-        const response = await fetch('/api/shipping', { cache: 'no-store' });
-        const result = await response.json();
-
-        if (result.success) {
-          setShippingData(result.data);
-        } else {
-          setError(result.error || 'Не удалось загрузить данные');
-        }
-      } catch (err) {
-        console.error('Error fetching shipping data:', err);
-        setError('Не удалось подключиться к серверу');
-      } finally {
-        setLoading(false);
       }
-    };
+      setError(null);
+      const response = await fetch('/api/shipping', { cache: 'no-store' });
+      const result = await response.json();
 
+      if (result.success) {
+        setShippingData(result.data);
+        setLastUpdated(result.timestamp || new Date().toISOString());
+      } else {
+        setError(result.error || 'Не удалось загрузить данные');
+      }
+    } catch (err) {
+      console.error('Error fetching shipping data:', err);
+      setError('Не удалось подключиться к серверу');
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  // Загрузка данных из API при монтировании
+  useEffect(() => {
     fetchShippingData();
   }, []);
+
+  // Обновление данных
+  const handleRefresh = () => {
+    fetchShippingData(true);
+  };
+
+  // Форматирование времени обновления
+  const formatLastUpdated = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
 
   // Парсинг даты
   const parseDate = (dateStr: string): Date => {
@@ -207,6 +234,47 @@ export default function ShippingPage() {
 
   return (
     <div className="space-y-8">
+      {/* Заголовок с кнопкой обновления */}
+      <div className="bg-white rounded-lg border border-slate-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Отгрузка масла</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Данные из Google Sheets
+              {lastUpdated && (
+                <span className="ml-2">
+                  • Обновлено: {formatLastUpdated(lastUpdated)}
+                </span>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+              isRefreshing
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
+            <svg
+              className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            {isRefreshing ? 'Обновление...' : 'Обновить данные'}
+          </button>
+        </div>
+      </div>
+
       {/* Фильтры периода */}
       <div className="bg-white rounded-lg border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">Выберите период</h2>
