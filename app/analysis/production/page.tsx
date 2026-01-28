@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import TechnicalChart from './TechnicalChart';
 
-type QuickPeriod = 'week' | 'month' | 'season' | 'all';
+type QuickPeriod = 'week' | 'month' | 'season' | 'all' | 'custom';
 type ViewMode = 'daily' | 'detailed' | 'monthly';
 
 export default function ProductionAnalysisPage() {
@@ -401,9 +401,11 @@ export default function ProductionAnalysisPage() {
         m.title.includes('Жаровни 2')
       );
     } else if (group === 'toster') {
-      // Тостер: температура тостера
+      // Тостер: температура тостера и параметры тостированного шрота
       return allMetrics.filter((m: any) =>
-        m.title.includes('Тостера')
+        m.title.includes('Тостера') ||
+        m.title.includes('Тостированный') ||
+        m.title.includes('Тостир')
       );
     }
 
@@ -952,16 +954,6 @@ export default function ProductionAnalysisPage() {
                 }`}
               >
                 С начала сезона
-              </button>
-              <button
-                onClick={() => applyQuickPeriod('all')}
-                className={`px-4 py-2 rounded-lg border transition-all ${
-                  quickPeriod === 'all'
-                    ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                За весь период
               </button>
             </div>
           </>
