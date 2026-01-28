@@ -100,7 +100,6 @@ export default function QualityAnalysisPage() {
                   }
                 `}
               >
-                <span className="text-lg">{icon}</span>
                 <span className="text-sm">{label}</span>
               </button>
             ))}

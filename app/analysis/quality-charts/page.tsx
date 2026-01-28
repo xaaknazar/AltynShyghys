@@ -43,14 +43,14 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '⚙️',
     color: '#10b981',
     metrics: [
-      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Влажность,%' },
-      { label: 'Недорушенные', dataKey: 'underCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Недорушенные,%' },
-      { label: 'Необрушенные', dataKey: 'unCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Необрушенные,%' },
-      { label: 'Целяк', dataKey: 'whole', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Целяк,%' },
-      { label: 'Лузга', dataKey: 'husk', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Лузга,%' },
-      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Сор,%' },
-      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Масличная пыль,%' },
-      { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Лузжистость,%' },
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Влажность,%' },
+      { label: 'Недорушенные', dataKey: 'underCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Недорушенные,%' },
+      { label: 'Необрушенные', dataKey: 'unCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4  Необрушенные,%' },
+      { label: 'Целяк', dataKey: 'whole', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4  Целяк,%' },
+      { label: 'Лузга', dataKey: 'husk', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Лузга,%' },
+      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Сор,%' },
+      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Масличная пыль,%' },
+      { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Лузжистость,%' },
     ],
   },
   {
@@ -59,12 +59,12 @@ const CATEGORIES: CategoryConfig[] = [
     icon: '🟤',
     color: '#f59e0b',
     metrics: [
-      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Влажность,%' },
-      { label: 'Вынос ядра', dataKey: 'kernelOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Вынос ядра,%' },
-      { label: 'Вынос подсолнечника', dataKey: 'sunflowerOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Вынос подсолнечника,%' },
-      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Масличная пыль,%' },
-      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Сор,%' },
-      { label: 'Средняя масличность', dataKey: 'avgOilContent', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Средняя масличность за смену, %' },
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 5 Влажность,%' },
+      { label: 'Вынос ядра', dataKey: 'kernelOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 5 Вынос ядра,%' },
+      { label: 'Вынос подсолнечника', dataKey: 'sunflowerOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 5 Вынос подсолнечника,%' },
+      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 5 Масличная пыль,%' },
+      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 5 Сор,%' },
+      { label: 'Средняя масличность', dataKey: 'avgOilContent', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 5 Средняя масличность за смену, %' },
     ],
   },
   {
@@ -276,7 +276,22 @@ export default function QualityChartsPage() {
       };
 
       category.metrics.forEach(metric => {
-        const valueStr = row[metric.sourceColumn] || '';
+        // Ищем значение колонки с учетом возможных вариаций
+        let valueStr = row[metric.sourceColumn];
+
+        // Если точное совпадение не найдено, пробуем найти похожую колонку
+        if (valueStr === undefined || valueStr === null || valueStr === '') {
+          const normalizedTarget = metric.sourceColumn.trim().toLowerCase();
+          const matchingKey = Object.keys(row).find(key =>
+            key.trim().toLowerCase() === normalizedTarget
+          );
+          if (matchingKey) {
+            valueStr = row[matchingKey];
+          } else {
+            valueStr = '';
+          }
+        }
+
         // Удаляем кавычки, заменяем запятую на точку и парсим число
         const cleanValue = valueStr.toString().replace(/"/g, '').replace(',', '.').trim();
         const value = parseFloat(cleanValue);
@@ -370,7 +385,22 @@ export default function QualityChartsPage() {
           }
         }
 
-        const valueStr = row[metric.sourceColumn] || '';
+        // Ищем значение колонки с учетом возможных вариаций
+        let valueStr = row[metric.sourceColumn];
+
+        // Если точное совпадение не найдено, пробуем найти похожую колонку
+        if (valueStr === undefined || valueStr === null || valueStr === '') {
+          const normalizedTarget = metric.sourceColumn.trim().toLowerCase();
+          const matchingKey = Object.keys(row).find(key =>
+            key.trim().toLowerCase() === normalizedTarget
+          );
+          if (matchingKey) {
+            valueStr = row[matchingKey];
+          } else {
+            valueStr = '';
+          }
+        }
+
         const cleanValue = valueStr.toString().replace(/"/g, '').replace(',', '.').trim();
         const value = parseFloat(cleanValue);
 
@@ -611,7 +641,6 @@ export default function QualityChartsPage() {
                   {CATEGORIES.map(cat => (
                     <div key={cat.id} className="border border-slate-200 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="text-2xl">{cat.icon}</span>
                         <span className="font-semibold text-slate-900">{cat.label}</span>
                       </div>
                       <div className="space-y-2">
@@ -660,7 +689,6 @@ export default function QualityChartsPage() {
                     }
                   `}
                 >
-                  <div className="text-3xl mb-2">{cat.icon}</div>
                   <div className="text-sm font-medium text-slate-900">{cat.label}</div>
                 </button>
               ))}
