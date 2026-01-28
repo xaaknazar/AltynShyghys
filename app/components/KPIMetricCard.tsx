@@ -50,7 +50,7 @@ export default function KPIMetricCard({
   const completion = target ? (value / target) * 100 : null;
 
   return (
-    <div className={`bg-white border-2 ${statusColors[status]} rounded-lg p-5 transition-all hover:shadow-md`}>
+    <div className={`bg-white border-2 ${statusColors[status]} rounded-lg p-5`}>
       {/* Заголовок */}
       <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
         {label}

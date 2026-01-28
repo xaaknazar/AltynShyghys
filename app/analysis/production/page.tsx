@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import TechnicalChart from './TechnicalChart';
 
-type QuickPeriod = 'week' | 'month' | 'year' | 'all' | 'custom';
+type QuickPeriod = 'week' | 'month' | 'season' | 'all';
 type ViewMode = 'daily' | 'detailed' | 'monthly';
 
 export default function ProductionAnalysisPage() {
@@ -89,8 +89,8 @@ export default function ProductionAnalysisPage() {
       start.setDate(start.getDate() - 7);
     } else if (period === 'month') {
       start.setDate(1); // Начало текущего месяца
-    } else if (period === 'year') {
-      start.setMonth(0, 1); // Начало текущего года (1 января)
+    } else if (period === 'season') {
+      start.setMonth(8, 1); // Начало сезона (1 сентября текущего года)
     } else if (period === 'all') {
       start.setFullYear(2025, 8, 1); // 1 сентября 2025
     }
@@ -944,14 +944,14 @@ export default function ProductionAnalysisPage() {
                 С начала месяца
               </button>
               <button
-                onClick={() => applyQuickPeriod('year')}
+                onClick={() => applyQuickPeriod('season')}
                 className={`px-4 py-2 rounded-lg border transition-all ${
-                  quickPeriod === 'year'
+                  quickPeriod === 'season'
                     ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
                     : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >
-                С начала года
+                С начала сезона
               </button>
               <button
                 onClick={() => applyQuickPeriod('all')}
@@ -962,16 +962,6 @@ export default function ProductionAnalysisPage() {
                 }`}
               >
                 За весь период
-              </button>
-              <button
-                onClick={() => setQuickPeriod('custom')}
-                className={`px-4 py-2 rounded-lg border transition-all ${
-                  quickPeriod === 'custom'
-                    ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                Произвольный период
               </button>
             </div>
           </>
