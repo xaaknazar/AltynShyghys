@@ -277,8 +277,8 @@ export default function QualityChartsPage() {
 
       category.metrics.forEach(metric => {
         const valueStr = row[metric.sourceColumn] || '';
-        // Удаляем кавычки и парсим число
-        const cleanValue = valueStr.toString().replace(/"/g, '').trim();
+        // Удаляем кавычки, заменяем запятую на точку и парсим число
+        const cleanValue = valueStr.toString().replace(/"/g, '').replace(',', '.').trim();
         const value = parseFloat(cleanValue);
         point[metric.label] = isNaN(value) ? null : value;
       });
@@ -371,7 +371,7 @@ export default function QualityChartsPage() {
         }
 
         const valueStr = row[metric.sourceColumn] || '';
-        const cleanValue = valueStr.toString().replace(/"/g, '').trim();
+        const cleanValue = valueStr.toString().replace(/"/g, '').replace(',', '.').trim();
         const value = parseFloat(cleanValue);
 
         return {
