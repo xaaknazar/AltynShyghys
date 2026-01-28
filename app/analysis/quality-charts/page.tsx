@@ -207,12 +207,34 @@ export default function QualityChartsPage() {
 
     let sourceData = allData[category.metrics[0].sourceType];
 
-    // Для гранулирования фильтруем по наименованию
+    // Для гранулирования и экстракции фильтруем по наименованию
     if (category.metrics[0].sourceType === 'granulation') {
       const targetName = selectedCategory === 'granules-meal' ? 'шрот гранулированный' : 'лузга гранулированная';
       sourceData = sourceData.filter(row =>
         (row['Наименование'] || '').toString().toLowerCase().includes(targetName)
       );
+    } else if (category.metrics[0].sourceType === 'extraction') {
+      // Для экстракции нужно различать: масло, шрот и мисцеллу
+      // Используем наличие данных в соответствующих колонках
+      if (selectedCategory === 'oil') {
+        // Фильтруем строки где есть данные масла
+        sourceData = sourceData.filter(row => {
+          const hasOilData = row['Масло Кислотное число,%'] || row['Масло Температура вспышки,°С'] || row['Масло содержание гексана,ppm'];
+          return hasOilData;
+        });
+      } else if (selectedCategory === 'meal') {
+        // Фильтруем строки где есть данные шрота
+        sourceData = sourceData.filter(row => {
+          const hasMealData = row['Шрот влага,%'] || row['Шрот масличность,%'];
+          return hasMealData;
+        });
+      } else if (selectedCategory === 'miscella') {
+        // Фильтруем строки где есть данные мисцеллы
+        sourceData = sourceData.filter(row => {
+          const hasMiscellaData = row['Мисцелла концентрация,%'];
+          return hasMiscellaData;
+        });
+      }
     }
 
     // Логируем названия колонок для отладки
@@ -281,6 +303,11 @@ export default function QualityChartsPage() {
         const cleanValue = valueStr.toString().replace(/"/g, '').trim();
         const value = parseFloat(cleanValue);
         point[metric.label] = isNaN(value) ? null : value;
+
+        // Логируем для отладки проблемы с масличностью
+        if (metric.label === 'Масличность' && index < 3) {
+          console.log(`[${selectedCategory}] Row ${index}: ${metric.sourceColumn} = "${valueStr}" -> ${value}`);
+        }
       });
 
       return point;
@@ -333,12 +360,30 @@ export default function QualityChartsPage() {
       let sourceData = allData[metric.sourceType];
       if (!sourceData) return;
 
-      // Для гранулирования фильтруем по наименованию
+      // Для гранулирования и экстракции фильтруем по наименованию/данным
       if (metric.sourceType === 'granulation') {
         const targetName = catId === 'granules-meal' ? 'шрот гранулированный' : 'лузга гранулированная';
         sourceData = sourceData.filter(row =>
           (row['Наименование'] || '').toString().toLowerCase().includes(targetName)
         );
+      } else if (metric.sourceType === 'extraction') {
+        // Для экстракции различаем: масло, шрот и мисцеллу
+        if (catId === 'oil') {
+          sourceData = sourceData.filter(row => {
+            const hasOilData = row['Масло Кислотное число,%'] || row['Масло Температура вспышки,°С'] || row['Масло содержание гексана,ppm'];
+            return hasOilData;
+          });
+        } else if (catId === 'meal') {
+          sourceData = sourceData.filter(row => {
+            const hasMealData = row['Шрот влага,%'] || row['Шрот масличность,%'];
+            return hasMealData;
+          });
+        } else if (catId === 'miscella') {
+          sourceData = sourceData.filter(row => {
+            const hasMiscellaData = row['Мисцелла концентрация,%'];
+            return hasMiscellaData;
+          });
+        }
       }
 
       // Парсим данные
