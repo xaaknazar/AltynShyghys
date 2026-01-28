@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useState, useMemo, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Тип данных для отгрузки
 interface ShippingData {
@@ -20,74 +20,58 @@ interface ShippingData {
   acidNumber?: number;
   peroxideNumber?: number;
   phosphorus?: number;
-  phosphorusAlt?: number;
   sediment?: number;
 }
-
-// Данные из Google Sheets
-const shippingData: ShippingData[] = [
-  { date: '01.11.2025', cistern: '73110421', brutto: 92.95, tara: 27.15, netto: 65.8, pressed: 46.06, extraction: 19.74, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/02', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.5, phosphorusAlt: 197, sediment: 1.3 },
-  { date: '01.11.2025', cistern: '73113441', brutto: 92.85, tara: 27.2, netto: 65.65, pressed: 45.955, extraction: 19.695, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/03', moisture: 0.2, acidNumber: 1.5, peroxideNumber: 5, phosphorus: 0.5, phosphorusAlt: 197, sediment: 1.3 },
-  { date: '01.11.2025', cistern: '73111130', brutto: 93.05, tara: 27.2, netto: 65.85, pressed: 46.095, extraction: 19.755, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/05', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.5, phosphorusAlt: 197, sediment: 1.2 },
-  { date: '01.11.2025', cistern: '73115461', brutto: 92.8, tara: 27.15, netto: 65.65, pressed: 45.955, extraction: 19.695, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/06', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.5, phosphorusAlt: 197, sediment: 1.3 },
-  { date: '01.11.2025', cistern: '73214082', brutto: 92.9, tara: 27, netto: 65.9, pressed: 46.13, extraction: 19.77, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/09', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.6 },
-  { date: '01.11.2025', cistern: '73214140', brutto: 92.75, tara: 27.15, netto: 65.6, pressed: 45.92, extraction: 19.68, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/10', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.5, phosphorusAlt: 197, sediment: 1.5 },
-  { date: '02.11.2025', cistern: '16188', brutto: 38.92, tara: 14.78, netto: 24.14, pressed: 19.312, extraction: 4.828, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/12', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.5 },
-  { date: '02.11.2025', cistern: '17101', brutto: 43.88, tara: 16.92, netto: 26.96, pressed: 21.568, extraction: 5.392, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/13', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.3 },
-  { date: '02.11.2025', cistern: '16370', brutto: 44.62, tara: 17.64, netto: 26.98, pressed: 21.584, extraction: 5.396, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/14', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.3 },
-  { date: '02.11.2025', cistern: '16606', brutto: 42.92, tara: 15.94, netto: 26.98, pressed: 21.584, extraction: 5.396, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/17', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.2 },
-  { date: '02.11.2025', cistern: '72816', brutto: 43.16, tara: 16.24, netto: 26.92, pressed: 21.536, extraction: 5.384, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/18', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.2 },
-  { date: '02.11.2025', cistern: '16212', brutto: 44.28, tara: 17.3, netto: 26.98, pressed: 21.584, extraction: 5.396, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/19', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.2 },
-  { date: '02.11.2025', cistern: '73107468', brutto: 92.7, tara: 27, netto: 65.7, pressed: 45.99, extraction: 19.71, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/21', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.2 },
-  { date: '02.11.2025', cistern: '73110348', brutto: 92.7, tara: 27.05, netto: 65.65, pressed: 45.955, extraction: 19.695, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/22', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.2 },
-  { date: '02.11.2025', cistern: '73113011', brutto: 92.8, tara: 27.05, netto: 65.75, pressed: 46.025, extraction: 19.725, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/24', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.3 },
-  { date: '02.11.2025', cistern: '73115024', brutto: 92.7, tara: 26.95, netto: 65.75, pressed: 46.025, extraction: 19.725, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/25', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.3 },
-  { date: '02.11.2025', cistern: '73110272', brutto: 92.8, tara: 27.2, netto: 65.6, pressed: 45.92, extraction: 19.68, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/26', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.2 },
-  { date: '02.11.2025', cistern: '73116238', brutto: 92.75, tara: 27.05, netto: 65.7, pressed: 45.99, extraction: 19.71, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/27', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.2 },
-  { date: '03.11.2025', cistern: '15177', brutto: 38.7, tara: 14.74, netto: 23.96, pressed: 19.168, extraction: 4.792, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/28', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.3 },
-  { date: '03.11.2025', cistern: '18551', brutto: 44.74, tara: 17.22, netto: 27.52, pressed: 22.016, extraction: 5.504, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/31', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.3 },
-  { date: '03.11.2025', cistern: '13202', brutto: 45.2, tara: 17.24, netto: 27.96, pressed: 22.368, extraction: 5.592, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/32', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.3 },
-  { date: '03.11.2025', cistern: '15846', brutto: 44.44, tara: 15.9, netto: 28.54, pressed: 22.832, extraction: 5.708, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/33', moisture: 0.2, acidNumber: 0.9, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.3 },
-  { date: '03.11.2025', cistern: '15387', brutto: 44.26, tara: 16.2, netto: 28.06, pressed: 22.448, extraction: 5.612, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/34', moisture: 0.2, acidNumber: 0.9, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.2 },
-  { date: '03.11.2025', cistern: '64277', brutto: 42.38, tara: 15.4, netto: 26.98, pressed: 21.584, extraction: 5.396, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/35', moisture: 0.2, acidNumber: 0.9, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.2 },
-  { date: '03.11.2025', cistern: '118', brutto: 35.96, tara: 15.94, netto: 20.02, pressed: 10.01, extraction: 10.01, buyer: 'УКПФ', mixLevel: '50% 50%', sample: '11/38', moisture: 0.2, acidNumber: 1.3, peroxideNumber: 5 },
-  { date: '03.11.2025', cistern: '73113466', brutto: 92.85, tara: 27.2, netto: 65.65, pressed: 45.955, extraction: 19.695, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/39', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.6 },
-  { date: '03.11.2025', cistern: '73099327', brutto: 92.85, tara: 27.05, netto: 65.8, pressed: 46.06, extraction: 19.74, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/40', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.6 },
-  { date: '03.11.2025', cistern: '73112328', brutto: 92.7, tara: 27, netto: 65.7, pressed: 45.99, extraction: 19.71, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/41', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.3 },
-  { date: '03.11.2025', cistern: '73111163', brutto: 92.9, tara: 27.05, netto: 65.85, pressed: 46.095, extraction: 19.755, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/42', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.2 },
-  { date: '03.11.2025', cistern: '73090151', brutto: 92.7, tara: 27.05, netto: 65.65, pressed: 45.955, extraction: 19.695, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/45', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.3 },
-  { date: '03.11.2025', cistern: '73115982', brutto: 92.75, tara: 26.95, netto: 65.8, pressed: 46.06, extraction: 19.74, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/46', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.4, phosphorusAlt: 157, sediment: 1.3 },
-  { date: '04.11.2025', cistern: 'G08432', brutto: 44.46, tara: 15.96, netto: 28.5, pressed: 22.8, extraction: 5.7, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/48', moisture: 0.2, acidNumber: 0.8, peroxideNumber: 5, phosphorus: 0.5, phosphorusAlt: 197, sediment: 1.2 },
-  { date: '04.11.2025', cistern: '63997', brutto: 44.26, tara: 15.68, netto: 28.58, pressed: 22.864, extraction: 5.716, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/50', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.3, phosphorusAlt: 118, sediment: 1.2 },
-  { date: '04.11.2025', cistern: '16001', brutto: 44.78, tara: 15.82, netto: 28.96, pressed: 23.168, extraction: 5.792, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/51', moisture: 0.2, acidNumber: 0.9, peroxideNumber: 5, phosphorus: 0.1, phosphorusAlt: 39, sediment: 1.2 },
-  { date: '04.11.2025', cistern: '63789', brutto: 44.62, tara: 16.04, netto: 28.58, pressed: 22.864, extraction: 5.716, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/52', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.1 },
-  { date: '04.11.2025', cistern: '11181', brutto: 44.5, tara: 15.98, netto: 28.52, pressed: 22.816, extraction: 5.704, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/53', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.1 },
-  { date: '04.11.2025', cistern: '17247', brutto: 44.86, tara: 16.94, netto: 27.92, pressed: 22.336, extraction: 5.584, buyer: 'КНР', mixLevel: '80% 20%', sample: '11/56', moisture: 0.2, acidNumber: 1, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.4 },
-  { date: '04.11.2025', cistern: '54249321', brutto: 91.75, tara: 26.15, netto: 65.6, pressed: 45.92, extraction: 19.68, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/54', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.7, phosphorusAlt: 275, sediment: 1.3 },
-  { date: '04.11.2025', cistern: '51478659', brutto: 91, tara: 26.2, netto: 64.8, pressed: 45.36, extraction: 19.44, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/55', moisture: 0.2, acidNumber: 1.3, peroxideNumber: 5, phosphorus: 0.7, phosphorusAlt: 275, sediment: 1.2 },
-  { date: '04.11.2025', cistern: '51629251', brutto: 91.25, tara: 26.45, netto: 64.8, pressed: 45.36, extraction: 19.44, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/57', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.4 },
-  { date: '04.11.2025', cistern: '73094443', brutto: 92.85, tara: 27.2, netto: 65.65, pressed: 45.955, extraction: 19.695, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/58', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.4 },
-  { date: '04.11.2025', cistern: '73112427', brutto: 92.6, tara: 26.9, netto: 65.7, pressed: 45.99, extraction: 19.71, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/59', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.4 },
-  { date: '04.11.2025', cistern: '73115545', brutto: 93, tara: 27.1, netto: 65.9, pressed: 46.13, extraction: 19.77, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/60', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.4 },
-  { date: '05.11.2025', cistern: '73115941', brutto: 92.85, tara: 27.05, netto: 65.8, pressed: 46.06, extraction: 19.74, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/63', moisture: 0.2, acidNumber: 1.2, peroxideNumber: 5, phosphorus: 0.5, phosphorusAlt: 197, sediment: 1.6 },
-  { date: '05.11.2025', cistern: '73110934', brutto: 92.8, tara: 27.25, netto: 65.55, pressed: 45.885, extraction: 19.665, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/64', moisture: 0.2, acidNumber: 1.3, peroxideNumber: 5, phosphorus: 0.6, phosphorusAlt: 236, sediment: 1.5 },
-  { date: '05.11.2025', cistern: '73092173', brutto: 92.8, tara: 27.1, netto: 65.7, pressed: 45.99, extraction: 19.71, buyer: 'САЗ', mixLevel: '70% 30%', sample: '11/67', moisture: 0.2, acidNumber: 1.1, peroxideNumber: 5, phosphorus: 0.5, phosphorusAlt: 197, sediment: 1.5 },
-];
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function ShippingPage() {
+  const [shippingData, setShippingData] = useState<ShippingData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>('11');
+
+  // Загрузка данных из API
+  useEffect(() => {
+    const fetchShippingData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch('/api/shipping', { cache: 'no-store' });
+        const result = await response.json();
+
+        if (result.success) {
+          setShippingData(result.data);
+        } else {
+          setError(result.error || 'Не удалось загрузить данные');
+        }
+      } catch (err) {
+        console.error('Error fetching shipping data:', err);
+        setError('Не удалось подключиться к серверу');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShippingData();
+  }, []);
 
   // Получение уникальных месяцев из данных
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
     shippingData.forEach(item => {
       const [day, month, year] = item.date.split('.');
-      months.add(month);
+      if (month) months.add(month);
     });
     return Array.from(months).sort();
-  }, []);
+  }, [shippingData]);
+
+  // Автоматически выбираем последний доступный месяц
+  useEffect(() => {
+    if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+    }
+  }, [availableMonths, selectedMonth]);
 
   // Фильтрация данных по выбранному месяцу
   const filteredData = useMemo(() => {
@@ -95,7 +79,7 @@ export default function ShippingPage() {
       const [day, month, year] = item.date.split('.');
       return month === selectedMonth;
     });
-  }, [selectedMonth]);
+  }, [shippingData, selectedMonth]);
 
   // Статистика по покупателям
   const buyerStats = useMemo(() => {
@@ -164,6 +148,35 @@ export default function ShippingPage() {
     };
   }, [filteredData]);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center">
+          <div className="text-2xl text-slate-700 font-display mb-2">Загрузка данных...</div>
+          <div className="text-sm text-slate-500">Подключение к Google Sheets</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
+        <div className="text-red-800 font-semibold mb-2">Ошибка загрузки данных</div>
+        <div className="text-red-600 text-sm">{error}</div>
+      </div>
+    );
+  }
+
+  if (shippingData.length === 0) {
+    return (
+      <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-6">
+        <div className="text-slate-700 font-semibold mb-2">Нет данных</div>
+        <div className="text-slate-600 text-sm">Данные отгрузки не найдены</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Фильтр по месяцам */}
@@ -215,7 +228,7 @@ export default function ShippingPage() {
           </div>
           <div className="mt-2 pt-2 border-t border-slate-200">
             <div className="text-xs text-slate-600">
-              {((totalStats.pressed / totalStats.netto) * 100).toFixed(1)}% от общего объема
+              {totalStats.netto > 0 ? ((totalStats.pressed / totalStats.netto) * 100).toFixed(1) : 0}% от общего объема
             </div>
           </div>
         </div>
@@ -232,7 +245,7 @@ export default function ShippingPage() {
           </div>
           <div className="mt-2 pt-2 border-t border-slate-200">
             <div className="text-xs text-slate-600">
-              {((totalStats.extraction / totalStats.netto) * 100).toFixed(1)}% от общего объема
+              {totalStats.netto > 0 ? ((totalStats.extraction / totalStats.netto) * 100).toFixed(1) : 0}% от общего объема
             </div>
           </div>
         </div>
@@ -243,7 +256,7 @@ export default function ShippingPage() {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-bold tabular-nums text-amber-600">
-              {(totalStats.netto / totalStats.count).toFixed(1)}
+              {totalStats.count > 0 ? (totalStats.netto / totalStats.count).toFixed(1) : 0}
             </span>
             <span className="text-lg text-slate-600 font-medium">т</span>
           </div>
