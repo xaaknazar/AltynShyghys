@@ -641,7 +641,6 @@ export default function QualityChartsPage() {
                   {CATEGORIES.map(cat => (
                     <div key={cat.id} className="border border-slate-200 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="text-2xl">{cat.icon}</span>
                         <span className="font-semibold text-slate-900">{cat.label}</span>
                       </div>
                       <div className="space-y-2">
@@ -690,7 +689,6 @@ export default function QualityChartsPage() {
                     }
                   `}
                 >
-                  <div className="text-3xl mb-2">{cat.icon}</div>
                   <div className="text-sm font-medium text-slate-900">{cat.label}</div>
                 </button>
               ))}
