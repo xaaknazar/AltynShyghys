@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import TechnicalChart from './TechnicalChart';
 
-type QuickPeriod = 'week' | 'month' | 'season' | 'all';
+type QuickPeriod = 'week' | 'month' | 'season' | 'all' | 'custom';
 type ViewMode = 'daily' | 'detailed' | 'monthly';
 
 export default function ProductionAnalysisPage() {
@@ -401,9 +401,11 @@ export default function ProductionAnalysisPage() {
         m.title.includes('Жаровни 2')
       );
     } else if (group === 'toster') {
-      // Тостер: температура тостера
+      // Тостер: температура тостера и параметры тостированного шрота
       return allMetrics.filter((m: any) =>
-        m.title.includes('Тостера')
+        m.title.includes('Тостера') ||
+        m.title.includes('Тостированный') ||
+        m.title.includes('Тостир')
       );
     }
 
