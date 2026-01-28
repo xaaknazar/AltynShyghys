@@ -173,7 +173,7 @@ export default function CurrentDayChart({ data }: CurrentDayChartProps) {
                   </div>
                   <div className="space-y-1 pt-2 border-t border-corporate-neutral-100">
                     <div className="flex items-center justify-between gap-3 text-xs">
-                      <span className="text-corporate-neutral-600">Произведено:</span>
+                      <span className="text-corporate-neutral-600">Переработано:</span>
                       <span className="font-semibold text-corporate-neutral-800 font-mono">
                         {formatNumber(point.interval.totalProduction, 1)} т
                       </span>

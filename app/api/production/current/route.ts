@@ -21,15 +21,15 @@ export async function GET(request: NextRequest) {
       const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
       const localHour = localNow.getUTCHours();
 
-      // Последние завершенные сутки (так как сутки заканчиваются в 20:00)
+      // Последние завершенные сутки (так как сутки заканчиваются в 08:00)
       const lastCompletedDay = new Date(localNow);
-      if (localHour >= 20) {
-        // Если сейчас после 20:00, то вчерашние сутки завершены
-        // (они начались вчера в 20:00 и закончились сегодня в 20:00)
+      if (localHour >= 8) {
+        // Если сейчас после 08:00, то вчерашние сутки завершены
+        // (они начались вчера в 08:00 и закончились сегодня в 08:00)
         lastCompletedDay.setUTCDate(lastCompletedDay.getUTCDate() - 1);
       } else {
-        // Если до 20:00, то позавчерашние сутки последние завершенные
-        // (текущие сутки начались вчера в 20:00 и еще не завершились)
+        // Если до 08:00, то позавчерашние сутки последние завершенные
+        // (текущие сутки начались вчера в 08:00 и еще не завершились)
         lastCompletedDay.setUTCDate(lastCompletedDay.getUTCDate() - 2);
       }
 
@@ -78,19 +78,20 @@ export async function GET(request: NextRequest) {
       let productionDate: Date;
       let isNightShift = false;
 
-      // Производственные сутки: 20:00 - 20:00
+      // Производственные сутки: 08:00 - 08:00
       // Ночная смена (заканчивается около 08:00) → относится к предыдущему дню
+      // Пример: shift report 02.01 08:00 → производственный день 01.01 (01.01 08:00 - 02.01 08:00)
       if (hour >= 6 && hour <= 10) {
         isNightShift = true;
         productionDate = new Date(localTime);
         productionDate.setUTCDate(productionDate.getUTCDate() - 1);
       }
-      // Дневная смена (заканчивается около 20:00) → также относится к предыдущему дню
-      // так как сутки начинаются в 20:00 предыдущего дня
+      // Дневная смена (заканчивается около 20:00) → относится к текущему дню
+      // Пример: shift report 01.01 20:00 → производственный день 01.01 (01.01 08:00 - 02.01 08:00)
       else if (hour >= 18 && hour <= 22) {
         isNightShift = false;
         productionDate = new Date(localTime);
-        productionDate.setUTCDate(productionDate.getUTCDate() - 1);
+        // НЕ вычитаем день - дневная смена относится к производственному дню, который начался сегодня в 08:00
       } else {
         return;
       }

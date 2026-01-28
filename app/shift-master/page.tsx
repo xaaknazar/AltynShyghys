@@ -310,7 +310,7 @@ export default function ShiftMasterPage() {
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
                   <div className="text-center">
-                    <div className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Произведено</div>
+                    <div className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Переработано</div>
                     <div className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-blue-600">
                       {totalProduction.toFixed(1)}
                       <span className="text-sm sm:text-xl ml-1 sm:ml-2 text-slate-500">т</span>

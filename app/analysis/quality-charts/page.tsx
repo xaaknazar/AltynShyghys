@@ -1,0 +1,1033 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+
+// Типы категорий оборудования
+type Category = 'raw-material' | 'groats' | 'husk' | 'mash' | 'cake' | 'oil' | 'meal' | 'miscella' | 'granules-meal' | 'granules-husk';
+
+interface CategoryConfig {
+  id: Category;
+  label: string;
+  icon: string;
+  color: string;
+  metrics: {
+    label: string;
+    dataKey: string;
+    unit: string;
+    sourceType: 'top0' | 'rvo' | 'extraction' | 'press' | 'granulation';
+    sourceColumn: string;
+  }[];
+}
+
+const CATEGORIES: CategoryConfig[] = [
+  {
+    id: 'raw-material',
+    label: 'Входящее сырье (Топ 0)',
+    icon: '🌾',
+    color: '#3b82f6',
+    metrics: [
+      { label: 'Влага', dataKey: 'moisture', unit: '%', sourceType: 'top0', sourceColumn: 'W,%' },
+      { label: 'Сорная примесь', dataKey: 'weedImpurity', unit: '%', sourceType: 'top0', sourceColumn: 'Сорная примесь,%' },
+      { label: 'Масличная примесь', dataKey: 'oilImpurity', unit: '%', sourceType: 'top0', sourceColumn: 'Масличная примесь,%' },
+      { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'top0', sourceColumn: 'Лузжистость ,%' },
+      { label: 'Кислотное число', dataKey: 'acidNumber', unit: 'КОН/г', sourceType: 'top0', sourceColumn: 'Определение кислотного числа (КОН/г)' },
+      { label: 'Массовая доля жира', dataKey: 'oilContent', unit: '%', sourceType: 'top0', sourceColumn: 'Массовая доля сырого жира,%' },
+      { label: 'Недозрелые', dataKey: 'immature', unit: '%', sourceType: 'top0', sourceColumn: 'Недозрелые,%' },
+      { label: 'Протеин', dataKey: 'protein', unit: '%', sourceType: 'top0', sourceColumn: 'Протеин' },
+    ],
+  },
+  {
+    id: 'groats',
+    label: 'Рушанка (Топ 4)',
+    icon: '⚙️',
+    color: '#10b981',
+    metrics: [
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Влажность,%' },
+      { label: 'Недорушенные', dataKey: 'underCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Недорушенные,%' },
+      { label: 'Необрушенные', dataKey: 'unCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Необрушенные,%' },
+      { label: 'Целяк', dataKey: 'whole', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Целяк,%' },
+      { label: 'Лузга', dataKey: 'husk', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Лузга,%' },
+      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Сор,%' },
+      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Масличная пыль,%' },
+      { label: 'Лузжистость', dataKey: 'huskiness', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 4(Готовая продукция) Лузжистость,%' },
+    ],
+  },
+  {
+    id: 'husk',
+    label: 'Лузга (Топ 5)',
+    icon: '🟤',
+    color: '#f59e0b',
+    metrics: [
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Влажность,%' },
+      { label: 'Вынос ядра', dataKey: 'kernelOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Вынос ядра,%' },
+      { label: 'Вынос подсолнечника', dataKey: 'sunflowerOutput', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Вынос подсолнечника,%' },
+      { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Масличная пыль,%' },
+      { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Сор,%' },
+      { label: 'Средняя масличность', dataKey: 'avgOilContent', unit: '%', sourceType: 'rvo', sourceColumn: 'ТОП 5 (Лузга после отвеевания) Средняя масличность за смену, %' },
+    ],
+  },
+  {
+    id: 'mash',
+    label: 'Мезга с жаровни',
+    icon: '🔥',
+    color: '#ef4444',
+    metrics: [
+      { label: 'Влажность Ж1', dataKey: 'moisture1', unit: '%', sourceType: 'press', sourceColumn: 'Жаровня 1\nВлажность,%' },
+      { label: 'Влажность Ж2', dataKey: 'moisture2', unit: '%', sourceType: 'press', sourceColumn: 'Жаровня 2\nВлажность,%' },
+    ],
+  },
+  {
+    id: 'cake',
+    label: 'Жмых с пресса',
+    icon: '🏭',
+    color: '#8b5cf6',
+    metrics: [
+      { label: 'Влажность П1', dataKey: 'moisture1', unit: '%', sourceType: 'press', sourceColumn: 'Пресс 1\nСодержание влаги,%' },
+      { label: 'Жир П1', dataKey: 'fat1', unit: '%', sourceType: 'press', sourceColumn: 'Пресс 1\nСодержание жира,%' },
+      { label: 'Влажность П2', dataKey: 'moisture2', unit: '%', sourceType: 'press', sourceColumn: 'Пресс 2\nСодержание влаги,%' },
+      { label: 'Жир П2', dataKey: 'fat2', unit: '%', sourceType: 'press', sourceColumn: 'Пресс 2\nСодержание жира,%' },
+    ],
+  },
+  {
+    id: 'oil',
+    label: 'Экстракционное масло',
+    icon: '🛢️',
+    color: '#f97316',
+    metrics: [
+      { label: 'Кислотное число', dataKey: 'acidNumber', unit: '', sourceType: 'extraction', sourceColumn: 'Масло Кислотное число,%' },
+      { label: 'Температура вспышки', dataKey: 'flashTemp', unit: '°С', sourceType: 'extraction', sourceColumn: 'Масло Температура вспышки,°С' },
+      { label: 'Содержание гексана', dataKey: 'hexaneContent', unit: 'ppm', sourceType: 'extraction', sourceColumn: 'Масло содержание гексана,ppm' },
+    ],
+  },
+  {
+    id: 'meal',
+    label: 'Тостированный шрот',
+    icon: '🧪',
+    color: '#06b6d4',
+    metrics: [
+      { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'extraction', sourceColumn: 'Шрот влага,%' },
+      { label: 'Масличность', dataKey: 'oilContent', unit: '%', sourceType: 'extraction', sourceColumn: 'Шрот масличность,%' },
+    ],
+  },
+  {
+    id: 'miscella',
+    label: 'Мисцелла',
+    icon: '💧',
+    color: '#14b8a6',
+    metrics: [
+      { label: 'Концентрация', dataKey: 'concentration', unit: '%', sourceType: 'extraction', sourceColumn: 'Мисцелла концентрация,%' },
+    ],
+  },
+  {
+    id: 'granules-meal',
+    label: 'Шрот гранулированный',
+    icon: '⚫',
+    color: '#84cc16',
+    metrics: [
+      { label: 'Влага', dataKey: 'moisture', unit: '%', sourceType: 'granulation', sourceColumn: 'Влага,%' },
+      { label: 'Насыпная плотность', dataKey: 'bulkDensity', unit: 'кг/м³', sourceType: 'granulation', sourceColumn: 'Насыпная плотность,кг/м3' },
+      { label: 'М/д мелочи', dataKey: 'fines', unit: '%', sourceType: 'granulation', sourceColumn: 'М/д мелочи,%' },
+      { label: 'Механическая прочность', dataKey: 'strength', unit: '%', sourceType: 'granulation', sourceColumn: 'Механическая прочность %' },
+      { label: 'Экспресс протеин', dataKey: 'protein', unit: '%', sourceType: 'granulation', sourceColumn: 'Экспресс протеин' },
+    ],
+  },
+  {
+    id: 'granules-husk',
+    label: 'Лузга гранулированная',
+    icon: '🟫',
+    color: '#a16207',
+    metrics: [
+      { label: 'Влага', dataKey: 'moisture', unit: '%', sourceType: 'granulation', sourceColumn: 'Влага,%' },
+      { label: 'Насыпная плотность', dataKey: 'bulkDensity', unit: 'кг/м³', sourceType: 'granulation', sourceColumn: 'Насыпная плотность,кг/м3' },
+      { label: 'М/д мелочи', dataKey: 'fines', unit: '%', sourceType: 'granulation', sourceColumn: 'М/д мелочи,%' },
+      { label: 'Механическая прочность', dataKey: 'strength', unit: '%', sourceType: 'granulation', sourceColumn: 'Механическая прочность %' },
+    ],
+  },
+];
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#14b8a6', '#f97316', '#84cc16', '#a16207'];
+
+export default function QualityChartsPage() {
+  const [selectedCategory, setSelectedCategory] = useState<Category>('raw-material');
+  const [allData, setAllData] = useState<Record<string, any[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareMetrics, setCompareMetrics] = useState<Array<{category: Category, metric: string}>>([]);
+
+  // Загрузка всех данных
+  useEffect(() => {
+    const fetchAllData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const types = ['top0', 'rvo', 'extraction', 'press', 'granulation'];
+        const promises = types.map(type =>
+          fetch(`/api/analysis/sheets?type=${type}`).then(res => res.json())
+        );
+
+        const results = await Promise.all(promises);
+
+        const dataMap: Record<string, any[]> = {};
+        results.forEach((result, index) => {
+          dataMap[types[index]] = result.data || [];
+        });
+
+        setAllData(dataMap);
+      } catch (err: any) {
+        console.error('Error fetching analysis data:', err);
+        setError('Не удалось загрузить данные');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllData();
+  }, []);
+
+  // Получить конфигурацию выбранной категории
+  const category = CATEGORIES.find(c => c.id === selectedCategory);
+
+  // При смене категории выбираем все метрики
+  useEffect(() => {
+    if (category) {
+      setSelectedMetrics(category.metrics.map(m => m.label));
+    }
+  }, [selectedCategory, category]);
+
+  // Подготовить данные для графика
+  const prepareChartData = () => {
+    if (!category || !allData[category.metrics[0].sourceType]) return [];
+
+    let sourceData = allData[category.metrics[0].sourceType];
+
+    // Для гранулирования фильтруем по наименованию
+    if (category.metrics[0].sourceType === 'granulation') {
+      const targetName = selectedCategory === 'granules-meal' ? 'шрот гранулированный' : 'лузга гранулированная';
+      sourceData = sourceData.filter(row =>
+        (row['Наименование'] || '').toString().toLowerCase().includes(targetName)
+      );
+    }
+
+    // Логируем названия колонок для отладки
+    if (sourceData.length > 0) {
+      console.log(`=== ${selectedCategory} (${category.metrics[0].sourceType}) ===`);
+      console.log('Available columns:', Object.keys(sourceData[0]));
+      console.log('Looking for columns:', category.metrics.map(m => m.sourceColumn));
+      console.log('Sample row:', sourceData[0]);
+    }
+
+    // Парсим и объединяем дату и время
+    const parsedData = sourceData.map((row, index) => {
+      const dateStr = (row['Дата'] || '').toString().trim();
+      const timeStr = (row['Время'] || '').toString().trim();
+
+      // Создаем timestamp для сортировки
+      let timestamp = '';
+      let displayTime = `Запись ${index + 1}`;
+
+      if (dateStr && timeStr) {
+        try {
+          // Парсим дату (может быть в формате M/D/YYYY или DD.MM.YYYY)
+          const dateParts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('.');
+
+          // Проверяем что есть все части даты
+          if (dateParts.length >= 3 && dateParts[0] && dateParts[1] && dateParts[2]) {
+            let year, month, day;
+
+            if (dateStr.includes('/')) {
+              // M/D/YYYY
+              month = dateParts[0].toString().padStart(2, '0');
+              day = dateParts[1].toString().padStart(2, '0');
+              year = dateParts[2].toString();
+            } else {
+              // DD.MM.YYYY
+              day = dateParts[0].toString().padStart(2, '0');
+              month = dateParts[1].toString().padStart(2, '0');
+              year = dateParts[2].toString();
+            }
+
+            // Убираем секунды из времени если они есть (20:00:00 -> 20:00)
+            const timeParts = timeStr.split(':');
+            const shortTime = timeParts.length >= 2 ? `${timeParts[0]}:${timeParts[1]}` : timeStr;
+
+            timestamp = `${year}-${month}-${day} ${shortTime}`;
+            displayTime = `${day}.${month} ${shortTime}`;
+          } else {
+            timestamp = `${index}`;
+          }
+        } catch (e) {
+          console.warn('Error parsing date:', dateStr, e);
+          timestamp = `${index}`;
+        }
+      } else {
+        timestamp = `${index}`;
+      }
+
+      const point: any = {
+        time: timestamp,
+        displayTime: displayTime,
+      };
+
+      category.metrics.forEach(metric => {
+        const valueStr = row[metric.sourceColumn] || '';
+        // Удаляем кавычки и парсим число
+        const cleanValue = valueStr.toString().replace(/"/g, '').trim();
+        const value = parseFloat(cleanValue);
+        point[metric.label] = isNaN(value) ? null : value;
+      });
+
+      return point;
+    }).filter(point => {
+      // Проверяем наличие валидного времени
+      if (!point.time || point.time === `${sourceData.indexOf(point)}`) {
+        return false;
+      }
+
+      // Проверяем что хотя бы одна метрика имеет непустое значение
+      const hasValue = category.metrics.some(metric => {
+        const value = point[metric.label];
+        return value !== null && value !== undefined && !isNaN(value);
+      });
+
+      return hasValue;
+    });
+
+    // Сортируем по времени
+    parsedData.sort((a, b) => a.time.localeCompare(b.time));
+
+    // Фильтруем по периоду если выбран
+    if (startDate || endDate) {
+      return parsedData.filter(point => {
+        const pointDate = point.time.split(' ')[0]; // Извлекаем дату
+        if (startDate && pointDate < startDate) return false;
+        if (endDate && pointDate > endDate) return false;
+        return true;
+      });
+    }
+
+    return parsedData;
+  };
+
+  const chartData = prepareChartData();
+
+  // Подготовить данные для режима сравнения
+  const prepareCompareData = () => {
+    if (compareMetrics.length === 0) return [];
+
+    const allPoints: any[] = [];
+
+    compareMetrics.forEach(({ category: catId, metric: metricLabel }) => {
+      const cat = CATEGORIES.find(c => c.id === catId);
+      if (!cat) return;
+
+      const metric = cat.metrics.find(m => m.label === metricLabel);
+      if (!metric) return;
+
+      let sourceData = allData[metric.sourceType];
+      if (!sourceData) return;
+
+      // Для гранулирования фильтруем по наименованию
+      if (metric.sourceType === 'granulation') {
+        const targetName = catId === 'granules-meal' ? 'шрот гранулированный' : 'лузга гранулированная';
+        sourceData = sourceData.filter(row =>
+          (row['Наименование'] || '').toString().toLowerCase().includes(targetName)
+        );
+      }
+
+      // Парсим данные
+      const parsed = sourceData.map((row, index) => {
+        const dateStr = (row['Дата'] || '').toString().trim();
+        const timeStr = (row['Время'] || '').toString().trim();
+        let timestamp = '';
+
+        if (dateStr && timeStr) {
+          try {
+            const dateParts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('.');
+            if (dateParts.length >= 3 && dateParts[0] && dateParts[1] && dateParts[2]) {
+              let year, month, day;
+              if (dateStr.includes('/')) {
+                month = dateParts[0].toString().padStart(2, '0');
+                day = dateParts[1].toString().padStart(2, '0');
+                year = dateParts[2].toString();
+              } else {
+                day = dateParts[0].toString().padStart(2, '0');
+                month = dateParts[1].toString().padStart(2, '0');
+                year = dateParts[2].toString();
+              }
+              const timeParts = timeStr.split(':');
+              const shortTime = timeParts.length >= 2 ? `${timeParts[0]}:${timeParts[1]}` : timeStr;
+              timestamp = `${year}-${month}-${day} ${shortTime}`;
+            }
+          } catch (e) {
+            console.warn('Error parsing date:', dateStr, e);
+          }
+        }
+
+        const valueStr = row[metric.sourceColumn] || '';
+        const cleanValue = valueStr.toString().replace(/"/g, '').trim();
+        const value = parseFloat(cleanValue);
+
+        return {
+          time: timestamp,
+          [`${cat.label} - ${metricLabel}`]: isNaN(value) ? null : value,
+          category: cat.label,
+          metricLabel: metricLabel
+        };
+      }).filter(point => point.time);
+
+      allPoints.push(...parsed);
+    });
+
+    // Группируем по времени
+    const grouped = allPoints.reduce((acc, point) => {
+      if (!acc[point.time]) {
+        acc[point.time] = { time: point.time };
+      }
+      Object.keys(point).forEach(key => {
+        if (key !== 'time' && key !== 'category' && key !== 'metricLabel') {
+          acc[point.time][key] = point[key];
+        }
+      });
+      return acc;
+    }, {} as Record<string, any>);
+
+    const result = Object.values(grouped).sort((a: any, b: any) => a.time.localeCompare(b.time));
+
+    // Фильтруем по периоду
+    if (startDate || endDate) {
+      return result.filter((point: any) => {
+        const pointDate = point.time.split(' ')[0];
+        if (startDate && pointDate < startDate) return false;
+        if (endDate && pointDate > endDate) return false;
+        return true;
+      });
+    }
+
+    return result;
+  };
+
+  const compareData = compareMode ? prepareCompareData() : [];
+
+  // Вычислить средние значения
+  const calculateAverages = () => {
+    if (chartData.length === 0) return {};
+
+    const averages: Record<string, number> = {};
+
+    category?.metrics.forEach(metric => {
+      const values = chartData.map(d => d[metric.label]).filter(v => v !== null && v > 0);
+      averages[metric.label] = values.length > 0
+        ? values.reduce((sum, v) => sum + v, 0) / values.length
+        : 0;
+    });
+
+    return averages;
+  };
+
+  const averages = calculateAverages();
+
+  // Toggle метрики
+  const toggleMetric = (metricLabel: string) => {
+    setSelectedMetrics(prev =>
+      prev.includes(metricLabel)
+        ? prev.filter(m => m !== metricLabel)
+        : [...prev, metricLabel]
+    );
+  };
+
+  // Получить выбранные метрики
+  const selectedMetricsData = category?.metrics.filter(m => selectedMetrics.includes(m.label)) || [];
+
+  // Вычисляем ширину графика
+  const graphWidth = Math.max(1400, chartData.length * 20);
+
+  // Нормализация значений для SVG (0-100)
+  const normalizeValue = (value: number | null, metricLabel: string): number | null => {
+    if (value === null) return null;
+
+    // Находим min и max для этой метрики
+    const values = chartData.map(d => d[metricLabel]).filter((v): v is number => v !== null && v > 0);
+    if (values.length === 0) return null;
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    if (max === min) return 50; // Если все значения одинаковые
+
+    return ((value - min) / (max - min)) * 100;
+  };
+
+  // Создать путь для SVG линии
+  const createPath = (metricLabel: string): string => {
+    const points: string[] = [];
+
+    chartData.forEach((point, index) => {
+      const value = point[metricLabel];
+      const normalizedValue = normalizeValue(value, metricLabel);
+
+      if (normalizedValue !== null) {
+        const x = (index / (chartData.length - 1)) * 96 + 2;
+        const y = 98 - (normalizedValue * 0.96);
+
+        if (points.length === 0) {
+          points.push(`M ${x} ${y}`);
+        } else {
+          points.push(`L ${x} ${y}`);
+        }
+      }
+    });
+
+    return points.join(' ');
+  };
+
+  // Получить координаты точек для метрики
+  const getPoints = (metricLabel: string): Array<{ x: number; y: number; value: number }> => {
+    const points: Array<{ x: number; y: number; value: number }> = [];
+
+    chartData.forEach((point, index) => {
+      const value = point[metricLabel];
+      const normalizedValue = normalizeValue(value, metricLabel);
+
+      if (normalizedValue !== null && value !== null) {
+        const x = (index / (chartData.length - 1)) * 96 + 2;
+        const y = 98 - (normalizedValue * 0.96);
+        points.push({ x, y, value });
+      }
+    });
+
+    return points;
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Навигация */}
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link
+              href="/analysis/quality"
+              className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span className="font-medium">К таблицам</span>
+            </Link>
+            <h1 className="text-xl font-bold text-slate-900">Графики качества</h1>
+            <div className="w-24"></div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Основной контент */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+            <p className="mt-4 text-slate-600">Загрузка данных...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <p className="text-red-600 font-medium">{error}</p>
+          </div>
+        ) : (
+          <>
+            {/* Панель управления */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Выбор периода */}
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-slate-700">Период:</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="От"
+                  />
+                  <span className="text-slate-500">—</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="До"
+                  />
+                  {(startDate || endDate) && (
+                    <button
+                      onClick={() => {
+                        setStartDate('');
+                        setEndDate('');
+                      }}
+                      className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      Сбросить
+                    </button>
+                  )}
+                </div>
+
+                {/* Режим сравнения */}
+                <div className="ml-auto flex items-center gap-3">
+                  <button
+                    onClick={() => setCompareMode(!compareMode)}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                      compareMode
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {compareMode ? '✓ Режим сравнения' : 'Режим сравнения'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Режим сравнения - выбор метрик */}
+            {compareMode && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Выберите метрики для сравнения</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {CATEGORIES.map(cat => (
+                    <div key={cat.id} className="border border-slate-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-2xl">{cat.icon}</span>
+                        <span className="font-semibold text-slate-900">{cat.label}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {cat.metrics.map(metric => {
+                          const isSelected = compareMetrics.some(
+                            m => m.category === cat.id && m.metric === metric.label
+                          );
+                          return (
+                            <label key={metric.label} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 rounded">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setCompareMetrics([...compareMetrics, { category: cat.id, metric: metric.label }]);
+                                  } else {
+                                    setCompareMetrics(compareMetrics.filter(m => !(m.category === cat.id && m.metric === metric.label)));
+                                  }
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm text-slate-700">{metric.label} ({metric.unit})</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Категории - только в обычном режиме */}
+            {!compareMode && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                {CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`
+                    p-4 rounded-xl border-2 transition-all text-center
+                    ${
+                      selectedCategory === cat.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }
+                  `}
+                >
+                  <div className="text-3xl mb-2">{cat.icon}</div>
+                  <div className="text-sm font-medium text-slate-900">{cat.label}</div>
+                </button>
+              ))}
+              </div>
+            )}
+
+            {/* Карточки показателей - только в обычном режиме */}
+            {!compareMode && category && (
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                {category.metrics.map(metric => (
+                  <div key={metric.dataKey} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div className="text-sm text-slate-600 mb-1">{metric.label}</div>
+                    <div className="text-3xl font-bold text-slate-900">
+                      {averages[metric.label]?.toFixed(1) || '—'}
+                      <span className="text-lg text-slate-600 ml-1">{metric.unit}</span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-2">Среднее значение</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* График - обычный режим */}
+            {!compareMode && category && chartData.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 className="text-xl font-bold text-slate-900 mb-4">
+                  {category.label} - Динамика показателей
+                </h2>
+
+                {/* Выбор метрик */}
+                <div className="mb-6 flex flex-wrap gap-3">
+                  {category.metrics.map((metric, idx) => {
+                    const isSelected = selectedMetrics.includes(metric.label);
+                    const color = COLORS[idx % COLORS.length];
+
+                    return (
+                      <label
+                        key={metric.label}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-slate-100 border-slate-400'
+                            : 'bg-white border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleMetric(metric.label)}
+                          className="w-4 h-4"
+                          style={{ accentColor: color }}
+                        />
+                        <span className="text-sm font-medium text-slate-700">{metric.label}</span>
+                        <span className="text-xs text-slate-500 font-mono">({metric.unit})</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Легенда */}
+                {selectedMetricsData.length > 0 && (
+                  <div className="flex flex-wrap gap-4 mb-4">
+                    {selectedMetricsData.map((metric, idx) => {
+                      const metricIndex = category.metrics.findIndex(m => m.label === metric.label);
+                      const color = COLORS[metricIndex % COLORS.length];
+
+                      return (
+                        <div key={metric.label} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
+                          <span className="text-sm font-medium text-slate-700">
+                            {metric.label} ({metric.unit})
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Контейнер графика со скроллом */}
+                <div className="bg-slate-50 rounded-lg p-6 border border-slate-200 overflow-x-auto">
+                  <div className="relative" style={{ width: `${graphWidth}px`, height: '500px', paddingTop: '30px', paddingBottom: '80px', paddingLeft: '60px' }}>
+                    {/* SVG с графиком */}
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {/* Сетка */}
+                      <defs>
+                        <pattern id={`grid-${selectedCategory}`} width="10" height="10" patternUnits="userSpaceOnUse">
+                          <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                        </pattern>
+                      </defs>
+                      <rect width="100" height="100" fill={`url(#grid-${selectedCategory})`} />
+
+                      {/* Горизонтальные линии-сетка */}
+                      <g>
+                        {[0, 25, 50, 75, 100].map((tick) => (
+                          <line
+                            key={`y-tick-${tick}`}
+                            x1="2"
+                            y1={98 - (tick * 0.96)}
+                            x2="98"
+                            y2={98 - (tick * 0.96)}
+                            stroke="#94a3b8"
+                            strokeWidth="1"
+                            strokeDasharray="2,2"
+                            opacity="0.3"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        ))}
+                      </g>
+
+                      {/* Линии метрик */}
+                      {selectedMetricsData.map((metric, idx) => {
+                        const metricIndex = category.metrics.findIndex(m => m.label === metric.label);
+                        const color = COLORS[metricIndex % COLORS.length];
+                        const path = createPath(metric.label);
+
+                        return (
+                          <path
+                            key={metric.label}
+                            d={path}
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="2.5"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {/* Точки и значения как HTML элементы */}
+                    {selectedMetricsData.map((metric, idx) => {
+                      const metricIndex = category.metrics.findIndex(m => m.label === metric.label);
+                      const color = COLORS[metricIndex % COLORS.length];
+                      const points = getPoints(metric.label);
+
+                      return points.map((p, pointIdx) => (
+                        <div
+                          key={`${metric.label}-${pointIdx}`}
+                          className="absolute group"
+                          style={{
+                            left: `${p.x}%`,
+                            top: `${p.y}%`,
+                            transform: 'translate(-50%, -50%)'
+                          }}
+                        >
+                          {/* Точка */}
+                          <div
+                            className="w-3 h-3 rounded-full cursor-pointer transition-all hover:scale-150 border-2 border-white shadow-lg"
+                            style={{ backgroundColor: color }}
+                          />
+
+                          {/* Значение над точкой */}
+                          <div
+                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                            style={{ backgroundColor: color }}
+                          >
+                            {p.value.toFixed(1)}
+                          </div>
+
+                          {/* Tooltip при наведении */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-10 hidden group-hover:block pointer-events-none bg-slate-900 text-white text-xs font-medium px-3 py-2 rounded-lg shadow-xl whitespace-nowrap z-10">
+                            <div className="font-bold mb-1">{metric.label}</div>
+                            <div>{p.value.toFixed(2)} {metric.unit}</div>
+                            <div className="text-slate-400 text-[10px] mt-1">
+                              {chartData[pointIdx]?.displayTime || ''}
+                            </div>
+                          </div>
+                        </div>
+                      ));
+                    })}
+
+                    {/* Метки времени (внизу) */}
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-slate-600" style={{ height: '60px', paddingLeft: '60px' }}>
+                      {chartData.filter((_, i) => i % Math.ceil(chartData.length / 10) === 0).map((point, idx) => (
+                        <div key={idx} className="flex flex-col items-center">
+                          <div className="transform -rotate-45 origin-top-left whitespace-nowrap">
+                            {point.displayTime}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Шкала значений (слева) */}
+                    {selectedMetricsData.length > 0 && (
+                      <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-slate-600" style={{ width: '50px', paddingTop: '30px', paddingBottom: '80px' }}>
+                        {[100, 75, 50, 25, 0].map((tick) => {
+                          const metric = selectedMetricsData[0];
+                          const values = chartData.map(d => d[metric.label]).filter((v): v is number => v !== null && v > 0);
+                          const min = Math.min(...values);
+                          const max = Math.max(...values);
+                          const value = min + ((max - min) * tick / 100);
+
+                          return (
+                            <div key={tick} className="text-right pr-2">
+                              {value.toFixed(1)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* График - режим сравнения */}
+            {compareMode && compareData.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 className="text-xl font-bold text-slate-900 mb-4">
+                  Сравнение метрик
+                </h2>
+
+                {/* Легенда */}
+                <div className="flex flex-wrap gap-4 mb-4">
+                  {compareMetrics.map(({ category: catId, metric: metricLabel }, idx) => {
+                    const cat = CATEGORIES.find(c => c.id === catId);
+                    if (!cat) return null;
+                    const color = COLORS[idx % COLORS.length];
+                    const metricInfo = cat.metrics.find(m => m.label === metricLabel);
+
+                    return (
+                      <div key={`${catId}-${metricLabel}`} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
+                        <span className="text-sm font-medium text-slate-700">
+                          {cat.label} - {metricLabel} ({metricInfo?.unit || ''})
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* График */}
+                <div className="bg-slate-50 rounded-lg p-6 border border-slate-200 overflow-x-auto">
+                  <div className="relative" style={{ width: `${Math.max(1400, compareData.length * 20)}px`, height: '500px', paddingTop: '30px', paddingBottom: '80px', paddingLeft: '60px' }}>
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <defs>
+                        <pattern id="grid-compare" width="10" height="10" patternUnits="userSpaceOnUse">
+                          <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e2e8f0" strokeWidth="0.3" />
+                        </pattern>
+                      </defs>
+                      <rect width="100" height="100" fill="url(#grid-compare)" />
+
+                      <g>
+                        {[0, 25, 50, 75, 100].map((tick) => (
+                          <line
+                            key={`y-tick-${tick}`}
+                            x1="2"
+                            y1={98 - (tick * 0.96)}
+                            x2="98"
+                            y2={98 - (tick * 0.96)}
+                            stroke="#94a3b8"
+                            strokeWidth="1"
+                            strokeDasharray="2,2"
+                            opacity="0.3"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        ))}
+                      </g>
+
+                      {/* Линии для каждой метрики */}
+                      {compareMetrics.map(({ category: catId, metric: metricLabel }, idx) => {
+                        const cat = CATEGORIES.find(c => c.id === catId);
+                        if (!cat) return null;
+                        const color = COLORS[idx % COLORS.length];
+                        const key = `${cat.label} - ${metricLabel}`;
+
+                        const metricData = compareData.filter((d: any) => d[key] !== undefined && d[key] !== null);
+                        if (metricData.length === 0) return null;
+
+                        const values = metricData.map((d: any) => d[key]);
+                        const dataMin = Math.min(...values);
+                        const dataMax = Math.max(...values);
+                        const padding = (dataMax - dataMin) * 0.1 || 1;
+                        const minValue = dataMin - padding;
+                        const maxValue = dataMax + padding;
+                        const valueRange = maxValue - minValue;
+
+                        const points = metricData.map((point: any, index: number) => {
+                          const x = 2 + (index / Math.max(1, metricData.length - 1)) * 96;
+                          const normalizedValue = valueRange !== 0 ? ((point[key] - minValue) / valueRange) : 0.5;
+                          const y = 98 - (normalizedValue * 96);
+                          return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+                        }).join(' ');
+
+                        return (
+                          <path
+                            key={key}
+                            d={points}
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="2.5"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {/* Точки для режима сравнения */}
+                    {compareMetrics.map(({ category: catId, metric: metricLabel }, idx) => {
+                      const cat = CATEGORIES.find(c => c.id === catId);
+                      if (!cat) return null;
+                      const color = COLORS[idx % COLORS.length];
+                      const key = `${cat.label} - ${metricLabel}`;
+                      const metricInfo = cat.metrics.find(m => m.label === metricLabel);
+
+                      const metricData = compareData.filter((d: any) => d[key] !== undefined && d[key] !== null);
+                      if (metricData.length === 0) return null;
+
+                      const values = metricData.map((d: any) => d[key]);
+                      const dataMin = Math.min(...values);
+                      const dataMax = Math.max(...values);
+                      const padding = (dataMax - dataMin) * 0.1 || 1;
+                      const minValue = dataMin - padding;
+                      const maxValue = dataMax + padding;
+                      const valueRange = maxValue - minValue;
+
+                      return metricData.map((point: any, pointIdx: number) => {
+                        const x = 2 + (pointIdx / Math.max(1, metricData.length - 1)) * 96;
+                        const normalizedValue = valueRange !== 0 ? ((point[key] - minValue) / valueRange) : 0.5;
+                        const y = 2 + (1 - normalizedValue) * 96;
+
+                        return (
+                          <div
+                            key={`${key}-${pointIdx}`}
+                            className="absolute group"
+                            style={{
+                              left: `${x}%`,
+                              top: `${y}%`,
+                              transform: 'translate(-50%, -50%)'
+                            }}
+                          >
+                            <div
+                              className="w-3 h-3 rounded-full cursor-pointer transition-all hover:scale-150 border-2 border-white shadow-lg"
+                              style={{ backgroundColor: color }}
+                            />
+                            <div
+                              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
+                              style={{ backgroundColor: color }}
+                            >
+                              {point[key]?.toFixed(1)}
+                            </div>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-10 hidden group-hover:block pointer-events-none bg-slate-900 text-white text-xs font-medium px-3 py-2 rounded-lg shadow-xl whitespace-nowrap z-10">
+                              <div className="font-bold mb-1">{cat.label} - {metricLabel}</div>
+                              <div>{point[key]?.toFixed(2)} {metricInfo?.unit || ''}</div>
+                              <div className="text-slate-400 text-[10px] mt-1">
+                                {point.time}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })}
+
+                    {/* Метки времени */}
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-slate-600" style={{ height: '60px', paddingLeft: '60px' }}>
+                      {compareData.filter((_: any, i: number) => i % Math.ceil(compareData.length / 10) === 0).map((point: any, idx: number) => (
+                        <div key={idx} className="flex flex-col items-center">
+                          <div className="transform -rotate-45 origin-top-left whitespace-nowrap">
+                            {point.time}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Нет данных */}
+            {!compareMode && chartData.length === 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+                <p className="text-slate-500">Нет данных для отображения</p>
+              </div>
+            )}
+
+            {compareMode && compareData.length === 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+                <p className="text-slate-500">Выберите метрики для сравнения</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

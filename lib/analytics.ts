@@ -1,4 +1,4 @@
-import { ProductionData, TARGETS } from './utils';
+import { ProductionData, TARGETS, TIMEZONE_OFFSET } from './utils';
 
 /**
  * Расчет эффективности производства
@@ -63,13 +63,19 @@ export function estimateGoalTime(
   const hoursNeeded = remaining / currentSpeed;
   const estimatedTime = new Date(Date.now() + hoursNeeded * 60 * 60 * 1000);
 
-  // Проверяем, можно ли достичь цели до конца суток (20:00 текущего дня)
-  const endOfDay = new Date();
-  if (endOfDay.getHours() < 20) {
-    endOfDay.setHours(20, 0, 0, 0);
+  // Проверяем, можно ли достичь цели до конца производственных суток (08:00 следующего дня)
+  const now = new Date();
+  const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+  const localHour = localNow.getUTCHours();
+
+  const endOfDay = new Date(now);
+  if (localHour < 8) {
+    // Если до 08:00, конец суток сегодня в 08:00
+    endOfDay.setHours(8, 0, 0, 0);
   } else {
+    // Если после 08:00, конец суток завтра в 08:00
     endOfDay.setDate(endOfDay.getDate() + 1);
-    endOfDay.setHours(20, 0, 0, 0);
+    endOfDay.setHours(8, 0, 0, 0);
   }
 
   return {

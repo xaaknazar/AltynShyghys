@@ -76,10 +76,11 @@ export async function GET(request: NextRequest) {
     // Если нашли ночную смену, всегда проверяем сырые данные
     let rawDataAnalysis = null;
     if (targetNightShift) {
-      // Ночная смена начинается в 20:00 предыдущего дня и заканчивается в 08:00 текущего дня
-      const shiftStartLocal = new Date(`${checkDate}T20:00:00`);
-      shiftStartLocal.setDate(shiftStartLocal.getDate() - 1); // Предыдущий день
+      // Ночная смена производственного дня X: X 20:00 → X+1 08:00
+      // (Производственный день X = X 08:00 → X+1 08:00)
+      const shiftStartLocal = new Date(`${checkDate}T20:00:00`); // Начало ночной смены
       const shiftEndLocal = new Date(`${checkDate}T08:00:00`);
+      shiftEndLocal.setDate(shiftEndLocal.getDate() + 1); // Конец на следующий день
 
       const shiftStartUTC = new Date(shiftStartLocal.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
       const shiftEndUTC = new Date(shiftEndLocal.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);

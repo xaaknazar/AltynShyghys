@@ -76,10 +76,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Получаем сырые данные производства за смену
-    const shiftStartLocal = new Date(`${date}T20:00:00`);
-    shiftStartLocal.setDate(shiftStartLocal.getDate() - 1); // Предыдущий день
+    // Получаем сырые данные производства за ночную смену
+    // Производственный день X (X 08:00 → X+1 08:00) включает ночную смену X 20:00 → X+1 08:00
+    const shiftStartLocal = new Date(`${date}T20:00:00`); // Начало ночной смены в день X
     const shiftEndLocal = new Date(`${date}T08:00:00`);
+    shiftEndLocal.setDate(shiftEndLocal.getDate() + 1); // Конец ночной смены на следующий день
 
     const shiftStartUTC = new Date(shiftStartLocal.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
     const shiftEndUTC = new Date(shiftEndLocal.getTime() - TIMEZONE_OFFSET * 60 * 60 * 1000);
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
         // Ищем дневную смену (около 20:00)
         if (hour >= 18 && hour <= 22) {
           const productionDate = new Date(localTime);
-          productionDate.setUTCDate(productionDate.getUTCDate() - 1);
+          // С новой логикой 08:00-08:00 дневная смена НЕ вычитает день
           const prodDay = productionDate.toISOString().split('T')[0];
 
           // Должна быть для ПРЕДЫДУЩЕГО производственного дня

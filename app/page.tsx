@@ -76,7 +76,7 @@ export default function HomePage() {
   // Вычисления для KPI и прогноза
   const currentSpeed = latestData?.speed || 0;
 
-  // Рассчитываем время с начала ПРОИЗВОДСТВЕННЫХ суток (20:00 вчера)
+  // Рассчитываем время с начала ПРОИЗВОДСТВЕННЫХ суток (08:00)
   const now = new Date();
 
   // Используем местное время UTC+5 для всех расчетов
@@ -85,12 +85,12 @@ export default function HomePage() {
 
   const startOfProductionDay = new Date(now);
 
-  // Если сейчас до 20:00, то сутки начались вчера в 20:00
-  // Если после 20:00, то сутки начались сегодня в 20:00
-  if (currentHour < 20) {
+  // Если сейчас до 08:00, то сутки начались вчера в 08:00
+  // Если после 08:00, то сутки начались сегодня в 08:00
+  if (currentHour < 8) {
     startOfProductionDay.setDate(startOfProductionDay.getDate() - 1);
   }
-  startOfProductionDay.setHours(20, 0, 0, 0);
+  startOfProductionDay.setHours(8, 0, 0, 0);
 
   const hoursPassed = (now.getTime() - startOfProductionDay.getTime()) / (1000 * 60 * 60);
 
@@ -99,7 +99,7 @@ export default function HomePage() {
 
   // Средняя скорость берем из базы данных
   const averageSpeed = currentStats.averageSpeed || 0;
-  const isNightShift = currentHour >= 20 || currentHour < 8;
+  const isNightShift = currentHour >= 20 || currentHour < 8; // Ночная смена: 20:00-08:00
 
   // Рассчитываем среднюю скорость текущей смены
   let shiftAverageSpeed = averageSpeed; // По умолчанию берем среднюю за производственные сутки
@@ -125,15 +125,15 @@ export default function HomePage() {
   const deviation = produced - currentPlan;
   const deviationPercent = (deviation / currentPlan) * 100;
 
-  // Прогноз до конца ПРОИЗВОДСТВЕННЫХ суток (20:00)
+  // Прогноз до конца ПРОИЗВОДСТВЕННЫХ суток (08:00)
   const endOfProductionDay = new Date(now);
 
-  // Если сейчас до 20:00, то конец суток сегодня в 20:00
-  // Если после 20:00, то конец суток завтра в 20:00
-  if (now.getHours() >= 20) {
+  // Если сейчас до 08:00, то конец суток сегодня в 08:00
+  // Если после 08:00, то конец суток завтра в 08:00
+  if (currentHour >= 8) {
     endOfProductionDay.setDate(endOfProductionDay.getDate() + 1);
   }
-  endOfProductionDay.setHours(20, 0, 0, 0);
+  endOfProductionDay.setHours(8, 0, 0, 0);
 
   const hoursRemaining = Math.max(0, (endOfProductionDay.getTime() - now.getTime()) / (1000 * 60 * 60));
   const forecast = produced + (averageSpeed * hoursRemaining);
@@ -227,7 +227,7 @@ export default function HomePage() {
             </div>
             <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
               <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
-                Произведено за сутки
+                Переработано за сутки
               </div>
               <div className="flex items-baseline gap-2 mb-2">
                 <span className="text-4xl font-bold tabular-nums text-slate-900">
@@ -333,10 +333,10 @@ export default function HomePage() {
             return (
               <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-5 mb-4">
                 <div className="grid grid-cols-4 gap-6">
-                  {/* Произведено */}
+                  {/* Переработано */}
                   <div>
                     <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
-                      Произведено, т
+                      Переработано, т
                     </div>
                     <div className="text-2xl font-bold tabular-nums text-slate-900">
                       {totalProduced.toFixed(0)}
@@ -386,7 +386,7 @@ export default function HomePage() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Дата</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Произведено, т</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Переработано, т</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">План, т</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Выполнение, %</th>
                 </tr>
