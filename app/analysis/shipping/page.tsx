@@ -23,13 +23,17 @@ interface ShippingData {
   sediment?: number;
 }
 
+type PeriodFilter = 'week' | 'month' | 'year' | 'season' | 'all';
+
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function ShippingPage() {
   const [shippingData, setShippingData] = useState<ShippingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>('11');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
 
   // Загрузка данных из API
   useEffect(() => {
@@ -56,30 +60,75 @@ export default function ShippingPage() {
     fetchShippingData();
   }, []);
 
-  // Получение уникальных месяцев из данных
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    shippingData.forEach(item => {
-      const [day, month, year] = item.date.split('.');
-      if (month) months.add(month);
-    });
-    return Array.from(months).sort();
-  }, [shippingData]);
+  // Парсинг даты
+  const parseDate = (dateStr: string): Date => {
+    const [day, month, year] = dateStr.split('.');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  };
 
-  // Автоматически выбираем последний доступный месяц
-  useEffect(() => {
-    if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
-      setSelectedMonth(availableMonths[availableMonths.length - 1]);
-    }
-  }, [availableMonths, selectedMonth]);
-
-  // Фильтрация данных по выбранному месяцу
+  // Фильтрация данных по периоду
   const filteredData = useMemo(() => {
+    if (shippingData.length === 0) return [];
+
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - 7);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const startOfSeason = new Date(now.getFullYear(), 8, 1); // Сезон с сентября
+
     return shippingData.filter(item => {
-      const [day, month, year] = item.date.split('.');
-      return month === selectedMonth;
+      const itemDate = parseDate(item.date);
+
+      if (periodFilter === 'week') {
+        return itemDate >= startOfWeek;
+      } else if (periodFilter === 'month') {
+        return itemDate >= startOfMonth;
+      } else if (periodFilter === 'year') {
+        return itemDate >= startOfYear;
+      } else if (periodFilter === 'season') {
+        return itemDate >= startOfSeason;
+      } else if (periodFilter === 'all') {
+        if (customStartDate && customEndDate) {
+          const start = new Date(customStartDate);
+          const end = new Date(customEndDate);
+          return itemDate >= start && itemDate <= end;
+        }
+        return true;
+      }
+      return true;
     });
-  }, [shippingData, selectedMonth]);
+  }, [shippingData, periodFilter, customStartDate, customEndDate]);
+
+  // Статистика по месяцам
+  const monthlyStats = useMemo(() => {
+    const stats: Record<string, { netto: number; pressed: number; extraction: number }> = {};
+
+    filteredData.forEach(item => {
+      const [day, month, year] = item.date.split('.');
+      const monthKey = `${month}.${year}`;
+
+      if (!stats[monthKey]) {
+        stats[monthKey] = { netto: 0, pressed: 0, extraction: 0 };
+      }
+      stats[monthKey].netto += item.netto;
+      stats[monthKey].pressed += item.pressed;
+      stats[monthKey].extraction += item.extraction;
+    });
+
+    return Object.entries(stats).map(([month, data]) => ({
+      month,
+      netto: parseFloat(data.netto.toFixed(2)),
+      pressed: parseFloat(data.pressed.toFixed(2)),
+      extraction: parseFloat(data.extraction.toFixed(2)),
+    })).sort((a, b) => {
+      const [monthA, yearA] = a.month.split('.');
+      const [monthB, yearB] = b.month.split('.');
+      return new Date(parseInt(yearA), parseInt(monthA) - 1).getTime() -
+             new Date(parseInt(yearB), parseInt(monthB) - 1).getTime();
+    });
+  }, [filteredData]);
 
   // Статистика по покупателям
   const buyerStats = useMemo(() => {
@@ -102,27 +151,6 @@ export default function ShippingPage() {
       extraction: parseFloat(data.extraction.toFixed(2)),
       count: data.count,
     })).sort((a, b) => b.netto - a.netto);
-  }, [filteredData]);
-
-  // Статистика по дням
-  const dailyStats = useMemo(() => {
-    const stats: Record<string, { netto: number; pressed: number; extraction: number }> = {};
-
-    filteredData.forEach(item => {
-      if (!stats[item.date]) {
-        stats[item.date] = { netto: 0, pressed: 0, extraction: 0 };
-      }
-      stats[item.date].netto += item.netto;
-      stats[item.date].pressed += item.pressed;
-      stats[item.date].extraction += item.extraction;
-    });
-
-    return Object.entries(stats).map(([date, data]) => ({
-      date,
-      netto: parseFloat(data.netto.toFixed(2)),
-      pressed: parseFloat(data.pressed.toFixed(2)),
-      extraction: parseFloat(data.extraction.toFixed(2)),
-    })).sort((a, b) => a.date.localeCompare(b.date));
   }, [filteredData]);
 
   // Общая статистика
@@ -179,21 +207,88 @@ export default function ShippingPage() {
 
   return (
     <div className="space-y-8">
-      {/* Фильтр по месяцам */}
+      {/* Фильтры периода */}
       <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Выберите месяц</h2>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:border-slate-500 focus:outline-none"
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Выберите период</h2>
+        <div className="flex flex-wrap gap-3 mb-4">
+          <button
+            onClick={() => setPeriodFilter('week')}
+            className={`px-4 py-2 text-sm font-semibold rounded transition-colors ${
+              periodFilter === 'week'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
           >
-            {availableMonths.map(month => (
-              <option key={month} value={month}>
-                {new Date(2025, parseInt(month) - 1, 1).toLocaleDateString('ru-RU', { month: 'long' })}
-              </option>
-            ))}
-          </select>
+            За неделю
+          </button>
+          <button
+            onClick={() => setPeriodFilter('month')}
+            className={`px-4 py-2 text-sm font-semibold rounded transition-colors ${
+              periodFilter === 'month'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            С начала месяца
+          </button>
+          <button
+            onClick={() => setPeriodFilter('year')}
+            className={`px-4 py-2 text-sm font-semibold rounded transition-colors ${
+              periodFilter === 'year'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            С начала года
+          </button>
+          <button
+            onClick={() => setPeriodFilter('season')}
+            className={`px-4 py-2 text-sm font-semibold rounded transition-colors ${
+              periodFilter === 'season'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            С начала сезона
+          </button>
+          <button
+            onClick={() => setPeriodFilter('all')}
+            className={`px-4 py-2 text-sm font-semibold rounded transition-colors ${
+              periodFilter === 'all'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            За весь период
+          </button>
+        </div>
+
+        {/* Произвольный период */}
+        <div className="flex gap-4 items-center">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700 mb-2">Начало периода</label>
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => {
+                setCustomStartDate(e.target.value);
+                setPeriodFilter('all');
+              }}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700 mb-2">Конец периода</label>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => {
+                setCustomEndDate(e.target.value);
+                setPeriodFilter('all');
+              }}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+          </div>
         </div>
       </div>
 
@@ -268,67 +363,15 @@ export default function ShippingPage() {
         </div>
       </div>
 
-      {/* Графики */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* График отгрузок по покупателям */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-6">
-            Отгрузки по покупателям (нетто, т)
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={buyerStats}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Bar dataKey="netto" fill="#3b82f6" name="Нетто (т)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* График типов масла по покупателям */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-6">
-            Типы масла по покупателям
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={buyerStats}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Bar dataKey="pressed" fill="#3b82f6" name="Прессовое (т)" />
-              <Bar dataKey="extraction" fill="#10b981" name="Экстракционное (т)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* График по дням */}
+      {/* График по месяцам */}
       <div className="bg-white rounded-lg border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-6">
-          Отгрузки по дням (нетто, т)
+          Отгрузки по месяцам (нетто, т)
         </h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={dailyStats}>
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart data={monthlyStats}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '12px' }} />
+            <XAxis dataKey="month" stroke="#64748b" style={{ fontSize: '12px' }} />
             <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
             <Tooltip
               contentStyle={{

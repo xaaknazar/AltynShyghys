@@ -92,16 +92,16 @@ export default function QualityAnalysisPage() {
                 key={type}
                 onClick={() => setSelectedType(type as AnalysisType)}
                 className={`
-                  flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all
+                  flex items-center gap-2 px-4 py-2.5 rounded font-semibold transition-colors
                   ${
                     selectedType === type
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                   }
                 `}
               >
                 <span className="text-lg">{icon}</span>
-                <span>{label}</span>
+                <span className="text-sm">{label}</span>
               </button>
             ))}
           </div>
