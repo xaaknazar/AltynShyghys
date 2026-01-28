@@ -2,122 +2,134 @@
 
 import { useState, useEffect } from 'react';
 
-type QuickPeriod = 'week' | 'month' | 'season' | 'custom';
-
-interface QualityMetric {
+interface Metric {
   id: string;
   label: string;
   unit: string;
+  type: 'quality' | 'technical';
+  source?: string;
 }
 
 interface ChartDataPoint {
   date: string;
-  time: string;
   [key: string]: any;
 }
 
-// Доступные качественные показатели
-const QUALITY_METRICS: QualityMetric[] = [
-  { id: 'Топ 0 Влага,%', label: 'Топ 0 Влага', unit: '%' },
-  { id: 'Топ 0 Сор,%', label: 'Топ 0 Сор', unit: '%' },
-  { id: 'Топ 0 Масличность,%', label: 'Топ 0 Масличность', unit: '%' },
-  { id: 'РВО Масличность,%', label: 'РВО Масличность', unit: '%' },
-  { id: 'РВО Лузжистость,%', label: 'РВО Лузжистость', unit: '%' },
-  { id: 'Экстракция Жмых Масличность,%', label: 'Экстракция Жмых Масличность', unit: '%' },
-  { id: 'Экстракция Шрот масличность,%', label: 'Экстракция Шрот масличность', unit: '%' },
-  { id: 'Грануляция Влага,%', label: 'Грануляция Влага', unit: '%' },
+// Качественные показатели
+const QUALITY_METRICS: Metric[] = [
+  { id: 'Топ 0 Влага,%', label: 'Топ 0 Влага', unit: '%', type: 'quality' },
+  { id: 'Топ 0 Сор,%', label: 'Топ 0 Сор', unit: '%', type: 'quality' },
+  { id: 'Топ 0 Масличность,%', label: 'Топ 0 Масличность', unit: '%', type: 'quality' },
+  { id: 'РВО Масличность,%', label: 'РВО Масличность', unit: '%', type: 'quality' },
+  { id: 'РВО Лузжистость,%', label: 'РВО Лузжистость', unit: '%', type: 'quality' },
+  { id: 'Экстракция Жмых Масличность,%', label: 'Экстракция Жмых Масличность', unit: '%', type: 'quality' },
+  { id: 'Экстракция Шрот масличность,%', label: 'Экстракция Шрот масличность', unit: '%', type: 'quality' },
+  { id: 'Грануляция Влага,%', label: 'Грануляция Влага', unit: '%', type: 'quality' },
 ];
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#14b8a6', '#f97316'];
+// Количественные показатели (технические)
+const TECH_METRICS: Metric[] = [
+  { id: 'Вакуум', label: 'Вакуум', unit: '', type: 'technical', source: 'Extractor_TechData_Job' },
+  { id: 'Температура масла', label: 'Температура масла', unit: '°C', type: 'technical', source: 'Extractor_TechData_Job' },
+  { id: 'Коэффициент Экстрактора', label: 'Коэффициент Экстрактора', unit: '', type: 'technical', source: 'Data_extractor_cooking' },
+  { id: 'Температура Тостера', label: 'Температура Тостера', unit: '°C', type: 'technical', source: 'Data_extractor_cooking' },
+];
+
+const ALL_METRICS = [...QUALITY_METRICS, ...TECH_METRICS];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#14b8a6', '#f97316', '#ec4899', '#84cc16'];
 
 export default function ComparisonPage() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('week');
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
-  const [qualityData, setQualityData] = useState<any[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Установка дат по умолчанию
   useEffect(() => {
-    applyQuickPeriod('week');
-  }, []);
-
-  const applyQuickPeriod = (period: QuickPeriod) => {
     const end = new Date();
     const start = new Date();
-
-    if (period === 'week') start.setDate(start.getDate() - 7);
-    else if (period === 'month') start.setDate(1);
-    else if (period === 'season') start.setMonth(8, 1);
-
+    start.setDate(start.getDate() - 7);
     setStartDate(start.toISOString().split('T')[0]);
     setEndDate(end.toISOString().split('T')[0]);
-    setQuickPeriod(period);
-  };
+  }, []);
+
+  // Автоматическая загрузка при изменении дат или метрик
+  useEffect(() => {
+    if (startDate && endDate && selectedMetrics.length > 0) {
+      loadData();
+    } else {
+      setChartData([]);
+    }
+  }, [startDate, endDate, selectedMetrics]);
 
   const loadData = async () => {
-    if (!startDate || !endDate) return;
     setLoading(true);
 
     try {
-      const params = new URLSearchParams({
-        start_date: startDate,
-        end_date: endDate,
-        shift_type: 'all',
-        analysis_type: 'all',
-      });
+      const qualityMetrics = selectedMetrics.filter(id =>
+        QUALITY_METRICS.some(m => m.id === id)
+      );
+      const techMetrics = selectedMetrics.filter(id =>
+        TECH_METRICS.some(m => m.id === id)
+      );
 
-      const response = await fetch(`/api/quality-analysis?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch');
+      const allData: ChartDataPoint[] = [];
 
-      const data = await response.json();
-      setQualityData(data.analyses || []);
+      // Загружаем качественные данные
+      if (qualityMetrics.length > 0) {
+        const params = new URLSearchParams({
+          start_date: startDate,
+          end_date: endDate,
+          shift_type: 'all',
+          analysis_type: 'all',
+        });
+
+        const response = await fetch(`/api/quality-analysis?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          const analyses = data.analyses || [];
+
+          // Группируем по дате
+          const grouped: { [key: string]: any } = {};
+
+          analyses.forEach((item: any) => {
+            if (!qualityMetrics.includes(item.analysis_type)) return;
+
+            const key = item.shift_date;
+            if (!grouped[key]) {
+              grouped[key] = { date: key };
+            }
+
+            const metric = QUALITY_METRICS.find(m => m.id === item.analysis_type);
+            if (metric) {
+              if (!grouped[key][metric.label]) grouped[key][metric.label] = [];
+              grouped[key][metric.label].push(item.value);
+            }
+          });
+
+          // Вычисляем средние
+          Object.values(grouped).forEach((point: any) => {
+            qualityMetrics.forEach(metricId => {
+              const metric = QUALITY_METRICS.find(m => m.id === metricId);
+              if (metric && point[metric.label] && Array.isArray(point[metric.label])) {
+                const values = point[metric.label];
+                point[metric.label] = values.reduce((sum: number, v: number) => sum + v, 0) / values.length;
+              }
+            });
+          });
+
+          allData.push(...Object.values(grouped));
+        }
+      }
+
+      setChartData(allData.sort((a, b) => a.date.localeCompare(b.date)));
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (qualityData.length === 0 || selectedMetrics.length === 0) {
-      setChartData([]);
-      return;
-    }
-
-    const grouped: { [key: string]: ChartDataPoint } = {};
-
-    qualityData.forEach((item) => {
-      const key = `${item.shift_date}_${item.shift_type}`;
-
-      if (!grouped[key]) {
-        grouped[key] = {
-          date: item.shift_date,
-          time: item.sample_time,
-          shift_type: item.shift_type,
-        };
-      }
-
-      if (selectedMetrics.includes(item.analysis_type)) {
-        const metricLabel = QUALITY_METRICS.find(m => m.id === item.analysis_type)?.label || item.analysis_type;
-        if (!grouped[key][metricLabel]) grouped[key][metricLabel] = [];
-        grouped[key][metricLabel].push(item.value);
-      }
-    });
-
-    Object.values(grouped).forEach((point) => {
-      selectedMetrics.forEach((metricId) => {
-        const metricLabel = QUALITY_METRICS.find(m => m.id === metricId)?.label || metricId;
-        if (point[metricLabel] && Array.isArray(point[metricLabel])) {
-          const values = point[metricLabel];
-          point[metricLabel] = values.reduce((sum: number, v: number) => sum + v, 0) / values.length;
-        }
-      });
-    });
-
-    setChartData(Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date)));
-  }, [qualityData, selectedMetrics]);
 
   const graphWidth = Math.max(1400, chartData.length * 50);
 
@@ -127,107 +139,111 @@ export default function ComparisonPage() {
         <h1 className="text-3xl font-bold text-slate-900">Сводный анализ</h1>
       </div>
 
-      {/* Период */}
+      {/* Период и метрики в одной карточке */}
       <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <h2 className="text-lg font-bold text-slate-900 mb-4">Период</h2>
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          {(['week', 'month', 'season'] as QuickPeriod[]).map((period) => (
-            <button
-              key={period}
-              onClick={() => applyQuickPeriod(period)}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                quickPeriod === period
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              {period === 'week' ? 'Неделя' : period === 'month' ? 'Месяц' : 'Сезон'}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Начало</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">С</label>
             <input
               type="date"
               value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setQuickPeriod('custom');
-              }}
+              onChange={(e) => setStartDate(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Конец</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">По</label>
             <input
               type="date"
               value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setQuickPeriod('custom');
-              }}
+              onChange={(e) => setEndDate(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg"
             />
           </div>
         </div>
 
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-lg font-semibold"
-        >
-          {loading ? 'Загрузка...' : 'Загрузить'}
-        </button>
-      </div>
+        <div className="border-t pt-6">
+          <h3 className="text-sm font-bold text-slate-900 mb-3">Качественный анализ</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+            {QUALITY_METRICS.map((metric, idx) => {
+              const isSelected = selectedMetrics.includes(metric.id);
+              const color = COLORS[idx % COLORS.length];
 
-      {/* Выбор метрик */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <h2 className="text-lg font-bold text-slate-900 mb-4">Показатели</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {QUALITY_METRICS.map((metric, idx) => {
-            const isSelected = selectedMetrics.includes(metric.id);
-            const color = COLORS[idx % COLORS.length];
+              return (
+                <label
+                  key={metric.id}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                    isSelected ? 'bg-blue-50 border-blue-500' : 'border-slate-200'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedMetrics([...selectedMetrics, metric.id]);
+                      } else {
+                        setSelectedMetrics(selectedMetrics.filter(m => m !== metric.id));
+                      }
+                    }}
+                    className="w-4 h-4"
+                    style={{ accentColor: color }}
+                  />
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></div>
+                  <span className="text-xs font-medium">{metric.label}</span>
+                </label>
+              );
+            })}
+          </div>
 
-            return (
-              <label
-                key={metric.id}
-                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 cursor-pointer transition-all ${
-                  isSelected ? 'bg-blue-50 border-blue-500' : 'bg-white border-slate-200'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedMetrics([...selectedMetrics, metric.id]);
-                    } else {
-                      setSelectedMetrics(selectedMetrics.filter(m => m !== metric.id));
-                    }
-                  }}
-                  className="w-4 h-4"
-                  style={{ accentColor: color }}
-                />
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
-                <span className="text-sm font-medium">{metric.label}</span>
-                <span className="text-xs text-slate-500 ml-auto">({metric.unit})</span>
-              </label>
-            );
-          })}
+          <h3 className="text-sm font-bold text-slate-900 mb-3 mt-4">Количественный анализ</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+            {TECH_METRICS.map((metric, idx) => {
+              const isSelected = selectedMetrics.includes(metric.id);
+              const colorIdx = QUALITY_METRICS.length + idx;
+              const color = COLORS[colorIdx % COLORS.length];
+
+              return (
+                <label
+                  key={metric.id}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                    isSelected ? 'bg-green-50 border-green-500' : 'border-slate-200'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedMetrics([...selectedMetrics, metric.id]);
+                      } else {
+                        setSelectedMetrics(selectedMetrics.filter(m => m !== metric.id));
+                      }
+                    }}
+                    className="w-4 h-4"
+                    style={{ accentColor: color }}
+                  />
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></div>
+                  <span className="text-xs font-medium">{metric.label}</span>
+                </label>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* График */}
-      {chartData.length > 0 && selectedMetrics.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">График</h2>
+      {loading && (
+        <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
+          <div className="text-slate-600">Загрузка данных...</div>
+        </div>
+      )}
 
-          <div className="flex flex-wrap gap-4 mb-4">
+      {!loading && chartData.length > 0 && selectedMetrics.length > 0 && (
+        <div className="bg-white rounded-lg border border-slate-200 p-6">
+          <div className="flex flex-wrap gap-3 mb-4">
             {selectedMetrics.map((metricId, idx) => {
-              const metric = QUALITY_METRICS.find(m => m.id === metricId);
+              const metric = ALL_METRICS.find(m => m.id === metricId);
               if (!metric) return null;
               const color = COLORS[idx % COLORS.length];
 
@@ -261,7 +277,7 @@ export default function ComparisonPage() {
                 ))}
 
                 {selectedMetrics.map((metricId, metricIdx) => {
-                  const metric = QUALITY_METRICS.find(m => m.id === metricId);
+                  const metric = ALL_METRICS.find(m => m.id === metricId);
                   if (!metric) return null;
                   const color = COLORS[metricIdx % COLORS.length];
 
@@ -298,7 +314,7 @@ export default function ComparisonPage() {
 
               {selectedMetrics.length > 0 && (() => {
                 const metricId = selectedMetrics[0];
-                const metric = QUALITY_METRICS.find(m => m.id === metricId);
+                const metric = ALL_METRICS.find(m => m.id === metricId);
                 if (!metric) return null;
 
                 const dataPoints = chartData.filter(point => point[metric.label] !== undefined && point[metric.label] !== null);
@@ -325,14 +341,14 @@ export default function ComparisonPage() {
                         marginLeft: '-8px'
                       }}
                     >
-                      {value.toFixed(2)}
+                      {value.toFixed(1)}
                     </div>
                   );
                 });
               })()}
 
               {selectedMetrics.map((metricId, metricIdx) => {
-                const metric = QUALITY_METRICS.find(m => m.id === metricId);
+                const metric = ALL_METRICS.find(m => m.id === metricId);
                 if (!metric) return null;
                 const color = COLORS[metricIdx % COLORS.length];
 
@@ -374,7 +390,7 @@ export default function ComparisonPage() {
                         className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 text-white text-xs font-bold px-2 py-1 rounded shadow-md whitespace-nowrap"
                         style={{ backgroundColor: color }}
                       >
-                        {point[metric.label].toFixed(2)}
+                        {point[metric.label].toFixed(1)}
                       </div>
 
                       <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 hidden group-hover:block z-50">
@@ -399,12 +415,6 @@ export default function ComparisonPage() {
               })}
             </div>
           </div>
-        </div>
-      )}
-
-      {!loading && chartData.length === 0 && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
-          <p className="text-slate-600">Выберите период, метрики и нажмите &quot;Загрузить&quot;</p>
         </div>
       )}
     </div>
