@@ -45,8 +45,8 @@ const CATEGORIES: CategoryConfig[] = [
     metrics: [
       { label: 'Влажность', dataKey: 'moisture', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Влажность,%' },
       { label: 'Недорушенные', dataKey: 'underCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Недорушенные,%' },
-      { label: 'Необрушенные', dataKey: 'unCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Необрушенные,%' },
-      { label: 'Целяк', dataKey: 'whole', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Целяк,%' },
+      { label: 'Необрушенные', dataKey: 'unCrushed', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4  Необрушенные,%' },
+      { label: 'Целяк', dataKey: 'whole', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4  Целяк,%' },
       { label: 'Лузга', dataKey: 'husk', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Лузга,%' },
       { label: 'Сор', dataKey: 'debris', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Сор,%' },
       { label: 'Масличная пыль', dataKey: 'oilDust', unit: '%', sourceType: 'rvo', sourceColumn: 'Топ 4 Масличная пыль,%' },
