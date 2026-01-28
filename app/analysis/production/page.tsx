@@ -955,16 +955,6 @@ export default function ProductionAnalysisPage() {
               >
                 С начала сезона
               </button>
-              <button
-                onClick={() => applyQuickPeriod('all')}
-                className={`px-4 py-2 rounded-lg border transition-all ${
-                  quickPeriod === 'all'
-                    ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                За весь период
-              </button>
             </div>
           </>
         )}
