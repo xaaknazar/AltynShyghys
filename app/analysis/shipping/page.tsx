@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Тип данных для отгрузки
 interface ShippingData {
@@ -251,16 +251,6 @@ export default function ShippingPage() {
           >
             С начала сезона
           </button>
-          <button
-            onClick={() => setPeriodFilter('all')}
-            className={`px-4 py-2 text-sm font-semibold rounded transition-colors ${
-              periodFilter === 'all'
-                ? 'bg-slate-900 text-white'
-                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            За весь период
-          </button>
         </div>
 
         {/* Произвольный период */}
@@ -293,7 +283,7 @@ export default function ShippingPage() {
       </div>
 
       {/* Общая статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
           <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
             Всего отгружено (нетто)
@@ -344,23 +334,6 @@ export default function ShippingPage() {
             </div>
           </div>
         </div>
-
-        <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
-          <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
-            Средняя отгрузка
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-bold tabular-nums text-amber-600">
-              {totalStats.count > 0 ? (totalStats.netto / totalStats.count).toFixed(1) : 0}
-            </span>
-            <span className="text-lg text-slate-600 font-medium">т</span>
-          </div>
-          <div className="mt-2 pt-2 border-t border-slate-200">
-            <div className="text-xs text-slate-500">
-              На одну отгрузку
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* График по месяцам */}
@@ -369,7 +342,7 @@ export default function ShippingPage() {
           Отгрузки по месяцам (нетто, т)
         </h3>
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={monthlyStats}>
+          <LineChart data={monthlyStats}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="month" stroke="#64748b" style={{ fontSize: '12px' }} />
             <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
@@ -382,10 +355,10 @@ export default function ShippingPage() {
               }}
             />
             <Legend wrapperStyle={{ fontSize: '12px' }} />
-            <Bar dataKey="netto" fill="#3b82f6" name="Нетто (т)" />
-            <Bar dataKey="pressed" fill="#8b5cf6" name="Прессовое (т)" />
-            <Bar dataKey="extraction" fill="#10b981" name="Экстракционное (т)" />
-          </BarChart>
+            <Line type="monotone" dataKey="netto" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} name="Нетто (т)" />
+            <Line type="monotone" dataKey="pressed" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 4 }} name="Прессовое (т)" />
+            <Line type="monotone" dataKey="extraction" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} name="Экстракционное (т)" />
+          </LineChart>
         </ResponsiveContainer>
       </div>
 
