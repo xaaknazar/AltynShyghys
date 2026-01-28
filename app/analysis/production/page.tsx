@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import TechnicalChart from './TechnicalChart';
 
-type QuickPeriod = 'week' | 'month' | 'season' | 'all';
+type QuickPeriod = 'week' | 'month' | 'season' | 'all' | 'custom';
 type ViewMode = 'daily' | 'detailed' | 'monthly';
 
 export default function ProductionAnalysisPage() {
