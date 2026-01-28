@@ -276,7 +276,22 @@ export default function QualityChartsPage() {
       };
 
       category.metrics.forEach(metric => {
-        const valueStr = row[metric.sourceColumn] || '';
+        // Ищем значение колонки с учетом возможных вариаций
+        let valueStr = row[metric.sourceColumn];
+
+        // Если точное совпадение не найдено, пробуем найти похожую колонку
+        if (valueStr === undefined || valueStr === null || valueStr === '') {
+          const normalizedTarget = metric.sourceColumn.trim().toLowerCase();
+          const matchingKey = Object.keys(row).find(key =>
+            key.trim().toLowerCase() === normalizedTarget
+          );
+          if (matchingKey) {
+            valueStr = row[matchingKey];
+          } else {
+            valueStr = '';
+          }
+        }
+
         // Удаляем кавычки, заменяем запятую на точку и парсим число
         const cleanValue = valueStr.toString().replace(/"/g, '').replace(',', '.').trim();
         const value = parseFloat(cleanValue);
@@ -370,7 +385,22 @@ export default function QualityChartsPage() {
           }
         }
 
-        const valueStr = row[metric.sourceColumn] || '';
+        // Ищем значение колонки с учетом возможных вариаций
+        let valueStr = row[metric.sourceColumn];
+
+        // Если точное совпадение не найдено, пробуем найти похожую колонку
+        if (valueStr === undefined || valueStr === null || valueStr === '') {
+          const normalizedTarget = metric.sourceColumn.trim().toLowerCase();
+          const matchingKey = Object.keys(row).find(key =>
+            key.trim().toLowerCase() === normalizedTarget
+          );
+          if (matchingKey) {
+            valueStr = row[matchingKey];
+          } else {
+            valueStr = '';
+          }
+        }
+
         const cleanValue = valueStr.toString().replace(/"/g, '').replace(',', '.').trim();
         const value = parseFloat(cleanValue);
 
