@@ -249,10 +249,10 @@ export default function ShippingPage() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all border ${
               isRefreshing
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed'
+                : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800'
             }`}
           >
             <svg
