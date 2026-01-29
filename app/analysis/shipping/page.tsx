@@ -208,7 +208,6 @@ export default function ShippingPage() {
       <div className="flex items-center justify-center py-16">
         <div className="text-center">
           <div className="text-2xl text-slate-700 font-display mb-2">Загрузка данных...</div>
-          <div className="text-sm text-slate-500">Подключение к Google Sheets</div>
         </div>
       </div>
     );
