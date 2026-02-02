@@ -53,95 +53,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, collections: collectionsInfo });
     }
 
-    // Ищем коллекции с данными уровней
-    // Пробуем разные варианты названий
-    const possibleCollections = [
-      'Level_Job',
-      'Levels_Job',
-      'Silo_Level_Job',
-      'Silo_Levels_Job',
-      'Urovnemer_Job',
-      'Daily_Levels_Job',
-      'Storage_Level_Job',
-    ];
-
-    let levelCollection = null;
-    let collectionName = '';
-
-    for (const name of possibleCollections) {
-      const collections = await db.listCollections({ name }).toArray();
-      if (collections.length > 0) {
-        levelCollection = db.collection(name);
-        collectionName = name;
-        break;
-      }
-    }
-
-    // Если не нашли по стандартным названиям, ищем по содержимому
-    if (!levelCollection) {
-      const allCollections = await db.listCollections().toArray();
-
-      for (const col of allCollections) {
-        const collection = db.collection(col.name);
-        const sample = await collection.find({}).limit(5).toArray();
-
-        // Проверяем, есть ли в данных упоминание уровнемера или силоса
-        for (const doc of sample) {
-          if (doc.values && Array.isArray(doc.values)) {
-            const hasLevel = doc.values.some((v: any) =>
-              v.title && (
-                v.title.includes('Уравнемер') ||
-                v.title.includes('Уровень') ||
-                v.title.includes('уровень') ||
-                v.title.includes('Level')
-              )
-            );
-            if (hasLevel) {
-              levelCollection = collection;
-              collectionName = col.name;
-              break;
-            }
-          }
-        }
-        if (levelCollection) break;
-      }
-    }
-
-    if (!levelCollection) {
-      // Выводим все коллекции для отладки
-      const allCollections = await db.listCollections().toArray();
-      return NextResponse.json({
-        success: false,
-        error: 'Не найдена коллекция с данными уровней силосов',
-        availableCollections: allCollections.map(c => c.name),
-      });
-    }
+    // Коллекции с данными уровней
+    const smallSiloCollection = db.collection('Level_Rvo_Job'); // Уравнемер 1, 2
+    const largeSiloCollection = db.collection('Sgp_Silos_Job'); // Уровень 🌻 1-5
 
     // Получаем данные за период
+    // 08:00 местного времени = 03:00 UTC
     const start = new Date(startDate);
+    start.setUTCHours(3, 0, 0, 0);
+
     const end = new Date(endDate);
+    end.setUTCHours(3, 0, 0, 0);
 
-    // Устанавливаем время 08:00 UTC+5 (03:00 UTC)
-    const startUTC = new Date(start);
-    startUTC.setUTCHours(3, 0, 0, 0); // 08:00 местного = 03:00 UTC
+    console.log('Запрос данных:', { start: start.toISOString(), end: end.toISOString() });
 
-    const endUTC = new Date(end);
-    endUTC.setUTCHours(3, 0, 0, 0);
+    // Получаем данные из обеих коллекций
+    const [smallSiloData, largeSiloData] = await Promise.all([
+      smallSiloCollection
+        .find({ datetime: { $gte: start, $lte: end } })
+        .sort({ datetime: 1 })
+        .toArray(),
+      largeSiloCollection
+        .find({ datetime: { $gte: start, $lte: end } })
+        .sort({ datetime: 1 })
+        .toArray(),
+    ]);
 
-    const data = await levelCollection
-      .find({
-        datetime: {
-          $gte: startUTC,
-          $lte: endUTC,
-        },
-      })
-      .sort({ datetime: 1 })
-      .toArray();
+    console.log('Найдено записей:', {
+      smallSilo: smallSiloData.length,
+      largeSilo: largeSiloData.length,
+    });
 
-    // Группируем по дням (берем запись ближайшую к 08:00)
-    const dailyData = new Map<string, any>();
+    // Группируем по дням (берем первую запись около 08:00)
+    const smallSiloByDay = new Map<string, any>();
+    const largeSiloByDay = new Map<string, any>();
 
-    data.forEach((doc: any) => {
+    // Обрабатываем данные уравнемеров
+    smallSiloData.forEach((doc: any) => {
       const datetime = new Date(doc.datetime);
       const localTime = new Date(datetime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
       const dateKey = localTime.toISOString().split('T')[0];
@@ -149,16 +97,37 @@ export async function GET(request: NextRequest) {
 
       // Берем записи около 08:00 (7-9 часов)
       if (hour >= 7 && hour <= 9) {
-        if (!dailyData.has(dateKey) || Math.abs(hour - 8) < Math.abs(dailyData.get(dateKey).hour - 8)) {
-          dailyData.set(dateKey, { ...doc, hour });
+        if (!smallSiloByDay.has(dateKey)) {
+          smallSiloByDay.set(dateKey, doc);
         }
       }
     });
 
+    // Обрабатываем данные больших силосов
+    largeSiloData.forEach((doc: any) => {
+      const datetime = new Date(doc.datetime);
+      const localTime = new Date(datetime.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+      const dateKey = localTime.toISOString().split('T')[0];
+      const hour = localTime.getUTCHours();
+
+      // Берем записи около 08:00
+      if (hour >= 7 && hour <= 9) {
+        if (!largeSiloByDay.has(dateKey)) {
+          largeSiloByDay.set(dateKey, doc);
+        }
+      }
+    });
+
+    // Собираем все уникальные даты
+    const allDates = new Set([...smallSiloByDay.keys(), ...largeSiloByDay.keys()]);
+
     // Формируем результат
     const results: SiloRecord[] = [];
 
-    dailyData.forEach((doc, dateKey) => {
+    allDates.forEach((dateKey) => {
+      const smallDoc = smallSiloByDay.get(dateKey);
+      const largeDoc = largeSiloByDay.get(dateKey);
+
       const record: SiloRecord = {
         date: dateKey,
         smallSilo1: 0,
@@ -173,40 +142,53 @@ export async function GET(request: NextRequest) {
         totalTons: 0,
       };
 
-      if (doc.values && Array.isArray(doc.values)) {
-        doc.values.forEach((v: any) => {
+      // Данные уравнемеров
+      if (smallDoc?.values && Array.isArray(smallDoc.values)) {
+        smallDoc.values.forEach((v: any) => {
           const title = v.title || '';
           const value = v.value || 0;
 
-          if (title.includes('Уравнемер 1') || title.includes('Уровнемер 1')) {
+          if (title.includes('Уравнемер 1')) {
             record.smallSilo1 = value;
-          } else if (title.includes('Уравнемер 2') || title.includes('Уровнемер 2')) {
+          } else if (title.includes('Уравнемер 2')) {
             record.smallSilo2 = value;
-          } else if (title.includes('Уровень') && title.includes('1')) {
+          }
+        });
+      }
+
+      // Данные больших силосов
+      if (largeDoc?.values && Array.isArray(largeDoc.values)) {
+        largeDoc.values.forEach((v: any) => {
+          const title = v.title || '';
+          const value = v.value || 0;
+
+          if (title.includes('1')) {
             record.largeSilo1 = value;
-          } else if (title.includes('Уровень') && title.includes('2')) {
+          } else if (title.includes('2')) {
             record.largeSilo2 = value;
-          } else if (title.includes('Уровень') && title.includes('3')) {
+          } else if (title.includes('3')) {
             record.largeSilo3 = value;
-          } else if (title.includes('Уровень') && title.includes('4')) {
+          } else if (title.includes('4')) {
             record.largeSilo4 = value;
-          } else if (title.includes('Уровень') && title.includes('5')) {
+          } else if (title.includes('5')) {
             record.largeSilo5 = value;
           }
         });
       }
 
       // Рассчитываем тоннаж
-      record.smallSiloTons =
+      record.smallSiloTons = Math.round(
         (record.smallSilo1 / 100) * SMALL_SILO_CAPACITY +
-        (record.smallSilo2 / 100) * SMALL_SILO_CAPACITY;
+        (record.smallSilo2 / 100) * SMALL_SILO_CAPACITY
+      );
 
       // Без 1-го силоса (там лузга)
-      record.largeSiloTons =
+      record.largeSiloTons = Math.round(
         (record.largeSilo2 / 100) * LARGE_SILO_CAPACITY +
         (record.largeSilo3 / 100) * LARGE_SILO_CAPACITY +
         (record.largeSilo4 / 100) * LARGE_SILO_CAPACITY +
-        (record.largeSilo5 / 100) * LARGE_SILO_CAPACITY;
+        (record.largeSilo5 / 100) * LARGE_SILO_CAPACITY
+      );
 
       record.totalTons = record.smallSiloTons + record.largeSiloTons;
 
@@ -218,13 +200,17 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      collection: collectionName,
+      collections: {
+        smallSilo: 'Level_Rvo_Job',
+        largeSilo: 'Sgp_Silos_Job',
+      },
       period: { start: startDate, end: endDate },
       count: results.length,
       capacities: {
-        smallSilo: SMALL_SILO_CAPACITY,
-        largeSilo: LARGE_SILO_CAPACITY,
+        smallSilo: `${SMALL_SILO_CAPACITY} т (каждый)`,
+        largeSilo: `${LARGE_SILO_CAPACITY} т (каждый)`,
       },
+      note: 'Силос 1 (лузга) не учитывается в расчете',
       data: results,
     });
   } catch (error: any) {
