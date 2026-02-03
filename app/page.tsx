@@ -13,6 +13,7 @@ import ForecastBlock from '@/app/components/ForecastBlock';
 import LoadingState from '@/app/components/LoadingState';
 import ErrorState from '@/app/components/ErrorState';
 import { ProductionData, calculateDailyStats, DailyGroupedData, TARGETS, isPPRDay, countWorkingDays, TIMEZONE_OFFSET } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface LatestDataResponse {
   success: boolean;
@@ -82,6 +83,10 @@ export default function HomePage() {
   // Используем местное время UTC+5 для всех расчетов
   const localNow = new Date(now.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
   const currentHour = localNow.getUTCHours();
+
+  // Определяем текущую дату для проверки ППР
+  const todayDate = format(localNow, 'yyyy-MM-dd');
+  const isTodayPPR = isPPRDay(todayDate);
 
   const startOfProductionDay = new Date(now);
 
@@ -169,10 +174,17 @@ export default function HomePage() {
                 <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
                   Производственная панель
                 </span>
-                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-semibold text-emerald-700">Производство работает</span>
-                </div>
+                {isTodayPPR ? (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-orange-50 border border-orange-200 rounded">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <span className="text-xs font-semibold text-orange-700">ППР (плановый ремонт)</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-semibold text-emerald-700">Производство работает</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -238,76 +250,148 @@ export default function HomePage() {
               <div className="text-xs text-slate-500 mb-2">
                 Прошло {hoursPassed.toFixed(1)} ч / Осталось {hoursRemaining.toFixed(1)} ч
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-600">План на текущий момент:</span>
-                <span className="font-semibold text-slate-900">{currentPlan.toFixed(0)} т</span>
-              </div>
-              <div className="mt-2 pt-2 border-t border-slate-200">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600">Выполнение плана:</span>
-                  <span className={`font-bold ${
-                    (produced / currentPlan) * 100 >= 100 ? 'text-emerald-600' :
-                    (produced / currentPlan) * 100 >= 80 ? 'text-amber-600' :
-                    'text-red-600'
-                  }`}>
-                    {((produced / currentPlan) * 100).toFixed(1)}%
+              {isTodayPPR ? (
+                <div className="mt-2 pt-2 border-t border-slate-200">
+                  <div className="text-xs text-center">
+                    <span className="font-semibold text-orange-600">ППР — план не учитывается</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-600">План на текущий момент:</span>
+                    <span className="font-semibold text-slate-900">{currentPlan.toFixed(0)} т</span>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-slate-200">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600">Выполнение плана:</span>
+                      <span className={`font-bold ${
+                        (produced / currentPlan) * 100 >= 100 ? 'text-emerald-600' :
+                        (produced / currentPlan) * 100 >= 80 ? 'text-amber-600' :
+                        'text-red-600'
+                      }`}>
+                        {((produced / currentPlan) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            {isTodayPPR ? (
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-5">
+                <div className="text-xs uppercase tracking-wider font-semibold text-orange-600 mb-3">
+                  План на сутки
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-4xl font-bold tabular-nums text-orange-600">
+                    —
                   </span>
                 </div>
-              </div>
-            </div>
-            <KPIMetricCard
-              label="План на сутки"
-              value={TARGETS.daily}
-              unit="т"
-              format="integer"
-            />
-            <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
-              <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
-                Разница от плана
-              </div>
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className={`text-4xl font-bold tabular-nums ${
-                  deviation >= 0 ? 'text-emerald-600' : 'text-red-600'
-                }`}>
-                  {deviation >= 0 ? '+' : ''}{deviation.toFixed(1)}
-                </span>
-                <span className="text-lg text-slate-600 font-medium">т</span>
-                {deviation >= 0 ? (
-                  <span className="text-2xl text-emerald-600">↑</span>
-                ) : (
-                  <span className="text-2xl text-red-600">↓</span>
-                )}
-              </div>
-              <div className="text-xs text-slate-500 mb-2">
-                ({deviation >= 0 ? '+' : ''}{deviationPercent.toFixed(1)}%)
-              </div>
-              <div className="mt-2 pt-2 border-t border-slate-200">
-                <div className="text-xs text-center">
-                  <span className={`font-bold ${
-                    deviation >= 0 ? 'text-emerald-700' : 'text-red-700'
-                  }`}>
-                    {deviation >= 0
-                      ? '✓ Идем больше плана'
-                      : '✗ Идем меньше плана'}
-                  </span>
+                <div className="mt-2 pt-2 border-t border-orange-200">
+                  <div className="text-xs text-center">
+                    <span className="font-semibold text-orange-600">ППР день</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <KPIMetricCard
+                label="План на сутки"
+                value={TARGETS.daily}
+                unit="т"
+                format="integer"
+              />
+            )}
+            {isTodayPPR ? (
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-5">
+                <div className="text-xs uppercase tracking-wider font-semibold text-orange-600 mb-3">
+                  Статус ППР
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-2xl font-bold text-orange-700">
+                    Плановый ремонт
+                  </span>
+                </div>
+                <div className="mt-2 pt-2 border-t border-orange-200">
+                  <div className="text-xs text-center">
+                    <span className="font-semibold text-orange-600">
+                      План не учитывается
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white border-2 border-slate-200 rounded-lg p-5">
+                <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-3">
+                  Разница от плана
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className={`text-4xl font-bold tabular-nums ${
+                    deviation >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  }`}>
+                    {deviation >= 0 ? '+' : ''}{deviation.toFixed(1)}
+                  </span>
+                  <span className="text-lg text-slate-600 font-medium">т</span>
+                  {deviation >= 0 ? (
+                    <span className="text-2xl text-emerald-600">↑</span>
+                  ) : (
+                    <span className="text-2xl text-red-600">↓</span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-500 mb-2">
+                  ({deviation >= 0 ? '+' : ''}{deviationPercent.toFixed(1)}%)
+                </div>
+                <div className="mt-2 pt-2 border-t border-slate-200">
+                  <div className="text-xs text-center">
+                    <span className={`font-bold ${
+                      deviation >= 0 ? 'text-emerald-700' : 'text-red-700'
+                    }`}>
+                      {deviation >= 0
+                        ? '✓ Идем больше плана'
+                        : '✗ Идем меньше плана'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
         {/* Forecast Block - прогноз */}
-        <section className="mb-8">
-          <h2 className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-4">
-            Прогноз производства
-          </h2>
-          <ForecastBlock
-            forecast={forecast}
-            plan={TARGETS.daily}
-            confidence={confidence}
-            hoursRemaining={Math.round(hoursRemaining)}
-          />
-        </section>
+        {isTodayPPR ? (
+          <section className="mb-8">
+            <h2 className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-4">
+              Статус производства
+            </h2>
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-orange-800">Планово-предупредительный ремонт</h3>
+                  <p className="text-sm text-orange-600 mt-1">
+                    Сегодня день ППР — производственный план не учитывается
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="mb-8">
+            <h2 className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-4">
+              Прогноз производства
+            </h2>
+            <ForecastBlock
+              forecast={forecast}
+              plan={TARGETS.daily}
+              confidence={confidence}
+              hoursRemaining={Math.round(hoursRemaining)}
+            />
+          </section>
+        )}
 
         {/* Monthly Summary - вторичная информация */}
         <section>
