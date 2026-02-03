@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 
+// API URL основного сайта
+const API_BASE_URL = 'https://altyn-shyghys.vercel.app/api/rafdez/tasks';
+
 // Типы задач
 type TaskCategory = 'construction' | 'equipment' | 'procurement' | 'installation' | 'commissioning' | 'other';
 type TaskStatus = 'planned' | 'in_progress' | 'completed' | 'delayed';
@@ -60,7 +63,7 @@ export default function RafdezPage() {
   // Загрузка задач
   const fetchTasks = async () => {
     try {
-      const response = await fetch('/api/tasks');
+      const response = await fetch(API_BASE_URL);
       const data = await response.json();
       if (data.success) {
         setTasks(data.data);
@@ -79,7 +82,7 @@ export default function RafdezPage() {
   // Сохранение задачи
   const handleSaveTask = async () => {
     try {
-      const url = editingTask ? `/api/tasks/${editingTask._id}` : '/api/tasks';
+      const url = editingTask ? `${API_BASE_URL}/${editingTask._id}` : API_BASE_URL;
       const method = editingTask ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -105,7 +108,7 @@ export default function RafdezPage() {
     if (!confirm('Удалить задачу?')) return;
 
     try {
-      const response = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
         fetchTasks();
