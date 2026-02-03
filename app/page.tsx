@@ -189,6 +189,12 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-4">
               <Link
+                href="/rafdez"
+                className="px-4 py-2 text-sm font-semibold text-orange-700 hover:text-orange-900 border border-orange-300 bg-orange-50 rounded hover:bg-orange-100 transition-colors"
+              >
+                Рафдез
+              </Link>
+              <Link
                 href="/shift-master"
                 className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900 border border-slate-300 rounded hover:bg-slate-50 transition-colors"
               >
