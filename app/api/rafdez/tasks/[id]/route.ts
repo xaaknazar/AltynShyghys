@@ -4,6 +4,18 @@ import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
 
+// CORS headers для кросс-доменных запросов
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// OPTIONS - preflight запрос для CORS
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 // GET - получить одну задачу
 export async function GET(
   request: NextRequest,
@@ -15,7 +27,7 @@ export async function GET(
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, error: 'Неверный ID задачи' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -27,19 +39,19 @@ export async function GET(
     if (!task) {
       return NextResponse.json(
         { success: false, error: 'Задача не найдена' },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
     return NextResponse.json({
       success: true,
       data: task,
-    });
+    }, { headers: corsHeaders });
   } catch (error: any) {
     console.error('Error fetching task:', error);
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -56,7 +68,7 @@ export async function PUT(
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, error: 'Неверный ID задачи' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -65,7 +77,7 @@ export async function PUT(
     if (!name || !responsible) {
       return NextResponse.json(
         { success: false, error: 'Название и ответственный обязательны' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -92,19 +104,19 @@ export async function PUT(
     if (result.matchedCount === 0) {
       return NextResponse.json(
         { success: false, error: 'Задача не найдена' },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
     return NextResponse.json({
       success: true,
       data: { _id: id, ...updateData },
-    });
+    }, { headers: corsHeaders });
   } catch (error: any) {
     console.error('Error updating task:', error);
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -120,7 +132,7 @@ export async function DELETE(
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, error: 'Неверный ID задачи' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -132,19 +144,19 @@ export async function DELETE(
     if (result.deletedCount === 0) {
       return NextResponse.json(
         { success: false, error: 'Задача не найдена' },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
     return NextResponse.json({
       success: true,
       message: 'Задача удалена',
-    });
+    }, { headers: corsHeaders });
   } catch (error: any) {
     console.error('Error deleting task:', error);
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

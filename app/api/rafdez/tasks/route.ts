@@ -4,6 +4,18 @@ import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
 
+// CORS headers для кросс-доменных запросов
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// OPTIONS - preflight запрос для CORS
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 // GET - получить все задачи
 export async function GET() {
   try {
@@ -19,12 +31,12 @@ export async function GET() {
       success: true,
       data: tasks,
       count: tasks.length,
-    });
+    }, { headers: corsHeaders });
   } catch (error: any) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -39,7 +51,7 @@ export async function POST(request: NextRequest) {
     if (!name || !responsible) {
       return NextResponse.json(
         { success: false, error: 'Название и ответственный обязательны' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -64,12 +76,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: { ...task, _id: result.insertedId },
-    });
+    }, { headers: corsHeaders });
   } catch (error: any) {
     console.error('Error creating task:', error);
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
