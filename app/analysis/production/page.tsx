@@ -52,7 +52,6 @@ export default function ProductionAnalysisPage() {
     'Extractor_TechData_Job': [
       { title: 'Вакуум', unit: 'bar' },
       { title: 'Температура масла', unit: '°C' },
-      { title: 'Разряжение Экстрактора', unit: 'mbar' },
     ],
     'Data_extractor_cooking': [
       { title: 'Коэффициент Экстрактора', unit: '%' },
@@ -82,7 +81,6 @@ export default function ProductionAnalysisPage() {
   // Нормы для метрик (одно значение или диапазон [min, max])
   const metricNorms: {[key: string]: number | [number, number]} = {
     'Вакуум': -900,
-    'Разряжение Экстрактора': [-50, -30], // норма разряжения в mbar
     'Температура масла': [105, 110],
     'Мезга Жаровня 2': 105,
     'Жаровня 1': 105,
@@ -277,13 +275,19 @@ export default function ProductionAnalysisPage() {
         const apiMetrics = result.metrics || [];
         const expectedMetrics = EXPECTED_METRICS[result.name] || [];
 
-        // Создаем Set для уникальных title
-        const existingTitles = new Set(apiMetrics.map((m: any) => m.title));
+        // Создаем массив существующих названий для проверки дубликатов
+        const existingTitles = apiMetrics.map((m: any) => m.title);
 
-        // Добавляем ожидаемые метрики если их нет в API
+        // Добавляем ожидаемые метрики если похожей метрики нет в API
+        // Проверяем как точное совпадение, так и частичное (чтобы избежать дублей типа "Подача Гексана" и "Подача Гексана л/мин")
         const mergedMetrics = [...apiMetrics];
         expectedMetrics.forEach((expected) => {
-          if (!existingTitles.has(expected.title)) {
+          const isDuplicate = existingTitles.some((existing: string) =>
+            existing === expected.title ||
+            existing.includes(expected.title) ||
+            expected.title.includes(existing)
+          );
+          if (!isDuplicate) {
             mergedMetrics.push(expected);
           }
         });
@@ -435,10 +439,9 @@ export default function ProductionAnalysisPage() {
     }
 
     if (group === 'combined_extractor') {
-      // Экстрактор (объединенный): Вакуум, Разряжение, Температура масла, Коэффициент, Подача, Процентаж, Гексан
+      // Экстрактор (объединенный): Вакуум, Температура масла, Коэффициент, Подача, Процентаж, Гексан
       return allMetrics.filter((m: any) =>
         m.title.includes('Вакуум') ||
-        m.title.includes('Разряжение') ||
         m.title.includes('Температура масла') ||
         m.title.includes('Коэффициент Экстрактора') ||
         m.title.includes('Подача в Экстрактор') ||
