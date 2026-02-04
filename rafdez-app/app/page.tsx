@@ -235,8 +235,34 @@ export default function RafdezPage() {
     const completed = tasks.filter((t) => t.status === 'completed').length;
     const delayed = tasks.filter((t) => t.status === 'delayed').length;
     const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
+    const planned = tasks.filter((t) => t.status === 'planned').length;
 
-    return { total, completed, delayed, inProgress };
+    // Общий прогресс проекта (средний прогресс всех задач)
+    const overallProgress = total > 0
+      ? Math.round(tasks.reduce((sum, t) => sum + t.progress, 0) / total)
+      : 0;
+
+    return { total, completed, delayed, inProgress, planned, overallProgress };
+  }, [tasks]);
+
+  // Позиция линии "Сегодня" на диаграмме
+  const todayPosition = useMemo(() => {
+    const today = new Date();
+    const todayOffset = Math.floor((today.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
+    const percent = (todayOffset / totalDays) * 100;
+    return { percent, isVisible: percent >= 0 && percent <= 100 };
+  }, [dateRange, totalDays]);
+
+  // Задачи с приближающимися дедлайнами (в течение 7 дней)
+  const upcomingDeadlines = useMemo(() => {
+    const today = new Date();
+    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    return tasks.filter((task) => {
+      if (task.status === 'completed') return false;
+      const endDate = new Date(task.endDate);
+      return endDate >= today && endDate <= weekFromNow;
+    }).sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
   }, [tasks]);
 
   if (loading) {
@@ -282,11 +308,58 @@ export default function RafdezPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
+        {/* Общий прогресс проекта */}
+        <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-900">Общий прогресс проекта</h2>
+            <span className="text-3xl font-bold text-blue-600">{stats.overallProgress}%</span>
+          </div>
+          <div className="w-full h-4 bg-slate-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+              style={{ width: `${stats.overallProgress}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-slate-500">
+            <span>{stats.completed} из {stats.total} задач завершено</span>
+            <span>Сегодня: {new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+          </div>
+        </div>
+
+        {/* Предупреждения о дедлайнах */}
+        {upcomingDeadlines.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="font-semibold text-amber-800">Приближающиеся дедлайны ({upcomingDeadlines.length})</span>
+            </div>
+            <div className="space-y-2">
+              {upcomingDeadlines.slice(0, 3).map((task) => {
+                const daysLeft = Math.ceil((new Date(task.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                return (
+                  <div key={task._id} className="flex items-center justify-between text-sm">
+                    <span className="text-amber-900">{task.name}</span>
+                    <span className={`font-medium ${daysLeft <= 2 ? 'text-red-600' : 'text-amber-700'}`}>
+                      {daysLeft === 0 ? 'Сегодня!' : daysLeft === 1 ? 'Завтра' : `${daysLeft} дней`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Статистика */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="text-sm text-slate-500">Всего задач</div>
             <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+          </div>
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="text-sm text-slate-500">Запланировано</div>
+            <div className="text-2xl font-bold text-slate-600">{stats.planned}</div>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="text-sm text-slate-500">В работе</div>
@@ -355,12 +428,23 @@ export default function RafdezPage() {
         {/* Диаграмма Ганта */}
         {viewMode === 'gantt' && (
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            {/* Заголовок с месяцами */}
+            {/* Заголовок с месяцами и маркером "Сегодня" */}
             <div className="flex border-b border-slate-200">
               <div className="w-64 min-w-64 p-3 border-r border-slate-200 bg-slate-50 font-semibold text-sm text-slate-700">
                 Задача
               </div>
-              <div className="flex-1 flex bg-slate-50">
+              <div className="flex-1 flex bg-slate-50 relative">
+                {/* Маркер "Сегодня" в заголовке */}
+                {todayPosition.isVisible && (
+                  <div
+                    className="absolute top-0 bottom-0 flex flex-col items-center z-20"
+                    style={{ left: `${todayPosition.percent}%`, transform: 'translateX(-50%)' }}
+                  >
+                    <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-b whitespace-nowrap">
+                      Сегодня
+                    </div>
+                  </div>
+                )}
                 {months.map((month, idx) => (
                   <div
                     key={idx}
@@ -408,21 +492,13 @@ export default function RafdezPage() {
 
                       {/* Полоса Ганта */}
                       <div className="flex-1 relative py-3 px-1">
-                        {/* Сегодняшняя линия */}
-                        {(() => {
-                          const today = new Date();
-                          const todayOffset = Math.floor((today.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
-                          const todayPercent = (todayOffset / totalDays) * 100;
-                          if (todayPercent >= 0 && todayPercent <= 100) {
-                            return (
-                              <div
-                                className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10"
-                                style={{ left: `${todayPercent}%` }}
-                              />
-                            );
-                          }
-                          return null;
-                        })()}
+                        {/* Сегодняшняя линия (красная вертикальная) */}
+                        {todayPosition.isVisible && (
+                          <div
+                            className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-10"
+                            style={{ left: `${todayPosition.percent}%` }}
+                          />
+                        )}
 
                         {/* Полоса задачи */}
                         <div
@@ -530,14 +606,31 @@ export default function RafdezPage() {
 
         {/* Легенда */}
         <div className="mt-6 bg-white rounded-lg border border-slate-200 p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">Категории</h3>
-          <div className="flex flex-wrap gap-4">
-            {Object.entries(CATEGORIES).map(([key, { label, color }]) => (
-              <div key={key} className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: color }} />
-                <span className="text-sm text-slate-600">{label}</span>
+          <div className="flex flex-wrap gap-8">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Категории</h3>
+              <div className="flex flex-wrap gap-4">
+                {Object.entries(CATEGORIES).map(([key, { label, color }]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: color }} />
+                    <span className="text-sm text-slate-600">{label}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Обозначения</h3>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-[2px] bg-red-500" />
+                  <span className="text-sm text-slate-600">Сегодня</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-red-500" />
+                  <span className="text-sm text-slate-600">Просрочено</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
