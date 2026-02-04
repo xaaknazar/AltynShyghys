@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getProductionMonthBounds, TIMEZONE_OFFSET, DailyGroupedData, ProductionData, DailyStats, TARGETS } from '@/lib/utils';
+import { getProductionMonthBounds, TIMEZONE_OFFSET, DailyGroupedData, ProductionData, DailyStats, TARGETS, PPR_DAYS, isPPRDay } from '@/lib/utils';
 
 // Отключаем кеширование для получения свежих данных
 export const dynamic = 'force-dynamic';
@@ -236,6 +236,52 @@ export async function GET(request: NextRequest) {
     });
 
     console.log(`   После фильтрации: ${dailyGrouped.length} дней`);
+    console.log('=============================================\n');
+
+    // Добавляем ППР дни текущего месяца, если их нет в данных
+    console.log('\n🔧 ========== ДОБАВЛЕНИЕ ППР ДНЕЙ ==========');
+    const pprDaysThisMonth = PPR_DAYS.filter(pprDate => {
+      const [year, month] = pprDate.split('-').map(Number);
+      return year === currentYear && month - 1 === currentMonth;
+    });
+    console.log(`   ППР дни в этом месяце: ${pprDaysThisMonth.join(', ')}`);
+
+    pprDaysThisMonth.forEach(pprDate => {
+      const existingDay = dailyGrouped.find(d => d.date === pprDate);
+      if (!existingDay) {
+        console.log(`   ➕ Добавляем отсутствующий ППР день: ${pprDate}`);
+        // Создаем пустой день для ППР
+        const emptyStats: DailyStats = {
+          totalProduction: 0,
+          averageSpeed: 0,
+          currentSpeed: 0,
+          progress: 0,
+          status: 'normal', // ППР день - нормальный статус
+        };
+
+        // Пробуем найти сырые данные для этого дня (может быть частичное производство)
+        const dayRawData = rawDataByDay.get(pprDate) || [];
+        if (dayRawData.length > 0) {
+          const totalProduction = dayRawData.reduce((sum, d) => {
+            const diff = d.difference || 0;
+            return sum + (diff > 0 ? diff : 0);
+          }, 0);
+          emptyStats.totalProduction = totalProduction;
+          console.log(`      Найдено ${dayRawData.length} записей, производство: ${totalProduction.toFixed(1)}т`);
+        }
+
+        dailyGrouped.push({
+          date: pprDate,
+          data: dayRawData,
+          stats: emptyStats,
+        });
+      } else {
+        console.log(`   ✓ ППР день ${pprDate} уже есть в данных`);
+      }
+    });
+
+    // Пересортируем после добавления ППР дней
+    dailyGrouped.sort((a, b) => a.date.localeCompare(b.date));
     console.log('=============================================\n');
 
     // Добавляем ТЕКУЩИЕ производственные сутки из сырых данных (если их нет в shift_report)
