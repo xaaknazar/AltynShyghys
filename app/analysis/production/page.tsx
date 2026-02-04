@@ -46,6 +46,39 @@ export default function ProductionAnalysisPage() {
     { name: 'Data_extractor_cooking', title: 'Тостер', group: 'toster', collections: ['Data_extractor_cooking'] },
   ];
 
+  // Статический список ожидаемых метрик для каждой коллекции
+  // Используется как fallback если метрики не найдены в данных
+  const EXPECTED_METRICS: {[collection: string]: {title: string, unit: string}[]} = {
+    'Extractor_TechData_Job': [
+      { title: 'Вакуум', unit: 'bar' },
+      { title: 'Температура масла', unit: '°C' },
+      { title: 'Разряжение Экстрактора', unit: 'mbar' },
+    ],
+    'Data_extractor_cooking': [
+      { title: 'Коэффициент Экстрактора', unit: '%' },
+      { title: 'Подача в Экстрактор', unit: '%' },
+      { title: 'Процентаж Экстрактора', unit: '%' },
+      { title: 'Подача Чистого Гексана', unit: 'Л/м' },
+      { title: 'Верх.Темп. Мезги Жаровни 1', unit: '°C' },
+      { title: 'Нижн.Темп. Мезги Жаровня 1', unit: '°C' },
+      { title: 'Верх.Темп. Мезги Жаровни 2', unit: '°C' },
+      { title: 'Нижн.Темп. Мезги Жаровня 2', unit: '°C' },
+      { title: ' Температура Тостера', unit: '°C' },
+    ],
+    'Press_1_Job': [
+      { title: 'Подача', unit: '%' },
+      { title: 'Гл. мотор', unit: '%' },
+      { title: 'Ток', unit: 'A' },
+      { title: 'Жаровня', unit: 'A' },
+    ],
+    'Press_2_Job': [
+      { title: 'Подача', unit: '%' },
+      { title: 'Гл. мотор', unit: '%' },
+      { title: 'Ток', unit: 'A' },
+      { title: 'Жаровня', unit: 'A' },
+    ],
+  };
+
   // Нормы для метрик (одно значение или диапазон [min, max])
   const metricNorms: {[key: string]: number | [number, number]} = {
     'Вакуум': -900,
@@ -239,7 +272,23 @@ export default function ProductionAnalysisPage() {
 
       results.forEach((result) => {
         newTechData[result.name] = result.data;
-        newTechMetrics[result.name] = result.metrics;
+
+        // Объединяем метрики из API с ожидаемыми метриками
+        const apiMetrics = result.metrics || [];
+        const expectedMetrics = EXPECTED_METRICS[result.name] || [];
+
+        // Создаем Set для уникальных title
+        const existingTitles = new Set(apiMetrics.map((m: any) => m.title));
+
+        // Добавляем ожидаемые метрики если их нет в API
+        const mergedMetrics = [...apiMetrics];
+        expectedMetrics.forEach((expected) => {
+          if (!existingTitles.has(expected.title)) {
+            mergedMetrics.push(expected);
+          }
+        });
+
+        newTechMetrics[result.name] = mergedMetrics;
       });
 
       console.log(`✅ Loaded technical data: ${Object.values(newTechData).flat().length} total points`);
