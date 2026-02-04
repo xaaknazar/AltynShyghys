@@ -49,6 +49,7 @@ export default function ProductionAnalysisPage() {
   // Нормы для метрик (одно значение или диапазон [min, max])
   const metricNorms: {[key: string]: number | [number, number]} = {
     'Вакуум': -900,
+    'Разряжение Экстрактора': [-50, -30], // норма разряжения в mbar
     'Температура масла': [105, 110],
     'Мезга Жаровня 2': 105,
     'Жаровня 1': 105,
@@ -385,9 +386,10 @@ export default function ProductionAnalysisPage() {
     }
 
     if (group === 'combined_extractor') {
-      // Экстрактор (объединенный): Вакуум, Температура масла, Коэффициент, Подача, Процентаж, Гексан
+      // Экстрактор (объединенный): Вакуум, Разряжение, Температура масла, Коэффициент, Подача, Процентаж, Гексан
       return allMetrics.filter((m: any) =>
         m.title.includes('Вакуум') ||
+        m.title.includes('Разряжение') ||
         m.title.includes('Температура масла') ||
         m.title.includes('Коэффициент Экстрактора') ||
         m.title.includes('Подача в Экстрактор') ||
