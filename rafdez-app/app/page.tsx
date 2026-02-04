@@ -411,12 +411,7 @@ export default function RafdezPage() {
     const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
     const planned = tasks.filter((t) => t.status === 'planned').length;
 
-    // Общий прогресс проекта (средний прогресс всех задач)
-    const overallProgress = total > 0
-      ? Math.round(tasks.reduce((sum, t) => sum + t.progress, 0) / total)
-      : 0;
-
-    return { total, completed, delayed, inProgress, planned, overallProgress };
+    return { total, completed, delayed, inProgress, planned };
   }, [tasks]);
 
   // Позиция линии "Сегодня" на диаграмме
@@ -513,24 +508,6 @@ export default function RafdezPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        {/* Общий прогресс проекта */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-900">Общий прогресс проекта</h2>
-            <span className="text-3xl font-bold text-blue-600">{stats.overallProgress}%</span>
-          </div>
-          <div className="w-full h-4 bg-slate-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
-              style={{ width: `${stats.overallProgress}%` }}
-            />
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-slate-500">
-            <span>{stats.completed} из {stats.total} задач завершено</span>
-            <span>Сегодня: {new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-          </div>
-        </div>
-
         {/* Предупреждения о дедлайнах */}
         {upcomingDeadlines.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
