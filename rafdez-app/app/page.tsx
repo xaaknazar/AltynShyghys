@@ -612,7 +612,7 @@ export default function RafdezPage() {
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             {/* Заголовок с месяцами и маркером "Сегодня" */}
             <div className="flex border-b border-slate-200">
-              <div className="w-64 min-w-64 p-3 border-r border-slate-200 bg-slate-50 font-semibold text-sm text-slate-700">
+              <div className="w-80 min-w-80 p-3 border-r border-slate-200 bg-slate-50 font-semibold text-sm text-slate-700">
                 Задача
               </div>
               <div className="flex-1 flex bg-slate-50 relative">
@@ -654,22 +654,22 @@ export default function RafdezPage() {
                     <div key={task._id} className={`flex hover:bg-slate-50 transition-colors ${task.approved ? 'bg-green-50/30' : ''}`}>
                       {/* Название задачи */}
                       <div
-                        className={`w-64 min-w-64 p-3 border-r border-slate-200 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
+                        className={`w-80 min-w-80 p-3 border-r border-slate-200 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
                         onClick={() => canEditTask(task) && openEditModal(task)}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-2">
                           <div
-                            className="w-3 h-3 rounded-full"
+                            className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
                             style={{ backgroundColor: category.color }}
                           />
-                          <span className="text-sm font-medium text-slate-900 truncate">{task.name}</span>
+                          <span className="text-sm font-medium text-slate-900">{task.name}</span>
                           {task.approved && (
-                            <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 ml-5">
                           <span className="text-xs text-slate-500">{task.responsible}</span>
                           {isOverdue && (
                             <span className="text-xs text-red-600 font-medium">Просрочено</span>
@@ -694,7 +694,7 @@ export default function RafdezPage() {
 
                         {/* Полоса задачи */}
                         <div
-                          className={`absolute h-8 rounded-md flex items-center px-2 transition-transform hover:scale-y-110 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
+                          className={`absolute h-8 rounded-md flex items-center justify-center px-2 transition-transform hover:scale-y-110 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
                           style={{
                             left: `${leftPercent}%`,
                             width: `${Math.max(widthPercent, 2)}%`,
@@ -705,17 +705,9 @@ export default function RafdezPage() {
                           }}
                           onClick={() => canEditTask(task) && openEditModal(task)}
                         >
-                          {/* Прогресс */}
-                          <div
-                            className="absolute left-0 top-0 bottom-0 rounded-md opacity-30 bg-white"
-                            style={{ width: `${task.progress}%` }}
-                          />
-                          <span className="text-xs text-white font-medium truncate relative z-10">
-                            {task.progress}%
-                          </span>
                           {/* Значок согласования */}
                           {task.approved && (
-                            <svg className="w-3 h-3 text-white ml-1 flex-shrink-0 relative z-10" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-4 h-4 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           )}
@@ -740,7 +732,6 @@ export default function RafdezPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Ответственный</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Сроки</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Статус</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Прогресс</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Действия</th>
                 </tr>
               </thead>
@@ -782,17 +773,6 @@ export default function RafdezPage() {
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
                           {status.label}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full"
-                              style={{ width: `${task.progress}%`, backgroundColor: category.color }}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-600">{task.progress}%</span>
-                        </div>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
                         {/* Кнопка согласования для Project Manager */}
@@ -966,19 +946,6 @@ export default function RafdezPage() {
                   onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ФИО ответственного"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Прогресс: {formData.progress}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={formData.progress}
-                  onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) })}
-                  className="w-full"
                 />
               </div>
               <div>
