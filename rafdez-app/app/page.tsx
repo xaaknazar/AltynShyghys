@@ -24,11 +24,13 @@ const USERS: Record<string, { password: string; name: string; role: UserRole }> 
 // Типы задач
 type TaskCategory = 'construction' | 'equipment' | 'procurement' | 'installation' | 'commissioning' | 'other';
 type TaskStatus = 'planned' | 'in_progress' | 'completed' | 'delayed';
+type TaskSection = 'rafdez' | 'warehouse' | 'bottling' | 'oil_shop' | 'admin' | 'infrastructure' | 'other';
 
 interface ProjectTask {
   _id?: string;
   name: string;
   category: TaskCategory;
+  section: TaskSection;
   startDate: string;
   endDate: string;
   responsible: string;
@@ -41,6 +43,17 @@ interface ProjectTask {
   createdAt?: string;
   updatedAt?: string;
 }
+
+// Разделы/Объекты строительства
+const SECTIONS: Record<TaskSection, { label: string; color: string }> = {
+  rafdez: { label: 'Рафдез (Рафинирование и дезодорирование)', color: '#f97316' },
+  warehouse: { label: 'Склад', color: '#06b6d4' },
+  bottling: { label: 'Цех розлива', color: '#8b5cf6' },
+  oil_shop: { label: 'Маслоцех', color: '#eab308' },
+  admin: { label: 'Административное здание', color: '#64748b' },
+  infrastructure: { label: 'Инфраструктура', color: '#22c55e' },
+  other: { label: 'Прочее', color: '#6b7280' },
+};
 
 const CATEGORIES: Record<TaskCategory, { label: string; color: string; bgColor: string }> = {
   construction: { label: 'Строительство', color: '#3b82f6', bgColor: 'bg-blue-500' },
@@ -71,12 +84,14 @@ export default function RafdezPage() {
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
   const [filterCategory, setFilterCategory] = useState<TaskCategory | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
+  const [filterSection, setFilterSection] = useState<TaskSection | 'all'>('all');
   const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
 
   // Форма задачи
   const [formData, setFormData] = useState<Omit<ProjectTask, '_id' | 'createdAt' | 'updatedAt' | 'approved' | 'approvedBy' | 'approvedAt'>>({
     name: '',
     category: 'construction',
+    section: 'rafdez',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     responsible: '',
@@ -297,6 +312,7 @@ export default function RafdezPage() {
     setFormData({
       name: '',
       category: 'construction',
+      section: 'rafdez',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       responsible: '',
@@ -312,6 +328,7 @@ export default function RafdezPage() {
     setFormData({
       name: task.name,
       category: task.category,
+      section: task.section || 'rafdez',
       startDate: task.startDate,
       endDate: task.endDate,
       responsible: task.responsible,
@@ -327,9 +344,34 @@ export default function RafdezPage() {
     return tasks.filter((task) => {
       if (filterCategory !== 'all' && task.category !== filterCategory) return false;
       if (filterStatus !== 'all' && task.status !== filterStatus) return false;
+      if (filterSection !== 'all' && task.section !== filterSection) return false;
       return true;
     });
-  }, [tasks, filterCategory, filterStatus]);
+  }, [tasks, filterCategory, filterStatus, filterSection]);
+
+  // Группировка задач по разделам
+  const tasksBySection = useMemo(() => {
+    const grouped: Record<TaskSection, ProjectTask[]> = {
+      rafdez: [],
+      warehouse: [],
+      bottling: [],
+      oil_shop: [],
+      admin: [],
+      infrastructure: [],
+      other: [],
+    };
+
+    filteredTasks.forEach(task => {
+      const section = task.section || 'other';
+      if (grouped[section]) {
+        grouped[section].push(task);
+      } else {
+        grouped.other.push(task);
+      }
+    });
+
+    return grouped;
+  }, [filteredTasks]);
 
   // Расчет диапазона дат для Ганта
   const dateRange = useMemo(() => {
@@ -561,6 +603,19 @@ export default function RafdezPage() {
         <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-600">Объект:</span>
+              <select
+                value={filterSection}
+                onChange={(e) => setFilterSection(e.target.value as TaskSection | 'all')}
+                className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Все объекты</option>
+                {Object.entries(SECTIONS).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-600">Категория:</span>
               <select
                 value={filterCategory}
@@ -607,225 +662,267 @@ export default function RafdezPage() {
           </div>
         </div>
 
-        {/* Диаграмма Ганта */}
+        {/* Диаграмма Ганта по разделам */}
         {viewMode === 'gantt' && (
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            {/* Заголовок с месяцами и маркером "Сегодня" */}
-            <div className="flex border-b border-slate-200">
-              <div className="w-80 min-w-80 p-3 border-r border-slate-200 bg-slate-50 font-semibold text-sm text-slate-700">
-                Задача
-              </div>
-              <div className="flex-1 flex bg-slate-50 relative">
-                {/* Маркер "Сегодня" в заголовке */}
-                {todayPosition.isVisible && (
-                  <div
-                    className="absolute top-0 bottom-0 flex flex-col items-center z-20"
-                    style={{ left: `${todayPosition.percent}%`, transform: 'translateX(-50%)' }}
-                  >
-                    <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-b whitespace-nowrap">
-                      Сегодня
-                    </div>
-                  </div>
-                )}
-                {months.map((month, idx) => (
-                  <div
-                    key={idx}
-                    className="border-r border-slate-200 px-2 py-3 text-xs font-semibold text-slate-600 text-center"
-                    style={{ width: `${(month.days / totalDays) * 100}%` }}
-                  >
-                    {month.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Задачи */}
+          <div className="space-y-6">
             {filteredTasks.length === 0 ? (
-              <div className="p-12 text-center text-slate-500">
+              <div className="bg-white rounded-lg border border-slate-200 p-12 text-center text-slate-500">
                 Нет задач для отображения. Добавьте первую задачу!
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
-                {filteredTasks.map((task) => {
-                  const { leftPercent, widthPercent, isOverdue } = getTaskPosition(task);
-                  const category = CATEGORIES[task.category];
+              Object.entries(tasksBySection).map(([sectionKey, sectionTasks]) => {
+                if (sectionTasks.length === 0) return null;
+                const section = SECTIONS[sectionKey as TaskSection];
 
-                  return (
-                    <div key={task._id} className={`flex hover:bg-slate-50 transition-colors ${task.approved ? 'bg-green-50/30' : ''}`}>
-                      {/* Название задачи */}
-                      <div
-                        className={`w-80 min-w-80 p-3 border-r border-slate-200 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
-                        onClick={() => canEditTask(task) && openEditModal(task)}
-                      >
-                        <div className="flex items-start gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="text-sm font-medium text-slate-900">{task.name}</span>
-                          {task.approved && (
-                            <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 ml-5">
-                          <span className="text-xs text-slate-500">{task.responsible}</span>
-                          {isOverdue && (
-                            <span className="text-xs text-red-600 font-medium">Просрочено</span>
-                          )}
-                          {task.approved && !canEditTask(task) && (
-                            <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Полоса Ганта */}
-                      <div className="flex-1 relative py-3 px-1">
-                        {/* Сегодняшняя линия (красная вертикальная) */}
-                        {todayPosition.isVisible && (
-                          <div
-                            className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-10"
-                            style={{ left: `${todayPosition.percent}%` }}
-                          />
-                        )}
-
-                        {/* Полоса задачи */}
-                        <div
-                          className={`absolute h-8 rounded-md flex items-center justify-center px-2 transition-transform hover:scale-y-110 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
-                          style={{
-                            left: `${leftPercent}%`,
-                            width: `${Math.max(widthPercent, 2)}%`,
-                            backgroundColor: isOverdue ? '#ef4444' : category.color,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            border: task.approved ? '2px solid #16a34a' : 'none',
-                          }}
-                          onClick={() => canEditTask(task) && openEditModal(task)}
-                        >
-                          {/* Значок согласования */}
-                          {task.approved && (
-                            <svg className="w-4 h-4 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
+                return (
+                  <div key={sectionKey} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                    {/* Заголовок раздела */}
+                    <div className="px-4 py-3 bg-slate-100 border-b border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: section.color }} />
+                        <h3 className="font-bold text-slate-900">{section.label}</h3>
+                        <span className="text-sm text-slate-500">({sectionTasks.length} задач)</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Заголовок с месяцами */}
+                    <div className="flex border-b border-slate-200">
+                      <div className="w-80 min-w-80 p-3 border-r border-slate-200 bg-slate-50 font-semibold text-sm text-slate-700">
+                        Задача
+                      </div>
+                      <div className="flex-1 flex bg-slate-50 relative">
+                        {/* Маркер "Сегодня" в заголовке */}
+                        {todayPosition.isVisible && (
+                          <div
+                            className="absolute top-0 bottom-0 flex flex-col items-center z-20"
+                            style={{ left: `${todayPosition.percent}%`, transform: 'translateX(-50%)' }}
+                          >
+                            <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-b whitespace-nowrap">
+                              Сегодня
+                            </div>
+                          </div>
+                        )}
+                        {months.map((month, idx) => (
+                          <div
+                            key={idx}
+                            className="border-r border-slate-200 px-2 py-3 text-xs font-semibold text-slate-600 text-center"
+                            style={{ width: `${(month.days / totalDays) * 100}%` }}
+                          >
+                            {month.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Задачи раздела */}
+                    <div className="divide-y divide-slate-100">
+                      {sectionTasks.map((task) => {
+                        const { leftPercent, widthPercent, isOverdue } = getTaskPosition(task);
+                        const category = CATEGORIES[task.category];
+
+                        return (
+                          <div key={task._id} className={`flex hover:bg-slate-50 transition-colors ${task.approved ? 'bg-green-50/30' : ''}`}>
+                            {/* Название задачи */}
+                            <div
+                              className={`w-80 min-w-80 p-3 border-r border-slate-200 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
+                              onClick={() => canEditTask(task) && openEditModal(task)}
+                            >
+                              <div className="flex items-start gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+                                  style={{ backgroundColor: category.color }}
+                                />
+                                <span className="text-sm font-medium text-slate-900">{task.name}</span>
+                                {task.approved && (
+                                  <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 ml-5">
+                                <span className="text-xs text-slate-500">{task.responsible}</span>
+                                {isOverdue && (
+                                  <span className="text-xs text-red-600 font-medium">Просрочено</span>
+                                )}
+                                {task.approved && !canEditTask(task) && (
+                                  <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Полоса Ганта */}
+                            <div className="flex-1 relative py-3 px-1">
+                              {/* Сегодняшняя линия (красная вертикальная) */}
+                              {todayPosition.isVisible && (
+                                <div
+                                  className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-10"
+                                  style={{ left: `${todayPosition.percent}%` }}
+                                />
+                              )}
+
+                              {/* Полоса задачи */}
+                              <div
+                                className={`absolute h-8 rounded-md flex items-center justify-center px-2 transition-transform hover:scale-y-110 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
+                                style={{
+                                  left: `${leftPercent}%`,
+                                  width: `${Math.max(widthPercent, 2)}%`,
+                                  backgroundColor: isOverdue ? '#ef4444' : category.color,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  border: task.approved ? '2px solid #16a34a' : 'none',
+                                }}
+                                onClick={() => canEditTask(task) && openEditModal(task)}
+                              >
+                                {/* Значок согласования */}
+                                {task.approved && (
+                                  <svg className="w-4 h-4 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         )}
 
-        {/* Режим списка */}
+        {/* Режим списка по разделам */}
         {viewMode === 'list' && (
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Задача</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Категория</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Ответственный</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Сроки</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Статус</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredTasks.map((task) => {
-                  const category = CATEGORIES[task.category];
-                  const status = STATUSES[task.status];
+          <div className="space-y-6">
+            {filteredTasks.length === 0 ? (
+              <div className="bg-white rounded-lg border border-slate-200 p-12 text-center text-slate-500">
+                Нет задач для отображения. Добавьте первую задачу!
+              </div>
+            ) : (
+              Object.entries(tasksBySection).map(([sectionKey, sectionTasks]) => {
+                if (sectionTasks.length === 0) return null;
+                const section = SECTIONS[sectionKey as TaskSection];
 
-                  return (
-                    <tr key={task._id} className={`hover:bg-slate-50 ${task.approved ? 'bg-green-50/50' : ''}`}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="text-sm font-medium text-slate-900">{task.name}</span>
-                          {task.approved && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Согласовано
-                            </span>
-                          )}
-                        </div>
-                        {task.approved && task.approvedBy && (
-                          <div className="text-xs text-green-600 mt-0.5 ml-5">
-                            Согласовал: {task.approvedBy}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{category.label}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{task.responsible}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {new Date(task.startDate).toLocaleDateString('ru-RU')} — {new Date(task.endDate).toLocaleDateString('ru-RU')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                          {status.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right space-x-2">
-                        {/* Кнопка согласования для Project Manager */}
-                        {canApproveTask() && !task.approved && (
-                          <button
-                            onClick={() => handleApproveTask(task)}
-                            className="text-green-600 hover:text-green-800 text-sm font-medium"
-                          >
-                            Согласовать
-                          </button>
-                        )}
-                        {/* Кнопка отмены согласования для Директора */}
-                        {currentUser?.role === 'director' && task.approved && (
-                          <button
-                            onClick={() => handleRevokeApproval(task)}
-                            className="text-amber-600 hover:text-amber-800 text-sm font-medium"
-                          >
-                            Отменить согласование
-                          </button>
-                        )}
-                        {/* Кнопка редактирования */}
-                        {canEditTask(task) && (
-                          <button
-                            onClick={() => openEditModal(task)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          >
-                            Изменить
-                          </button>
-                        )}
-                        {/* Кнопка удаления */}
-                        {canEditTask(task) && (
-                          <button
-                            onClick={() => task._id && handleDeleteTask(task._id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Удалить
-                          </button>
-                        )}
-                        {/* Показываем замок если нельзя редактировать */}
-                        {!canEditTask(task) && currentUser && (
-                          <span className="text-slate-400 text-sm flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                            Заблокировано
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                return (
+                  <div key={sectionKey} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                    {/* Заголовок раздела */}
+                    <div className="px-4 py-3 bg-slate-100 border-b border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: section.color }} />
+                        <h3 className="font-bold text-slate-900">{section.label}</h3>
+                        <span className="text-sm text-slate-500">({sectionTasks.length} задач)</span>
+                      </div>
+                    </div>
+
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Задача</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Категория</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Ответственный</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Сроки</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Статус</th>
+                          <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Действия</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {sectionTasks.map((task) => {
+                          const category = CATEGORIES[task.category];
+                          const status = STATUSES[task.status];
+
+                          return (
+                            <tr key={task._id} className={`hover:bg-slate-50 ${task.approved ? 'bg-green-50/50' : ''}`}>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: category.color }}
+                                  />
+                                  <span className="text-sm font-medium text-slate-900">{task.name}</span>
+                                  {task.approved && (
+                                    <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      Согласовано
+                                    </span>
+                                  )}
+                                </div>
+                                {task.approved && task.approvedBy && (
+                                  <div className="text-xs text-green-600 mt-0.5 ml-5">
+                                    Согласовал: {task.approvedBy}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-600">{category.label}</td>
+                              <td className="px-4 py-3 text-sm text-slate-600">{task.responsible}</td>
+                              <td className="px-4 py-3 text-sm text-slate-600">
+                                {new Date(task.startDate).toLocaleDateString('ru-RU')} — {new Date(task.endDate).toLocaleDateString('ru-RU')}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
+                                  {status.label}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right space-x-2">
+                                {/* Кнопка согласования для Project Manager */}
+                                {canApproveTask() && !task.approved && (
+                                  <button
+                                    onClick={() => handleApproveTask(task)}
+                                    className="text-green-600 hover:text-green-800 text-sm font-medium"
+                                  >
+                                    Согласовать
+                                  </button>
+                                )}
+                                {/* Кнопка отмены согласования для Директора */}
+                                {currentUser?.role === 'director' && task.approved && (
+                                  <button
+                                    onClick={() => handleRevokeApproval(task)}
+                                    className="text-amber-600 hover:text-amber-800 text-sm font-medium"
+                                  >
+                                    Отменить согласование
+                                  </button>
+                                )}
+                                {/* Кнопка редактирования */}
+                                {canEditTask(task) && (
+                                  <button
+                                    onClick={() => openEditModal(task)}
+                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                  >
+                                    Изменить
+                                  </button>
+                                )}
+                                {/* Кнопка удаления */}
+                                {canEditTask(task) && (
+                                  <button
+                                    onClick={() => task._id && handleDeleteTask(task._id)}
+                                    className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                  >
+                                    Удалить
+                                  </button>
+                                )}
+                                {/* Показываем замок если нельзя редактировать */}
+                                {!canEditTask(task) && currentUser && (
+                                  <span className="text-slate-400 text-sm flex items-center gap-1">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Заблокировано
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
 
@@ -881,6 +978,20 @@ export default function RafdezPage() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Например: Заливка фундамента"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Объект *
+                </label>
+                <select
+                  value={formData.section}
+                  onChange={(e) => setFormData({ ...formData, section: e.target.value as TaskSection })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.entries(SECTIONS).map(([key, { label }]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
