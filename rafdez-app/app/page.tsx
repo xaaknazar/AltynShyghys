@@ -464,18 +464,6 @@ export default function RafdezPage() {
     return { percent, isVisible: percent >= 0 && percent <= 100 };
   }, [dateRange, totalDays]);
 
-  // Задачи с приближающимися дедлайнами (в течение 7 дней)
-  const upcomingDeadlines = useMemo(() => {
-    const today = new Date();
-    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-    return tasks.filter((task) => {
-      if (task.status === 'completed') return false;
-      const endDate = new Date(task.endDate);
-      return endDate >= today && endDate <= weekFromNow;
-    }).sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
-  }, [tasks]);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -550,31 +538,6 @@ export default function RafdezPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        {/* Предупреждения о дедлайнах */}
-        {upcomingDeadlines.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span className="font-semibold text-amber-800">Приближающиеся дедлайны ({upcomingDeadlines.length})</span>
-            </div>
-            <div className="space-y-2">
-              {upcomingDeadlines.slice(0, 3).map((task) => {
-                const daysLeft = Math.ceil((new Date(task.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                return (
-                  <div key={task._id} className="flex items-center justify-between text-sm">
-                    <span className="text-amber-900">{task.name}</span>
-                    <span className={`font-medium ${daysLeft <= 2 ? 'text-red-600' : 'text-amber-700'}`}>
-                      {daysLeft === 0 ? 'Сегодня!' : daysLeft === 1 ? 'Завтра' : `${daysLeft} дней`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Статистика */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
