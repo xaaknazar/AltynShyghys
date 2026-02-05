@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const collection = searchParams.get('collection') || 'Data_extractor_cooking';
+    const collection = searchParams.get('collection') || 'Data_Extractor_Cooking';
     const limit = parseInt(searchParams.get('limit') || '10');
 
     const { client } = await connectToDatabase();

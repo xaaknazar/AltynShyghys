@@ -39,11 +39,11 @@ export default function ProductionAnalysisPage() {
   const SHIFT_TARGET = 600; // Целевое производство за смену (тонн)
 
   const techCollections = [
-    { name: 'combined_extractor', title: 'Экстрактор', group: 'combined_extractor', collections: ['Extractor_TechData_Job', 'Data_extractor_cooking'] },
+    { name: 'combined_extractor', title: 'Экстрактор', group: 'combined_extractor', collections: ['Extractor_TechData_Job', 'Data_Extractor_Cooking'] },
     { name: 'Press_1_Job', title: 'Пресс 1', group: null, collections: ['Press_1_Job'] },
     { name: 'Press_2_Job', title: 'Пресс 2', group: null, collections: ['Press_2_Job'] },
-    { name: 'Data_extractor_cooking', title: 'Жаровня', group: 'jarovnia', collections: ['Data_extractor_cooking'] },
-    { name: 'Data_extractor_cooking', title: 'Тостер', group: 'toster', collections: ['Data_extractor_cooking'] },
+    { name: 'Data_Extractor_Cooking', title: 'Жаровня', group: 'jarovnia', collections: ['Data_Extractor_Cooking'] },
+    { name: 'Data_Extractor_Cooking', title: 'Тостер', group: 'toster', collections: ['Data_Extractor_Cooking'] },
   ];
 
   // Статический список ожидаемых метрик для каждой коллекции
@@ -53,7 +53,7 @@ export default function ProductionAnalysisPage() {
       { title: 'Вакуум', unit: 'bar' },
       { title: 'Температура масла', unit: '°C' },
     ],
-    'Data_extractor_cooking': [
+    'Data_Extractor_Cooking': [
       { title: 'Коэффициент Экстрактора', unit: '%' },
       { title: 'Подача в Экстрактор', unit: '%' },
       { title: 'Процентаж Экстрактора', unit: '%' },

@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       'Press_2_Job',
       'Press_Extractor_Job',
       'Press_Jarovnia_Mezga',
-      'Data_extractor_cooking'
+      'Data_Extractor_Cooking'  // CamelCase - правильное название коллекции
     ];
 
     if (!validCollections.includes(collection)) {

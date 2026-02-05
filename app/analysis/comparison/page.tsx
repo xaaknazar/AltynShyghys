@@ -151,10 +151,10 @@ const TECH_CATEGORIES: TechCategoryConfig[] = [
     metrics: [
       { label: 'Вакуум', dataKey: 'vacuum', unit: 'bar', collection: 'Extractor_TechData_Job', titleInDb: 'Вакуум' },
       { label: 'Температура масла', dataKey: 'oilTemp', unit: '°C', collection: 'Extractor_TechData_Job', titleInDb: 'Температура масла' },
-      { label: 'Коэффициент Экстрактора', dataKey: 'extractorCoef', unit: '%', collection: 'Data_extractor_cooking', titleInDb: 'Коэффициент Экстрактора' },
-      { label: 'Подача в Экстрактор', dataKey: 'extractorFeed', unit: '%', collection: 'Data_extractor_cooking', titleInDb: 'Подача в Экстрактор' },
-      { label: 'Процентаж Экстрактора', dataKey: 'extractorPercent', unit: '%', collection: 'Data_extractor_cooking', titleInDb: 'Процентаж Экстрактора' },
-      { label: 'Подача Чистого Гексана л/мин', dataKey: 'hexaneFeed', unit: 'Л/м', collection: 'Data_extractor_cooking', titleInDb: 'Подача Чистого Гексана' },
+      { label: 'Коэффициент Экстрактора', dataKey: 'extractorCoef', unit: '%', collection: 'Data_Extractor_Cooking', titleInDb: 'Коэффициент Экстрактора' },
+      { label: 'Подача в Экстрактор', dataKey: 'extractorFeed', unit: '%', collection: 'Data_Extractor_Cooking', titleInDb: 'Подача в Экстрактор' },
+      { label: 'Процентаж Экстрактора', dataKey: 'extractorPercent', unit: '%', collection: 'Data_Extractor_Cooking', titleInDb: 'Процентаж Экстрактора' },
+      { label: 'Подача Чистого Гексана л/мин', dataKey: 'hexaneFeed', unit: 'Л/м', collection: 'Data_Extractor_Cooking', titleInDb: 'Подача Чистого Гексана' },
     ],
   },
   {
@@ -181,17 +181,17 @@ const TECH_CATEGORIES: TechCategoryConfig[] = [
     id: 'jarovnia',
     label: 'Жаровня',
     metrics: [
-      { label: 'Верх.Темп. Мезги Жаровни 1', dataKey: 'topTemp1', unit: '°C', collection: 'Data_extractor_cooking', titleInDb: 'Верх.Темп. Мезги Жаровни 1' },
-      { label: 'Нижн.Темп. Мезги Жаровни 1', dataKey: 'bottomTemp1', unit: '°C', collection: 'Data_extractor_cooking', titleInDb: 'Нижн.Темп. Мезги Жаровня 1' },
-      { label: 'Верх.Темп. Мезги Жаровни 2', dataKey: 'topTemp2', unit: '°C', collection: 'Data_extractor_cooking', titleInDb: 'Верх.Темп. Мезги Жаровни 2' },
-      { label: 'Нижн.Темп. Мезги Жаровни 2', dataKey: 'bottomTemp2', unit: '°C', collection: 'Data_extractor_cooking', titleInDb: 'Нижн.Темп. Мезги Жаровня 2' },
+      { label: 'Верх.Темп. Мезги Жаровни 1', dataKey: 'topTemp1', unit: '°C', collection: 'Data_Extractor_Cooking', titleInDb: 'Верх.Темп. Мезги Жаровни 1' },
+      { label: 'Нижн.Темп. Мезги Жаровни 1', dataKey: 'bottomTemp1', unit: '°C', collection: 'Data_Extractor_Cooking', titleInDb: 'Нижн.Темп. Мезги Жаровня 1' },
+      { label: 'Верх.Темп. Мезги Жаровни 2', dataKey: 'topTemp2', unit: '°C', collection: 'Data_Extractor_Cooking', titleInDb: 'Верх.Темп. Мезги Жаровни 2' },
+      { label: 'Нижн.Темп. Мезги Жаровни 2', dataKey: 'bottomTemp2', unit: '°C', collection: 'Data_Extractor_Cooking', titleInDb: 'Нижн.Темп. Мезги Жаровня 2' },
     ],
   },
   {
     id: 'toster',
     label: 'Тостер',
     metrics: [
-      { label: 'Температура Тостера', dataKey: 'tosterTemp', unit: '°C', collection: 'Data_extractor_cooking', titleInDb: ' Температура Тостера' },
+      { label: 'Температура Тостера', dataKey: 'tosterTemp', unit: '°C', collection: 'Data_Extractor_Cooking', titleInDb: ' Температура Тостера' },
     ],
   },
 ];
@@ -277,7 +277,7 @@ export default function ComparisonPage() {
       }
 
       // Уникальные коллекции
-      const collections = ['Extractor_TechData_Job', 'Data_extractor_cooking', 'Press_1_Job', 'Press_2_Job'];
+      const collections = ['Extractor_TechData_Job', 'Data_Extractor_Cooking', 'Press_1_Job', 'Press_2_Job'];
 
       const allData: Record<string, any[]> = {};
 
