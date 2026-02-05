@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
         datetime: { $gte: sevenDaysAgo }
       });
 
-      // Получаем документы после 30 января 2025
-      const jan30 = new Date('2025-01-30T00:00:00Z');
+      // Получаем документы после 30 января 2026
+      const jan30 = new Date('2026-01-30T00:00:00Z');
       const afterJan30Count = await coll.countDocuments({
         datetime: { $gte: jan30 }
       });
@@ -65,10 +65,24 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // Проверяем все коллекции в базе scheduler-sync-pro
+    const allCollections = await db.listCollections().toArray();
+    const collectionNames = allCollections.map(c => c.name);
+
+    // Ищем похожие коллекции на Data_extractor
+    const extractorCollections = collectionNames.filter(name =>
+      name.toLowerCase().includes('extractor') ||
+      name.toLowerCase().includes('cooking') ||
+      name.toLowerCase().includes('jarovn') ||
+      name.toLowerCase().includes('toster')
+    );
+
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
-      results
+      results,
+      allCollectionsInDB: collectionNames,
+      extractorRelatedCollections: extractorCollections
     });
   } catch (error) {
     console.error('Error checking tech data status:', error);
