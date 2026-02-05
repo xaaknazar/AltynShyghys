@@ -727,7 +727,7 @@ export default function RafdezPage() {
 
                               {/* Полоса задачи */}
                               <div
-                                className={`absolute h-8 rounded-md flex items-center justify-center px-2 transition-transform hover:scale-y-110 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
+                                className={`absolute h-8 rounded-md flex items-center justify-between px-2 transition-transform hover:scale-y-110 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
                                 style={{
                                   left: `${leftPercent}%`,
                                   width: `${Math.max(widthPercent, 2)}%`,
@@ -738,12 +738,22 @@ export default function RafdezPage() {
                                 }}
                                 onClick={() => canEditTask(task) && openEditModal(task)}
                               >
+                                {/* Дата начала */}
+                                <span className="text-[10px] text-white font-medium whitespace-nowrap overflow-hidden">
+                                  {new Date(task.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                                </span>
+
                                 {/* Значок согласования */}
                                 {task.approved && (
                                   <svg className="w-4 h-4 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                   </svg>
                                 )}
+
+                                {/* Дата окончания */}
+                                <span className="text-[10px] text-white font-medium whitespace-nowrap overflow-hidden">
+                                  {new Date(task.endDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                                </span>
                               </div>
                             </div>
                           </div>
