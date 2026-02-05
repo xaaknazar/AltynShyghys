@@ -449,10 +449,12 @@ export default function ProductionAnalysisPage() {
         m.title.includes('Подача Чистого Гексана')
       );
     } else if (group === 'jarovnia') {
-      // Жаровня: все температуры жаровни
+      // Жаровня: все температуры жаровни (учитываем разные написания: Жаровни и Жаровня)
       return allMetrics.filter((m: any) =>
         m.title.includes('Жаровни 1') ||
-        m.title.includes('Жаровни 2')
+        m.title.includes('Жаровни 2') ||
+        m.title.includes('Жаровня 1') ||
+        m.title.includes('Жаровня 2')
       );
     } else if (group === 'toster') {
       // Тостер: температура тостера и параметры тостированного шрота
