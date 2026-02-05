@@ -7,14 +7,24 @@ export const revalidate = 0;
 export async function GET(request: NextRequest) {
   try {
     const { client } = await connectToDatabase();
-    const db = client.db('scheduler-sync-pro');
 
-    // Проверяем обе коллекции
-    const collections = ['Extractor_TechData_Job', 'Data_extractor_cooking'];
+    // Проверяем ОБЕ базы данных (разный регистр)
+    const databases = ['scheduler-sync-pro', 'SchedulerSyncPro'];
+
+    // Проверяем ОБЕ коллекции (разный регистр)
+    const collections = [
+      'Extractor_TechData_Job',
+      'Data_extractor_cooking',  // lowercase
+      'Data_Extractor_Cooking'   // CamelCase - ВОЗМОЖНО СЮДА ПИШУТСЯ ДАННЫЕ!
+    ];
     const results: any = {};
 
-    for (const collName of collections) {
-      const coll = db.collection(collName);
+    for (const dbName of databases) {
+      const db = client.db(dbName);
+      results[dbName] = {};
+
+      for (const collName of collections) {
+        const coll = db.collection(collName);
 
       // Получаем общее количество документов
       const totalCount = await coll.countDocuments();
@@ -47,42 +57,33 @@ export async function GET(request: NextRequest) {
         .limit(3)
         .toArray();
 
-      results[collName] = {
-        totalCount,
-        latestDocument: latestDoc[0] ? {
-          datetime: latestDoc[0].datetime,
-          valuesCount: latestDoc[0].values?.length || 0,
-          sampleValues: latestDoc[0].values?.slice(0, 3) || [],
-          fields: Object.keys(latestDoc[0])
-        } : null,
-        recentCount7Days: recentCount,
-        afterJan30Count,
-        afterJan30Samples: afterJan30Samples.map(doc => ({
-          datetime: doc.datetime,
-          valuesCount: doc.values?.length || 0,
-          sampleValues: doc.values?.slice(0, 2) || []
-        }))
-      };
+        results[dbName][collName] = {
+          totalCount,
+          latestDocument: latestDoc[0] ? {
+            datetime: latestDoc[0].datetime,
+            valuesCount: latestDoc[0].values?.length || 0,
+            sampleValues: latestDoc[0].values?.slice(0, 3) || [],
+            fields: Object.keys(latestDoc[0])
+          } : null,
+          recentCount7Days: recentCount,
+          afterJan30Count,
+          afterJan30Samples: afterJan30Samples.map(doc => ({
+            datetime: doc.datetime,
+            valuesCount: doc.values?.length || 0,
+            sampleValues: doc.values?.slice(0, 2) || []
+          }))
+        };
+      }
+
+      // Список коллекций в этой базе
+      const allCollections = await db.listCollections().toArray();
+      results[dbName]._allCollections = allCollections.map(c => c.name);
     }
-
-    // Проверяем все коллекции в базе scheduler-sync-pro
-    const allCollections = await db.listCollections().toArray();
-    const collectionNames = allCollections.map(c => c.name);
-
-    // Ищем похожие коллекции на Data_extractor
-    const extractorCollections = collectionNames.filter(name =>
-      name.toLowerCase().includes('extractor') ||
-      name.toLowerCase().includes('cooking') ||
-      name.toLowerCase().includes('jarovn') ||
-      name.toLowerCase().includes('toster')
-    );
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
-      results,
-      allCollectionsInDB: collectionNames,
-      extractorRelatedCollections: extractorCollections
+      results
     });
   } catch (error) {
     console.error('Error checking tech data status:', error);
