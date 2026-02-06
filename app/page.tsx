@@ -539,7 +539,7 @@ export default function HomePage() {
                   alt="Altyn Shyghys"
                   className="h-8 w-auto object-contain"
                 />
-                <span className="text-sm font-semibold text-slate-700">ТОО «Алтын Шығыс»</span>
+                <span className="text-sm font-semibold text-slate-700">ТОО «Altyn Shyghys»</span>
               </div>
               <span className="text-xs text-slate-500">
                 © {new Date().getFullYear()} Altyn Shyghys. Все права защищены.
