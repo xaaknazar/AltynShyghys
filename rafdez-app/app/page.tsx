@@ -9,7 +9,7 @@ const LOG_API_URL = 'https://altyn-shyghys.vercel.app/api/rafdez/logs';
 // Типы задач
 type TaskCategory = 'construction' | 'equipment' | 'procurement' | 'installation' | 'commissioning' | 'other';
 type TaskStatus = 'planned' | 'in_progress' | 'completed' | 'delayed';
-type TaskSection = 'rafdez' | 'warehouse' | 'bottling' | 'infrastructure' | 'wastewater' | 'other';
+type TaskSection = 'rafdez' | 'warehouse' | 'bottling' | 'wastewater' | 'other';
 
 interface ProjectTask {
   _id?: string;
@@ -32,7 +32,6 @@ const SECTIONS: Record<TaskSection, { label: string; color: string }> = {
   warehouse: { label: 'Здания розлива и фасовки', color: '#06b6d4' },
   bottling: { label: 'Цех розлива', color: '#8b5cf6' },
   wastewater: { label: 'Очистные сооружения и соапсток', color: '#0ea5e9' },
-  infrastructure: { label: 'Инфраструктура', color: '#22c55e' },
   other: { label: 'Прочее', color: '#6b7280' },
 };
 
@@ -227,7 +226,6 @@ export default function RafdezPage() {
       warehouse: [],
       bottling: [],
       wastewater: [],
-      infrastructure: [],
       other: [],
     };
 
