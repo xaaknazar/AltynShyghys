@@ -6,25 +6,10 @@ import { useState, useEffect, useMemo } from 'react';
 const API_BASE_URL = 'https://altyn-shyghys.vercel.app/api/rafdez/tasks';
 const LOG_API_URL = 'https://altyn-shyghys.vercel.app/api/rafdez/logs';
 
-// Типы пользователей
-type UserRole = 'project_manager' | 'director' | null;
-
-interface User {
-  username: string;
-  name: string;
-  role: UserRole;
-}
-
-// Пользователи системы
-const USERS: Record<string, { password: string; name: string; role: UserRole }> = {
-  'halil': { password: 'rafdez2026', name: 'Halil Polat', role: 'project_manager' },
-  'azamat': { password: 'director2026', name: 'Azamat Tastambekov', role: 'director' },
-};
-
 // Типы задач
 type TaskCategory = 'construction' | 'equipment' | 'procurement' | 'installation' | 'commissioning' | 'other';
 type TaskStatus = 'planned' | 'in_progress' | 'completed' | 'delayed';
-type TaskSection = 'rafdez' | 'warehouse' | 'bottling' | 'oil_shop' | 'admin' | 'infrastructure' | 'other';
+type TaskSection = 'rafdez' | 'warehouse' | 'bottling' | 'infrastructure' | 'other';
 
 interface ProjectTask {
   _id?: string;
@@ -37,9 +22,6 @@ interface ProjectTask {
   status: TaskStatus;
   progress: number;
   description?: string;
-  approved?: boolean;
-  approvedBy?: string;
-  approvedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -49,8 +31,6 @@ const SECTIONS: Record<TaskSection, { label: string; color: string }> = {
   rafdez: { label: 'Рафдез (Рафинирование и дезодорирование)', color: '#f97316' },
   warehouse: { label: 'Склад', color: '#06b6d4' },
   bottling: { label: 'Цех розлива', color: '#8b5cf6' },
-  oil_shop: { label: 'Маслоцех', color: '#eab308' },
-  admin: { label: 'Административное здание', color: '#64748b' },
   infrastructure: { label: 'Инфраструктура', color: '#22c55e' },
   other: { label: 'Прочее', color: '#6b7280' },
 };
@@ -72,12 +52,6 @@ const STATUSES: Record<TaskStatus, { label: string; color: string }> = {
 };
 
 export default function RafdezPage() {
-  // Авторизация
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
-  const [loginError, setLoginError] = useState('');
-
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -88,7 +62,7 @@ export default function RafdezPage() {
   const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
 
   // Форма задачи
-  const [formData, setFormData] = useState<Omit<ProjectTask, '_id' | 'createdAt' | 'updatedAt' | 'approved' | 'approvedBy' | 'approvedAt'>>({
+  const [formData, setFormData] = useState<Omit<ProjectTask, '_id' | 'createdAt' | 'updatedAt'>>({
     name: '',
     category: 'construction',
     section: 'rafdez',
@@ -100,46 +74,9 @@ export default function RafdezPage() {
     description: '',
   });
 
-  // Проверка сохраненной сессии
-  useEffect(() => {
-    const savedUser = localStorage.getItem('rafdez_user');
-    if (savedUser) {
-      try {
-        setCurrentUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('rafdez_user');
-      }
-    }
-  }, []);
-
-  // Логин
-  const handleLogin = () => {
-    const user = USERS[loginForm.username.toLowerCase()];
-    if (user && user.password === loginForm.password) {
-      const loggedUser: User = {
-        username: loginForm.username.toLowerCase(),
-        name: user.name,
-        role: user.role,
-      };
-      setCurrentUser(loggedUser);
-      localStorage.setItem('rafdez_user', JSON.stringify(loggedUser));
-      setShowLoginModal(false);
-      setLoginForm({ username: '', password: '' });
-      setLoginError('');
-    } else {
-      setLoginError('Неверный логин или пароль');
-    }
-  };
-
-  // Выход
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('rafdez_user');
-  };
-
   // Логирование в Google Sheets
   const logAction = async (
-    action: 'create' | 'update' | 'delete' | 'approve' | 'revoke_approval',
+    action: 'create' | 'update' | 'delete',
     taskName: string,
     taskId?: string,
     changes?: string
@@ -152,79 +89,12 @@ export default function RafdezPage() {
           action,
           taskName,
           taskId,
-          user: currentUser?.name,
-          userRole: currentUser?.role,
           changes,
           timestamp: new Date().toISOString(),
         }),
       });
     } catch (error) {
       console.error('Error logging action:', error);
-    }
-  };
-
-  // Проверка прав на редактирование/удаление задачи
-  const canEditTask = (task: ProjectTask): boolean => {
-    if (!currentUser) return false;
-    if (currentUser.role === 'director') return true; // Директор может всё
-    if (task.approved) return false; // Согласованные задачи нельзя редактировать (кроме директора)
-    return true;
-  };
-
-  // Проверка прав на согласование
-  const canApproveTask = (): boolean => {
-    return currentUser?.role === 'project_manager';
-  };
-
-  // Согласование задачи
-  const handleApproveTask = async (task: ProjectTask) => {
-    if (!currentUser || !canApproveTask()) return;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/${task._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...task,
-          approved: true,
-          approvedBy: currentUser.name,
-          approvedAt: new Date().toISOString(),
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await logAction('approve', task.name, task._id);
-        fetchTasks();
-      }
-    } catch (error) {
-      console.error('Error approving task:', error);
-    }
-  };
-
-  // Отмена согласования (только директор)
-  const handleRevokeApproval = async (task: ProjectTask) => {
-    if (!currentUser || currentUser.role !== 'director') return;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/${task._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...task,
-          approved: false,
-          approvedBy: null,
-          approvedAt: null,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await logAction('revoke_approval', task.name, task._id);
-        fetchTasks();
-      }
-    } catch (error) {
-      console.error('Error revoking approval:', error);
     }
   };
 
@@ -355,16 +225,17 @@ export default function RafdezPage() {
       rafdez: [],
       warehouse: [],
       bottling: [],
-      oil_shop: [],
-      admin: [],
       infrastructure: [],
       other: [],
     };
 
     filteredTasks.forEach(task => {
       const section = task.section || 'other';
-      if (grouped[section]) {
-        grouped[section].push(task);
+      // Перенаправляем старые объекты в "Прочее"
+      if (section === 'oil_shop' || section === 'admin') {
+        grouped.other.push(task);
+      } else if (grouped[section as TaskSection]) {
+        grouped[section as TaskSection].push(task);
       } else {
         grouped.other.push(task);
       }
@@ -490,48 +361,19 @@ export default function RafdezPage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {/* Информация о пользователе */}
-              {currentUser ? (
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-slate-900">{currentUser.name}</div>
-                    <div className="text-xs text-slate-500">
-                      {currentUser.role === 'project_manager' ? 'Проектный менеджер' : 'Директор'}
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="px-3 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Выйти
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Войти
-                </button>
-              )}
-              {currentUser && (
-                <button
-                  onClick={() => {
-                    resetForm();
-                    setEditingTask(null);
-                    setShowAddModal(true);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Добавить задачу
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  resetForm();
+                  setEditingTask(null);
+                  setShowAddModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Добавить задачу
+              </button>
             </div>
           </div>
         </div>
@@ -684,11 +526,11 @@ export default function RafdezPage() {
                         const category = CATEGORIES[task.category];
 
                         return (
-                          <div key={task._id} className={`flex hover:bg-slate-50 transition-colors ${task.approved ? 'bg-green-50/30' : ''}`}>
+                          <div key={task._id} className="flex hover:bg-slate-50 transition-colors">
                             {/* Название задачи */}
                             <div
-                              className={`w-80 min-w-80 p-3 border-r border-slate-200 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
-                              onClick={() => canEditTask(task) && openEditModal(task)}
+                              className="w-80 min-w-80 p-3 border-r border-slate-200 cursor-pointer"
+                              onClick={() => openEditModal(task)}
                             >
                               <div className="flex items-start gap-2">
                                 <div
@@ -696,21 +538,11 @@ export default function RafdezPage() {
                                   style={{ backgroundColor: category.color }}
                                 />
                                 <span className="text-sm font-medium text-slate-900">{task.name}</span>
-                                {task.approved && (
-                                  <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                )}
                               </div>
                               <div className="flex items-center gap-2 mt-1 ml-5">
                                 <span className="text-xs text-slate-500">{task.responsible}</span>
                                 {isOverdue && (
                                   <span className="text-xs text-red-600 font-medium">Просрочено</span>
-                                )}
-                                {task.approved && !canEditTask(task) && (
-                                  <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                  </svg>
                                 )}
                               </div>
                             </div>
@@ -727,28 +559,20 @@ export default function RafdezPage() {
 
                               {/* Полоса задачи */}
                               <div
-                                className={`absolute h-8 rounded-md flex items-center justify-between px-2 transition-transform hover:scale-y-110 ${canEditTask(task) ? 'cursor-pointer' : ''}`}
+                                className="absolute h-8 rounded-md flex items-center justify-between px-2 transition-transform hover:scale-y-110 cursor-pointer"
                                 style={{
                                   left: `${leftPercent}%`,
                                   width: `${Math.max(widthPercent, 2)}%`,
                                   backgroundColor: isOverdue ? '#ef4444' : category.color,
                                   top: '50%',
                                   transform: 'translateY(-50%)',
-                                  border: task.approved ? '2px solid #16a34a' : 'none',
                                 }}
-                                onClick={() => canEditTask(task) && openEditModal(task)}
+                                onClick={() => openEditModal(task)}
                               >
                                 {/* Дата начала */}
                                 <span className="text-[10px] text-white font-medium whitespace-nowrap overflow-hidden">
                                   {new Date(task.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                                 </span>
-
-                                {/* Значок согласования */}
-                                {task.approved && (
-                                  <svg className="w-4 h-4 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
 
                                 {/* Дата окончания */}
                                 <span className="text-[10px] text-white font-medium whitespace-nowrap overflow-hidden">
@@ -807,7 +631,7 @@ export default function RafdezPage() {
                           const status = STATUSES[task.status];
 
                           return (
-                            <tr key={task._id} className={`hover:bg-slate-50 ${task.approved ? 'bg-green-50/50' : ''}`}>
+                            <tr key={task._id} className="hover:bg-slate-50">
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
                                   <div
@@ -815,20 +639,7 @@ export default function RafdezPage() {
                                     style={{ backgroundColor: category.color }}
                                   />
                                   <span className="text-sm font-medium text-slate-900">{task.name}</span>
-                                  {task.approved && (
-                                    <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                      </svg>
-                                      Согласовано
-                                    </span>
-                                  )}
                                 </div>
-                                {task.approved && task.approvedBy && (
-                                  <div className="text-xs text-green-600 mt-0.5 ml-5">
-                                    Согласовал: {task.approvedBy}
-                                  </div>
-                                )}
                               </td>
                               <td className="px-4 py-3 text-sm text-slate-600">{category.label}</td>
                               <td className="px-4 py-3 text-sm text-slate-600">{task.responsible}</td>
@@ -841,51 +652,18 @@ export default function RafdezPage() {
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-right space-x-2">
-                                {/* Кнопка согласования для Project Manager */}
-                                {canApproveTask() && !task.approved && (
-                                  <button
-                                    onClick={() => handleApproveTask(task)}
-                                    className="text-green-600 hover:text-green-800 text-sm font-medium"
-                                  >
-                                    Согласовать
-                                  </button>
-                                )}
-                                {/* Кнопка отмены согласования для Директора */}
-                                {currentUser?.role === 'director' && task.approved && (
-                                  <button
-                                    onClick={() => handleRevokeApproval(task)}
-                                    className="text-amber-600 hover:text-amber-800 text-sm font-medium"
-                                  >
-                                    Отменить согласование
-                                  </button>
-                                )}
-                                {/* Кнопка редактирования */}
-                                {canEditTask(task) && (
-                                  <button
-                                    onClick={() => openEditModal(task)}
-                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                  >
-                                    Изменить
-                                  </button>
-                                )}
-                                {/* Кнопка удаления */}
-                                {canEditTask(task) && (
-                                  <button
-                                    onClick={() => task._id && handleDeleteTask(task._id)}
-                                    className="text-red-600 hover:text-red-800 text-sm font-medium"
-                                  >
-                                    Удалить
-                                  </button>
-                                )}
-                                {/* Показываем замок если нельзя редактировать */}
-                                {!canEditTask(task) && currentUser && (
-                                  <span className="text-slate-400 text-sm flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                    </svg>
-                                    Заблокировано
-                                  </span>
-                                )}
+                                <button
+                                  onClick={() => openEditModal(task)}
+                                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                >
+                                  Изменить
+                                </button>
+                                <button
+                                  onClick={() => task._id && handleDeleteTask(task._id)}
+                                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                >
+                                  Удалить
+                                </button>
                               </td>
                             </tr>
                           );
@@ -1068,70 +846,6 @@ export default function RafdezPage() {
         </div>
       )}
 
-      {/* Модальное окно авторизации */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900">Вход в систему</h2>
-              <p className="text-sm text-slate-500 mt-1">Введите логин и пароль для авторизации</p>
-            </div>
-            <div className="p-6 space-y-4">
-              {loginError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                  {loginError}
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Логин
-                </label>
-                <input
-                  type="text"
-                  value={loginForm.username}
-                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Введите логин"
-                  autoComplete="username"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Пароль
-                </label>
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Введите пароль"
-                  autoComplete="current-password"
-                />
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowLoginModal(false);
-                  setLoginForm({ username: '', password: '' });
-                  setLoginError('');
-                }}
-                className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg font-medium transition-colors"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleLogin}
-                disabled={!loginForm.username || !loginForm.password}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-lg font-medium transition-colors"
-              >
-                Войти
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
