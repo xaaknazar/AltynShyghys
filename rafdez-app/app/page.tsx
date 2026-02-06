@@ -231,10 +231,8 @@ export default function RafdezPage() {
 
     filteredTasks.forEach(task => {
       const section = task.section || 'other';
-      // Перенаправляем старые объекты в "Прочее"
-      if (section === 'oil_shop' || section === 'admin') {
-        grouped.other.push(task);
-      } else if (grouped[section as TaskSection]) {
+      // Проверяем есть ли такой раздел, иначе в "Прочее"
+      if (grouped[section as TaskSection]) {
         grouped[section as TaskSection].push(task);
       } else {
         grouped.other.push(task);
