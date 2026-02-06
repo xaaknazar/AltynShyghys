@@ -5,6 +5,7 @@ import Link from 'next/link';
 import SpeedIndicator from '@/app/components/SpeedIndicator';
 import ShiftChart from '@/app/components/ShiftChart';
 import ShiftEventForm from '@/app/components/ShiftEventForm';
+import Footer from '@/app/components/Footer';
 import { ProductionData, TIMEZONE_OFFSET } from '@/lib/utils';
 
 interface ShiftLog {
@@ -344,13 +345,7 @@ export default function ShiftMasterPage() {
         </div>
       </main>
 
-      <footer className="bg-white border-t border-slate-200 mt-16">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center text-sm text-slate-600 font-mono">
-            © 2025 Маслозавод «Алтын Шығыс». Система мониторинга смен.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Footer from '@/app/components/Footer';
 
 export default function OTKLayout({
   children,
@@ -86,6 +87,8 @@ export default function OTKLayout({
           </main>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

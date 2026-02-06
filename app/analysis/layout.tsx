@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Footer from '@/app/components/Footer';
 
 export default function AnalysisLayout({
   children,
@@ -80,6 +81,8 @@ export default function AnalysisLayout({
           </main>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }
