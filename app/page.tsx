@@ -546,14 +546,6 @@ export default function HomePage() {
               </span>
             </div>
 
-            {/* Центральная часть - обновить */}
-            <button
-              onClick={fetchData}
-              className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-300 rounded hover:bg-slate-50 transition-colors"
-            >
-              Обновить данные
-            </button>
-
             {/* Правая часть - разработчик */}
             <div className="flex flex-col items-center md:items-end gap-1">
               <span className="text-xs text-slate-500">Разработано:</span>
