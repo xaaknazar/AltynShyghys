@@ -217,6 +217,12 @@ export default function ComparisonPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [graphScale, setGraphScale] = useState(1);
 
+  // Zoom/выделение на графике
+  const [zoomRange, setZoomRange] = useState<{start: number, end: number} | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+
   // Установка дат по умолчанию
   useEffect(() => {
     const end = new Date();
@@ -471,6 +477,49 @@ export default function ComparisonPage() {
   };
 
   const compareData = prepareCompareData();
+
+  // Данные с учетом зума (для полноэкранного режима)
+  const zoomedData = zoomRange
+    ? compareData.slice(zoomRange.start, zoomRange.end + 1)
+    : compareData;
+
+  // Обработчики мыши для выделения области на графике
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isFullscreen) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percent = (x / rect.width) * 100;
+    const dataIndex = Math.floor((percent / 100) * compareData.length);
+    setIsSelecting(true);
+    setSelectionStart(Math.max(0, Math.min(dataIndex, compareData.length - 1)));
+    setSelectionEnd(null);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isSelecting || selectionStart === null) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percent = (x / rect.width) * 100;
+    const dataIndex = Math.floor((percent / 100) * compareData.length);
+    setSelectionEnd(Math.max(0, Math.min(dataIndex, compareData.length - 1)));
+  };
+
+  const handleMouseUp = () => {
+    if (isSelecting && selectionStart !== null && selectionEnd !== null) {
+      const start = Math.min(selectionStart, selectionEnd);
+      const end = Math.max(selectionStart, selectionEnd);
+      if (end - start >= 2) {
+        setZoomRange({ start, end });
+      }
+    }
+    setIsSelecting(false);
+    setSelectionStart(null);
+    setSelectionEnd(null);
+  };
+
+  const resetZoom = () => {
+    setZoomRange(null);
+  };
 
   // Все выбранные метрики для легенды и графика
   const allSelectedMetrics = [
@@ -817,6 +866,24 @@ export default function ComparisonPage() {
           <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
             <h2 className="text-2xl font-bold">Сравнение метрик</h2>
             <div className="flex items-center gap-4">
+              {/* Подсказка */}
+              <div className="text-sm text-slate-400">
+                Выделите область мышкой для увеличения
+              </div>
+
+              {/* Кнопка сброса зума */}
+              {zoomRange && (
+                <button
+                  onClick={resetZoom}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                  </svg>
+                  <span className="text-sm font-semibold">Сбросить зум</span>
+                </button>
+              )}
+
               {/* Контроль масштаба */}
               <div className="flex items-center gap-3">
                 <span className="text-sm">Масштаб:</span>
@@ -836,6 +903,7 @@ export default function ComparisonPage() {
                 onClick={() => {
                   setIsFullscreen(false);
                   setGraphScale(1);
+                  setZoomRange(null);
                 }}
                 className="text-white hover:text-red-400 transition-colors"
               >
@@ -873,15 +941,31 @@ export default function ComparisonPage() {
               {/* График с масштабом */}
               <div className="overflow-auto" style={{ height: 'calc(100% - 60px)' }}>
                 <div
-                  className="relative"
+                  className="relative select-none"
                   style={{
-                    width: `${Math.max(1400, compareData.length * 20) * graphScale}px`,
+                    width: `${Math.max(1400, zoomedData.length * 20) * graphScale}px`,
                     height: `${600 * graphScale}px`,
                     paddingTop: `${30 * graphScale}px`,
                     paddingBottom: `${80 * graphScale}px`,
-                    paddingLeft: `${60 * graphScale}px`
+                    paddingLeft: `${60 * graphScale}px`,
+                    cursor: isSelecting ? 'col-resize' : 'crosshair'
                   }}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
                 >
+                  {/* Оверлей выделения */}
+                  {isSelecting && selectionStart !== null && selectionEnd !== null && (
+                    <div
+                      className="absolute top-0 bottom-0 bg-blue-500 bg-opacity-30 border-x-2 border-blue-500 z-30 pointer-events-none"
+                      style={{
+                        left: `${(Math.min(selectionStart, selectionEnd) / compareData.length) * 100}%`,
+                        width: `${(Math.abs(selectionEnd - selectionStart) / compareData.length) * 100}%`
+                      }}
+                    />
+                  )}
+
                   {/* SVG с графиком */}
                   <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <defs>
@@ -917,7 +1001,7 @@ export default function ComparisonPage() {
                       const color = COLORS[idx % COLORS.length];
                       const key = `${cat.label} - ${metricLabel}`;
 
-                      const metricData = compareData.filter((d: any) => d[key] !== undefined && d[key] !== null);
+                      const metricData = zoomedData.filter((d: any) => d[key] !== undefined && d[key] !== null);
                       if (metricData.length === 0) return null;
 
                       const values = metricData.map((d: any) => d[key]);
@@ -958,7 +1042,7 @@ export default function ComparisonPage() {
                     const key = `${cat.label} - ${metricLabel}`;
                     const metricInfo = cat.metrics.find((m: any) => m.label === metricLabel);
 
-                    const metricData = compareData.filter((d: any) => d[key] !== undefined && d[key] !== null);
+                    const metricData = zoomedData.filter((d: any) => d[key] !== undefined && d[key] !== null);
                     if (metricData.length === 0) return null;
 
                     const values = metricData.map((d: any) => d[key]);
@@ -1008,7 +1092,7 @@ export default function ComparisonPage() {
 
                   {/* Метки времени */}
                   <div className="absolute bottom-0 left-0 right-0 flex justify-between text-sm text-slate-600" style={{ height: `${60 * graphScale}px`, paddingLeft: `${60 * graphScale}px` }}>
-                    {compareData.filter((_: any, i: number) => i % Math.ceil(compareData.length / 10) === 0).map((point: any, idx: number) => (
+                    {zoomedData.filter((_: any, i: number) => i % Math.ceil(zoomedData.length / 10) === 0).map((point: any, idx: number) => (
                       <div key={`fs-time-${idx}`} className="flex flex-col items-center">
                         <div className="transform -rotate-45 origin-top-left whitespace-nowrap">
                           {formatTime(point.time)}
