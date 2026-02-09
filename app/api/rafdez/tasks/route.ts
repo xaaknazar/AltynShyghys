@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { name, category, startDate, endDate, responsible, status, progress, description } = body;
+    const { name, category, startDate, endDate, responsible, status, progress, description, createdBy } = body;
 
     if (!name || !responsible) {
       return NextResponse.json(
@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       status: status || 'planned',
       progress: progress || 0,
       description: description || '',
+      createdBy: createdBy || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

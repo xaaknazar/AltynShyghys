@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 
 // API URL основного сайта
 const API_BASE_URL = 'https://altyn-shyghys.vercel.app/api/rafdez/tasks';
 
-// Типы задач
+// === ТИПЫ ===
 type TaskCategory = 'construction' | 'equipment' | 'procurement' | 'installation' | 'commissioning' | 'other';
 type TaskStatus = 'planned' | 'in_progress' | 'completed' | 'delayed';
+type UserRole = 'omts' | 'stroika' | 'power' | 'obs';
 
 interface ProjectTask {
   _id?: string;
@@ -19,10 +20,12 @@ interface ProjectTask {
   status: TaskStatus;
   progress: number;
   description?: string;
+  createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
+// === КОНСТАНТЫ ===
 const CATEGORIES: Record<TaskCategory, { label: string; color: string; bgColor: string }> = {
   construction: { label: 'Строительство', color: '#3b82f6', bgColor: 'bg-blue-500' },
   equipment: { label: 'Оборудование', color: '#8b5cf6', bgColor: 'bg-violet-500' },
@@ -39,9 +42,26 @@ const STATUSES: Record<TaskStatus, { label: string; color: string }> = {
   delayed: { label: 'Просрочено', color: 'text-red-700 bg-red-100' },
 };
 
+const ROLES: Record<UserRole, { label: string; password: string; color: string }> = {
+  omts: { label: 'Снабжение', password: 'omts', color: 'bg-amber-100 text-amber-800' },
+  stroika: { label: 'Строительство', password: 'stroika', color: 'bg-blue-100 text-blue-800' },
+  power: { label: 'Отдел Главного энергетика', password: 'power', color: 'bg-emerald-100 text-emerald-800' },
+  obs: { label: 'Наблюдатель', password: 'obs', color: 'bg-purple-100 text-purple-800' },
+};
+
+const AUTH_STORAGE_KEY = 'rafdez_user_role';
+
 export default function RafdezPage() {
+  // === АУТЕНТИФИКАЦИЯ ===
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  // === ЗАДАЧИ ===
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
   const [filterCategory, setFilterCategory] = useState<TaskCategory | 'all'>('all');
@@ -60,35 +80,98 @@ export default function RafdezPage() {
     description: '',
   });
 
-  // Загрузка задач
-  const fetchTasks = async () => {
+  // Проверка авторизации при загрузке
+  useEffect(() => {
     try {
-      const response = await fetch(API_BASE_URL);
-      const data = await response.json();
-      if (data.success) {
-        setTasks(data.data);
+      const savedRole = localStorage.getItem(AUTH_STORAGE_KEY) as UserRole | null;
+      if (savedRole && ROLES[savedRole]) {
+        setUserRole(savedRole);
       }
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    } finally {
-      setLoading(false);
+    } catch {
+      // localStorage недоступен
+    }
+    setAuthChecked(true);
+  }, []);
+
+  // Вход
+  const handleLogin = () => {
+    const entry = Object.entries(ROLES).find(([, r]) => r.password === loginPassword);
+    if (entry) {
+      const role = entry[0] as UserRole;
+      setUserRole(role);
+      try {
+        localStorage.setItem(AUTH_STORAGE_KEY, role);
+      } catch {
+        // localStorage недоступен
+      }
+      setLoginError('');
+      setLoginPassword('');
+    } else {
+      setLoginError('Неверный пароль');
     }
   };
 
-  useEffect(() => {
-    fetchTasks();
+  // Выход
+  const handleLogout = () => {
+    setUserRole(null);
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch {
+      // localStorage недоступен
+    }
+  };
+
+  // Проверка прав на редактирование/удаление задачи
+  const canEditTask = useCallback((task: ProjectTask) => {
+    if (!userRole) return false;
+    if (userRole === 'obs') return true;
+    return !task.createdBy || task.createdBy === userRole;
+  }, [userRole]);
+
+  // === ЗАГРУЗКА ДАННЫХ ===
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    setFetchError('');
+    try {
+      const response = await fetch(API_BASE_URL, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Ошибка сервера: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.success) {
+        setTasks(data.data || []);
+      } else {
+        setFetchError(data.error || 'Не удалось загрузить задачи');
+      }
+    } catch (error: any) {
+      console.error('Error fetching tasks:', error);
+      setFetchError(error.message || 'Ошибка соединения с сервером');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Сохранение задачи
+  useEffect(() => {
+    if (userRole) {
+      fetchTasks();
+    }
+  }, [userRole, fetchTasks]);
+
+  // === CRUD ОПЕРАЦИИ ===
   const handleSaveTask = async () => {
     try {
       const url = editingTask ? `${API_BASE_URL}/${editingTask._id}` : API_BASE_URL;
       const method = editingTask ? 'PUT' : 'POST';
 
+      const payload = {
+        ...formData,
+        createdBy: editingTask ? editingTask.createdBy : userRole,
+      };
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -97,13 +180,15 @@ export default function RafdezPage() {
         setShowAddModal(false);
         setEditingTask(null);
         resetForm();
+      } else {
+        alert(data.error || 'Ошибка сохранения');
       }
     } catch (error) {
       console.error('Error saving task:', error);
+      alert('Ошибка соединения с сервером');
     }
   };
 
-  // Удаление задачи
   const handleDeleteTask = async (id: string) => {
     if (!confirm('Удалить задачу?')) return;
 
@@ -118,7 +203,6 @@ export default function RafdezPage() {
     }
   };
 
-  // Сброс формы
   const resetForm = () => {
     setFormData({
       name: '',
@@ -132,8 +216,8 @@ export default function RafdezPage() {
     });
   };
 
-  // Открытие модалки редактирования
   const openEditModal = (task: ProjectTask) => {
+    if (!canEditTask(task)) return;
     setEditingTask(task);
     setFormData({
       name: task.name,
@@ -148,7 +232,7 @@ export default function RafdezPage() {
     setShowAddModal(true);
   };
 
-  // Фильтрация задач
+  // === ФИЛЬТРАЦИЯ ===
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       if (filterCategory !== 'all' && task.category !== filterCategory) return false;
@@ -157,7 +241,7 @@ export default function RafdezPage() {
     });
   }, [tasks, filterCategory, filterStatus]);
 
-  // Расчет диапазона дат для Ганта
+  // === ДИАГРАММА ГАНТА ===
   const dateRange = useMemo(() => {
     if (filteredTasks.length === 0) {
       const today = new Date();
@@ -170,14 +254,12 @@ export default function RafdezPage() {
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
     const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
 
-    // Добавляем отступы
     minDate.setDate(minDate.getDate() - 7);
     maxDate.setDate(maxDate.getDate() + 7);
 
     return { start: minDate, end: maxDate };
   }, [filteredTasks]);
 
-  // Генерация месяцев для заголовка
   const months = useMemo(() => {
     const result: { label: string; days: number; startDay: number }[] = [];
     const current = new Date(dateRange.start);
@@ -186,7 +268,6 @@ export default function RafdezPage() {
     while (current <= dateRange.end) {
       const year = current.getFullYear();
       const month = current.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
       const monthStart = new Date(year, month, 1);
       const monthEnd = new Date(year, month + 1, 0);
 
@@ -208,10 +289,8 @@ export default function RafdezPage() {
     return result;
   }, [dateRange]);
 
-  // Общее количество дней
   const totalDays = Math.floor((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-  // Расчет позиции задачи на Ганте
   const getTaskPosition = (task: ProjectTask) => {
     const start = new Date(task.startDate);
     const end = new Date(task.endDate);
@@ -223,13 +302,12 @@ export default function RafdezPage() {
     const leftPercent = (startOffset / totalDays) * 100;
     const widthPercent = (duration / totalDays) * 100;
 
-    // Проверка просрочки
     const isOverdue = task.status !== 'completed' && end < today;
 
     return { leftPercent, widthPercent, isOverdue };
   };
 
-  // Статистика
+  // === СТАТИСТИКА ===
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter((t) => t.status === 'completed').length;
@@ -239,7 +317,8 @@ export default function RafdezPage() {
     return { total, completed, delayed, inProgress };
   }, [tasks]);
 
-  if (loading) {
+  // === ЭКРАН ЗАГРУЗКИ (проверка авторизации) ===
+  if (!authChecked) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-xl text-slate-600">Загрузка...</div>
@@ -247,6 +326,109 @@ export default function RafdezPage() {
     );
   }
 
+  // === ЭКРАН ВХОДА ===
+  if (!userRole) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 w-full max-w-md overflow-hidden">
+          {/* Шапка */}
+          <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-8 text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-white">Рафдез</h1>
+            <p className="text-orange-100 text-sm mt-1">Строительство цеха рафинирования и дезодорирования</p>
+          </div>
+
+          {/* Форма входа */}
+          <div className="p-8">
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Введите пароль для входа
+              </label>
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(e) => {
+                  setLoginPassword(e.target.value);
+                  setLoginError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleLogin();
+                }}
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg"
+                placeholder="Пароль отдела"
+                autoFocus
+              />
+              {loginError && (
+                <p className="mt-2 text-sm text-red-600 font-medium">{loginError}</p>
+              )}
+            </div>
+            <button
+              onClick={handleLogin}
+              disabled={!loginPassword}
+              className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white rounded-xl font-semibold text-lg transition-colors"
+            >
+              Войти
+            </button>
+
+            {/* Подсказка по ролям */}
+            <div className="mt-6 pt-6 border-t border-slate-200">
+              <p className="text-xs text-slate-400 text-center mb-3">Отделы системы</p>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(ROLES).map(([, role]) => (
+                  <div key={role.label} className={`px-3 py-1.5 rounded-lg text-xs font-medium text-center ${role.color}`}>
+                    {role.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // === ЗАГРУЗКА ЗАДАЧ ===
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-slate-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-lg text-slate-600">Загрузка задач...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // === ОШИБКА ЗАГРУЗКИ ===
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg border border-red-200 p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Ошибка загрузки</h2>
+          <p className="text-slate-600 mb-6">{fetchError}</p>
+          <button
+            onClick={fetchTasks}
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const roleInfo = ROLES[userRole];
+
+  // === ОСНОВНОЙ ДАШБОРД ===
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -264,19 +446,37 @@ export default function RafdezPage() {
                 <p className="text-sm text-slate-500">Строительство цеха рафинирования и дезодорирования</p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                resetForm();
-                setEditingTask(null);
-                setShowAddModal(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Добавить задачу
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Бейдж роли */}
+              <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${roleInfo.color}`}>
+                {roleInfo.label}
+              </span>
+              {/* Кнопка добавить */}
+              <button
+                onClick={() => {
+                  resetForm();
+                  setEditingTask(null);
+                  setShowAddModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Добавить задачу
+              </button>
+              {/* Кнопка выхода */}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-3 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-sm transition-colors"
+                title="Выйти"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Выйти
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -333,6 +533,15 @@ export default function RafdezPage() {
             </div>
             <div className="flex items-center gap-2 ml-auto">
               <button
+                onClick={fetchTasks}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                title="Обновить данные"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <button
                 onClick={() => setViewMode('gantt')}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   viewMode === 'gantt' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -383,25 +592,31 @@ export default function RafdezPage() {
                 {filteredTasks.map((task) => {
                   const { leftPercent, widthPercent, isOverdue } = getTaskPosition(task);
                   const category = CATEGORIES[task.category];
+                  const editable = canEditTask(task);
 
                   return (
                     <div key={task._id} className="flex hover:bg-slate-50 transition-colors">
                       {/* Название задачи */}
                       <div
-                        className="w-64 min-w-64 p-3 border-r border-slate-200 cursor-pointer"
-                        onClick={() => openEditModal(task)}
+                        className={`w-64 min-w-64 p-3 border-r border-slate-200 ${editable ? 'cursor-pointer' : ''}`}
+                        onClick={() => editable && openEditModal(task)}
                       >
                         <div className="flex items-center gap-2">
                           <div
-                            className="w-3 h-3 rounded-full"
+                            className="w-3 h-3 rounded-full flex-shrink-0"
                             style={{ backgroundColor: category.color }}
                           />
                           <span className="text-sm font-medium text-slate-900 truncate">{task.name}</span>
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-slate-500">{task.responsible}</span>
+                          {task.createdBy && ROLES[task.createdBy as UserRole] && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${ROLES[task.createdBy as UserRole].color}`}>
+                              {ROLES[task.createdBy as UserRole].label}
+                            </span>
+                          )}
                           {isOverdue && (
-                            <span className="text-xs text-red-600 font-medium">⚠ Просрочено</span>
+                            <span className="text-xs text-red-600 font-medium">Просрочено</span>
                           )}
                         </div>
                       </div>
@@ -426,7 +641,7 @@ export default function RafdezPage() {
 
                         {/* Полоса задачи */}
                         <div
-                          className="absolute h-8 rounded-md flex items-center px-2 cursor-pointer transition-transform hover:scale-y-110"
+                          className={`absolute h-8 rounded-md flex items-center px-2 transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
                           style={{
                             left: `${leftPercent}%`,
                             width: `${Math.max(widthPercent, 2)}%`,
@@ -434,7 +649,7 @@ export default function RafdezPage() {
                             top: '50%',
                             transform: 'translateY(-50%)',
                           }}
-                          onClick={() => openEditModal(task)}
+                          onClick={() => editable && openEditModal(task)}
                         >
                           {/* Прогресс */}
                           <div
@@ -457,74 +672,96 @@ export default function RafdezPage() {
         {/* Режим списка */}
         {viewMode === 'list' && (
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Задача</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Категория</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Ответственный</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Сроки</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Статус</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Прогресс</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredTasks.map((task) => {
-                  const category = CATEGORIES[task.category];
-                  const status = STATUSES[task.status];
+            {filteredTasks.length === 0 ? (
+              <div className="p-12 text-center text-slate-500">
+                Нет задач для отображения. Добавьте первую задачу!
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Задача</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Категория</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Ответственный</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Сроки</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Статус</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Прогресс</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Отдел</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredTasks.map((task) => {
+                    const category = CATEGORIES[task.category];
+                    const status = STATUSES[task.status];
+                    const editable = canEditTask(task);
+                    const creatorRole = task.createdBy && ROLES[task.createdBy as UserRole];
 
-                  return (
-                    <tr key={task._id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="text-sm font-medium text-slate-900">{task.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{category.label}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{task.responsible}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {new Date(task.startDate).toLocaleDateString('ru-RU')} — {new Date(task.endDate).toLocaleDateString('ru-RU')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                          {status.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    return (
+                      <tr key={task._id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
                             <div
-                              className="h-full rounded-full"
-                              style={{ width: `${task.progress}%`, backgroundColor: category.color }}
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: category.color }}
                             />
+                            <span className="text-sm font-medium text-slate-900">{task.name}</span>
                           </div>
-                          <span className="text-xs text-slate-600">{task.progress}%</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => openEditModal(task)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-3"
-                        >
-                          Изменить
-                        </button>
-                        <button
-                          onClick={() => task._id && handleDeleteTask(task._id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
-                        >
-                          Удалить
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{category.label}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{task.responsible}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {new Date(task.startDate).toLocaleDateString('ru-RU')} — {new Date(task.endDate).toLocaleDateString('ru-RU')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
+                            {status.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${task.progress}%`, backgroundColor: category.color }}
+                              />
+                            </div>
+                            <span className="text-xs text-slate-600">{task.progress}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {creatorRole ? (
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${creatorRole.color}`}>
+                              {creatorRole.label}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {editable && (
+                            <>
+                              <button
+                                onClick={() => openEditModal(task)}
+                                className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-3"
+                              >
+                                Изменить
+                              </button>
+                              <button
+                                onClick={() => task._id && handleDeleteTask(task._id)}
+                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                              >
+                                Удалить
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
@@ -550,6 +787,9 @@ export default function RafdezPage() {
               <h2 className="text-xl font-bold text-slate-900">
                 {editingTask ? 'Редактировать задачу' : 'Новая задача'}
               </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Отдел: {roleInfo.label}
+              </p>
             </div>
             <div className="p-6 space-y-4">
               <div>
