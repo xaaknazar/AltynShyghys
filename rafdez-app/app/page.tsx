@@ -329,62 +329,40 @@ export default function RafdezPage() {
   // === ЭКРАН ВХОДА ===
   if (!userRole) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 w-full max-w-md overflow-hidden">
-          {/* Шапка */}
-          <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-8 text-center">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-white">Рафдез</h1>
-            <p className="text-orange-100 text-sm mt-1">Строительство цеха рафинирования и дезодорирования</p>
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm">
+          {/* Заголовок */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-slate-900">Рафдез</h1>
+            <p className="text-slate-500 text-sm mt-1">Управление строительством</p>
           </div>
 
-          {/* Форма входа */}
-          <div className="p-8">
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Введите пароль для входа
-              </label>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => {
-                  setLoginPassword(e.target.value);
-                  setLoginError('');
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleLogin();
-                }}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg"
-                placeholder="Пароль отдела"
-                autoFocus
-              />
-              {loginError && (
-                <p className="mt-2 text-sm text-red-600 font-medium">{loginError}</p>
-              )}
-            </div>
+          {/* Поле пароля */}
+          <div className="space-y-4">
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => {
+                setLoginPassword(e.target.value);
+                setLoginError('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleLogin();
+              }}
+              className="w-full h-12 px-4 bg-slate-100 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-base placeholder:text-slate-400"
+              placeholder="Пароль"
+              autoFocus
+            />
+            {loginError && (
+              <p className="text-sm text-red-500">{loginError}</p>
+            )}
             <button
               onClick={handleLogin}
               disabled={!loginPassword}
-              className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white rounded-xl font-semibold text-lg transition-colors"
+              className="w-full h-12 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-lg font-medium text-base transition-colors"
             >
               Войти
             </button>
-
-            {/* Подсказка по ролям */}
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <p className="text-xs text-slate-400 text-center mb-3">Отделы системы</p>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(ROLES).map(([, role]) => (
-                  <div key={role.label} className={`px-3 py-1.5 rounded-lg text-xs font-medium text-center ${role.color}`}>
-                    {role.label}
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>
