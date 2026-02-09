@@ -13,12 +13,12 @@ type UserRole = 'omts' | 'stroika' | 'power' | 'obs';
 interface ProjectTask {
   _id?: string;
   name: string;
+  object: string;
   category: TaskCategory;
   startDate: string;
   endDate: string;
   responsible: string;
   status: TaskStatus;
-  progress: number;
   description?: string;
   createdBy?: string;
   createdAt?: string;
@@ -66,17 +66,18 @@ export default function RafdezPage() {
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
   const [filterCategory, setFilterCategory] = useState<TaskCategory | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
+  const [filterObject, setFilterObject] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
 
   // Форма задачи
   const [formData, setFormData] = useState<Omit<ProjectTask, '_id' | 'createdAt' | 'updatedAt'>>({
     name: '',
+    object: '',
     category: 'construction',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     responsible: '',
     status: 'planned',
-    progress: 0,
     description: '',
   });
 
@@ -206,12 +207,12 @@ export default function RafdezPage() {
   const resetForm = () => {
     setFormData({
       name: '',
+      object: '',
       category: 'construction',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       responsible: '',
       status: 'planned',
-      progress: 0,
       description: '',
     });
   };
@@ -221,25 +222,32 @@ export default function RafdezPage() {
     setEditingTask(task);
     setFormData({
       name: task.name,
+      object: task.object || '',
       category: task.category,
       startDate: task.startDate,
       endDate: task.endDate,
       responsible: task.responsible,
       status: task.status,
-      progress: task.progress,
       description: task.description || '',
     });
     setShowAddModal(true);
   };
+
+  // === УНИКАЛЬНЫЕ ОБЪЕКТЫ ===
+  const uniqueObjects = useMemo(() => {
+    const objects = tasks.map((t) => t.object).filter(Boolean);
+    return Array.from(new Set(objects)).sort();
+  }, [tasks]);
 
   // === ФИЛЬТРАЦИЯ ===
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       if (filterCategory !== 'all' && task.category !== filterCategory) return false;
       if (filterStatus !== 'all' && task.status !== filterStatus) return false;
+      if (filterObject !== 'all' && (task.object || '') !== filterObject) return false;
       return true;
     });
-  }, [tasks, filterCategory, filterStatus]);
+  }, [tasks, filterCategory, filterStatus, filterObject]);
 
   // === ДИАГРАММА ГАНТА ===
   const dateRange = useMemo(() => {
@@ -484,6 +492,19 @@ export default function RafdezPage() {
         <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-600">Объект:</span>
+              <select
+                value={filterObject}
+                onChange={(e) => setFilterObject(e.target.value)}
+                className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Все</option>
+                {uniqueObjects.map((obj) => (
+                  <option key={obj} value={obj}>{obj}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-600">Категория:</span>
               <select
                 value={filterCategory}
@@ -619,7 +640,7 @@ export default function RafdezPage() {
 
                         {/* Полоса задачи */}
                         <div
-                          className={`absolute h-8 rounded-md flex items-center px-2 transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
+                          className={`absolute h-8 rounded-md flex items-center justify-between px-2 overflow-hidden transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
                           style={{
                             left: `${leftPercent}%`,
                             width: `${Math.max(widthPercent, 2)}%`,
@@ -629,13 +650,11 @@ export default function RafdezPage() {
                           }}
                           onClick={() => editable && openEditModal(task)}
                         >
-                          {/* Прогресс */}
-                          <div
-                            className="absolute left-0 top-0 bottom-0 rounded-md opacity-30 bg-white"
-                            style={{ width: `${task.progress}%` }}
-                          />
-                          <span className="text-xs text-white font-medium truncate relative z-10">
-                            {task.progress}%
+                          <span className="text-xs text-white font-medium truncate">
+                            {new Date(task.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                          <span className="text-xs text-white font-medium truncate">
+                            {new Date(task.endDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                           </span>
                         </div>
                       </div>
@@ -659,11 +678,11 @@ export default function RafdezPage() {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Задача</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Объект</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Категория</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Ответственный</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Сроки</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Статус</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Прогресс</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Отдел</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase">Действия</th>
                   </tr>
@@ -686,6 +705,7 @@ export default function RafdezPage() {
                             <span className="text-sm font-medium text-slate-900">{task.name}</span>
                           </div>
                         </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{task.object || '—'}</td>
                         <td className="px-4 py-3 text-sm text-slate-600">{category.label}</td>
                         <td className="px-4 py-3 text-sm text-slate-600">{task.responsible}</td>
                         <td className="px-4 py-3 text-sm text-slate-600">
@@ -695,17 +715,6 @@ export default function RafdezPage() {
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
                             {status.label}
                           </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full"
-                                style={{ width: `${task.progress}%`, backgroundColor: category.color }}
-                              />
-                            </div>
-                            <span className="text-xs text-slate-600">{task.progress}%</span>
-                          </div>
                         </td>
                         <td className="px-4 py-3">
                           {creatorRole ? (
@@ -782,6 +791,26 @@ export default function RafdezPage() {
                   placeholder="Например: Заливка фундамента"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Объект
+                </label>
+                <input
+                  type="text"
+                  value={formData.object}
+                  onChange={(e) => setFormData({ ...formData, object: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Название объекта"
+                  list="object-suggestions"
+                />
+                {uniqueObjects.length > 0 && (
+                  <datalist id="object-suggestions">
+                    {uniqueObjects.map((obj) => (
+                      <option key={obj} value={obj} />
+                    ))}
+                  </datalist>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -846,19 +875,6 @@ export default function RafdezPage() {
                   onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ФИО ответственного"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Прогресс: {formData.progress}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={formData.progress}
-                  onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) })}
-                  className="w-full"
                 />
               </div>
               <div>

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { name, category, startDate, endDate, responsible, status, progress, description, createdBy } = body;
+    const { name, object, category, startDate, endDate, responsible, status, description, createdBy } = body;
 
     if (!name || !responsible) {
       return NextResponse.json(
@@ -60,12 +60,12 @@ export async function POST(request: NextRequest) {
 
     const task = {
       name,
+      object: object || '',
       category: category || 'other',
       startDate,
       endDate,
       responsible,
       status: status || 'planned',
-      progress: progress || 0,
       description: description || '',
       createdBy: createdBy || '',
       createdAt: new Date().toISOString(),

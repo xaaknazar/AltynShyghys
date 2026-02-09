@@ -72,7 +72,7 @@ export async function PUT(
       );
     }
 
-    const { name, category, startDate, endDate, responsible, status, progress, description } = body;
+    const { name, object, category, startDate, endDate, responsible, status, description } = body;
 
     if (!name || !responsible) {
       return NextResponse.json(
@@ -86,12 +86,12 @@ export async function PUT(
 
     const updateData = {
       name,
+      object: object || '',
       category,
       startDate,
       endDate,
       responsible,
       status,
-      progress,
       description,
       updatedAt: new Date().toISOString(),
     };
