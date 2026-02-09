@@ -432,7 +432,7 @@ export default function RafdezPage() {
                 }}
                 className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                + Задача
+                Добавить задачу
               </button>
               <button
                 onClick={handleLogout}
