@@ -127,13 +127,26 @@ export function calculateDailyStats(data: ProductionData[]): DailyStats {
     return sum + (diff > 0 ? diff : 0);
   }, 0);
 
-  // Рассчитываем среднюю скорость на основе общего производства и времени
-  const firstTime = new Date(sortedData[0].datetime).getTime();
-  const lastTime = new Date(sortedData[sortedData.length - 1].datetime).getTime();
-  const hoursElapsed = (lastTime - firstTime) / (1000 * 60 * 60); // миллисекунды в часы
+  // Средняя скорость = производство / реальное время с начала production day до сейчас
+  // Определяем начало production day (08:00 UTC+5) по первой записи
+  const firstRecordDate = new Date(sortedData[0].datetime);
+  const firstRecordLocal = new Date(firstRecordDate.getTime() + TIMEZONE_OFFSET * 60 * 60 * 1000);
+  const firstHour = firstRecordLocal.getUTCHours();
 
-  // Средняя скорость = общее производство / время в часах
-  const averageSpeed = hoursElapsed > 0 ? totalProduction / hoursElapsed : 0;
+  // Определяем дату production day
+  const prodDate = new Date(firstRecordLocal);
+  if (firstHour < 8) {
+    prodDate.setUTCDate(prodDate.getUTCDate() - 1);
+  }
+  // Начало production day = эта дата 08:00 UTC+5 = 03:00 UTC
+  const prodDayStartUTC = new Date(prodDate.toISOString().split('T')[0] + 'T03:00:00.000Z');
+  const nowUTC = new Date();
+  const prodDayEndUTC = new Date(prodDayStartUTC.getTime() + 24 * 60 * 60 * 1000);
+
+  // Для текущего дня: от начала суток до сейчас. Для завершённых: 24 часа.
+  const endTime = nowUTC < prodDayEndUTC ? nowUTC : prodDayEndUTC;
+  const hoursElapsed = Math.max(0.1, (endTime.getTime() - prodDayStartUTC.getTime()) / (1000 * 60 * 60));
+  const averageSpeed = totalProduction / hoursElapsed;
 
   const currentSpeed = sortedData[sortedData.length - 1].speed;
   const progress = (totalProduction / TARGETS.daily) * 100;

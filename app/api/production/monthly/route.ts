@@ -164,22 +164,10 @@ export async function GET(request: NextRequest) {
       // Берем сырые данные для этого дня (для графиков)
       const dayRawData = rawDataByDay.get(dateKey) || [];
 
-      // Рассчитываем среднюю скорость на основе фактического времени работы
-      let averageSpeed = 0;
-      if (dayRawData.length > 0) {
-        const sortedData = [...dayRawData].sort(
-          (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
-        );
-        const firstTime = new Date(sortedData[0].datetime).getTime();
-        const lastTime = new Date(sortedData[sortedData.length - 1].datetime).getTime();
-        const hoursElapsed = (lastTime - firstTime) / (1000 * 60 * 60);
-
-        // Средняя скорость = производство / фактическое время работы
-        averageSpeed = hoursElapsed > 0 ? totalProduction / hoursElapsed : totalProduction / 24;
-      } else {
-        // Если нет сырых данных, используем 24 часа как fallback
-        averageSpeed = totalProduction / 24;
-      }
+      // Средняя скорость для завершённых суток = производство / 24 часа
+      // Используем полные 24 часа, а не разницу между записями,
+      // чтобы пробелы в данных (посадки света и т.д.) не завышали среднюю
+      const averageSpeed = totalProduction / 24;
 
       // Текущая скорость - последняя запись дня
       const currentSpeed = dayRawData.length > 0
@@ -279,16 +267,12 @@ export async function GET(request: NextRequest) {
         return sum + (diff > 0 ? diff : 0);
       }, 0);
 
-      // Рассчитываем время работы (от первой до последней записи)
-      const sortedData = [...currentDayRawData].sort(
-        (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
-      );
-      const firstTime = new Date(sortedData[0].datetime).getTime();
-      const lastTime = new Date(sortedData[sortedData.length - 1].datetime).getTime();
-      const hoursElapsed = (lastTime - firstTime) / (1000 * 60 * 60);
-
-      // Средняя скорость = производство / время
-      const averageSpeed = hoursElapsed > 0 ? totalProduction / hoursElapsed : 0;
+      // Средняя скорость = производство / реальное время с начала производственных суток
+      // Используем время от 08:00 до сейчас, а не от первой до последней записи,
+      // чтобы пробелы в данных (посадки света и т.д.) не завышали среднюю
+      const prodDayStartUTC = new Date(currentProductionDate.toISOString().split('T')[0] + 'T03:00:00.000Z'); // 08:00 UTC+5 = 03:00 UTC
+      const hoursElapsed = Math.max(0.1, (now.getTime() - prodDayStartUTC.getTime()) / (1000 * 60 * 60));
+      const averageSpeed = totalProduction / hoursElapsed;
 
       const currentSpeed = currentDayRawData.length > 0
         ? currentDayRawData[currentDayRawData.length - 1].speed
