@@ -262,15 +262,64 @@ export async function GET(request: NextRequest) {
       const currentDayRawData = rawDataByDay.get(currentDateKey)!;
 
       // Рассчитываем производство из сырых данных (только положительные difference)
-      const totalProduction = currentDayRawData.reduce((sum, d) => {
-        const diff = d.difference || 0;
-        return sum + (diff > 0 ? diff : 0);
-      }, 0);
+      // При пробелах (посадки света) первая запись после пробела содержит НАКОПЛЕННЫЙ difference
+      // за всё время отключения. Если пробел пересекает границу production day (08:00),
+      // нужно пропорционально разделить difference между днями.
+      const sortedCurrentDayData = [...currentDayRawData].sort(
+        (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+      );
 
-      // Средняя скорость = производство / реальное время с начала производственных суток
-      // Используем время от 08:00 до сейчас, а не от первой до последней записи,
-      // чтобы пробелы в данных (посадки света и т.д.) не завышали среднюю
-      const prodDayStartUTC = new Date(currentProductionDate.toISOString().split('T')[0] + 'T03:00:00.000Z'); // 08:00 UTC+5 = 03:00 UTC
+      // Начало текущего production day в UTC (08:00 UTC+5 = 03:00 UTC)
+      const prodDayStartUTC = new Date(currentProductionDate.toISOString().split('T')[0] + 'T03:00:00.000Z');
+
+      // Находим последнюю запись предыдущего дня для определения пробелов
+      const prevDateObj = new Date(currentProductionDate);
+      prevDateObj.setUTCDate(prevDateObj.getUTCDate() - 1);
+      const prevDateKey = prevDateObj.toISOString().split('T')[0];
+      const prevDayData = rawDataByDay.get(prevDateKey);
+      let lastPrevRecordTime: number | null = null;
+      if (prevDayData && prevDayData.length > 0) {
+        const sortedPrev = [...prevDayData].sort(
+          (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+        );
+        lastPrevRecordTime = new Date(sortedPrev[sortedPrev.length - 1].datetime).getTime();
+      }
+
+      let totalProduction = 0;
+      let prevRecordTime: number | null = lastPrevRecordTime;
+
+      sortedCurrentDayData.forEach((d) => {
+        const diff = d.difference || 0;
+        if (diff <= 0) {
+          prevRecordTime = new Date(d.datetime).getTime();
+          return;
+        }
+
+        const currTime = new Date(d.datetime).getTime();
+        const prodDayStartTime = prodDayStartUTC.getTime();
+
+        // Если есть предыдущая запись и пробел > 10 мин и difference аномально большой (> 10т)
+        // и пробел пересекает начало production day (08:00)
+        if (prevRecordTime !== null && diff > 10) {
+          const gapMinutes = (currTime - prevRecordTime) / (1000 * 60);
+
+          if (gapMinutes > 10 && prevRecordTime < prodDayStartTime && currTime > prodDayStartTime) {
+            // Пробел пересекает границу production day — пропорционально делим
+            const totalGapMs = currTime - prevRecordTime;
+            const currentDayGapMs = currTime - prodDayStartTime;
+            const proportion = currentDayGapMs / totalGapMs;
+            const adjustedDiff = diff * proportion;
+
+            console.log(`      ⚡ Пробел через границу: ${Math.round(gapMinutes)} мин, diff=${diff.toFixed(1)}т → ${adjustedDiff.toFixed(1)}т (${(proportion * 100).toFixed(0)}% в текущем дне)`);
+            totalProduction += adjustedDiff;
+            prevRecordTime = currTime;
+            return;
+          }
+        }
+
+        totalProduction += diff;
+        prevRecordTime = currTime;
+      });
       const hoursElapsed = Math.max(0.1, (now.getTime() - prodDayStartUTC.getTime()) / (1000 * 60 * 60));
       const averageSpeed = totalProduction / hoursElapsed;
 
