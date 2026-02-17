@@ -35,6 +35,16 @@ const CATEGORIES: Record<TaskCategory, { label: string; color: string; bgColor: 
   other: { label: 'Прочее', color: '#6b7280', bgColor: 'bg-gray-500' },
 };
 
+const OBJECTS = [
+  'Цех рафинации и дезодорации',
+  'Склад',
+  'Цех Розлива и фасовки',
+  'Очистные сооружения и соапсток',
+  'Градирни',
+  'Станция оборотного водоснабжения',
+  'Компрессорная станция и подстанция',
+];
+
 const STATUSES: Record<TaskStatus, { label: string; color: string }> = {
   planned: { label: 'Запланировано', color: 'text-slate-600 bg-slate-100' },
   in_progress: { label: 'В работе', color: 'text-blue-700 bg-blue-100' },
@@ -477,7 +487,7 @@ export default function RafdezPage() {
                 className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">Все</option>
-                {uniqueObjects.map((obj) => (
+                {OBJECTS.map((obj) => (
                   <option key={obj} value={obj}>{obj}</option>
                 ))}
               </select>
@@ -798,21 +808,16 @@ export default function RafdezPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Объект
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.object}
                   onChange={(e) => setFormData({ ...formData, object: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Название объекта"
-                  list="object-suggestions"
-                />
-                {uniqueObjects.length > 0 && (
-                  <datalist id="object-suggestions">
-                    {uniqueObjects.map((obj) => (
-                      <option key={obj} value={obj} />
-                    ))}
-                  </datalist>
-                )}
+                >
+                  <option value="">Выберите объект</option>
+                  {OBJECTS.map((obj) => (
+                    <option key={obj} value={obj}>{obj}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
