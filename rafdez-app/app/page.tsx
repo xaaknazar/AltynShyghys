@@ -624,7 +624,7 @@ export default function RafdezPage() {
                       </div>
 
                       {/* Полоса Ганта */}
-                      <div className="flex-1 relative py-2 px-1" style={{ minHeight: '56px' }}>
+                      <div className="flex-1 relative py-3 px-1">
                         {/* Сегодняшняя линия */}
                         {(() => {
                           const today = new Date();
@@ -641,18 +641,6 @@ export default function RafdezPage() {
                           return null;
                         })()}
 
-                        {/* Название задачи над полосой */}
-                        <div
-                          className="absolute text-xs text-slate-700 font-medium whitespace-nowrap overflow-visible z-20"
-                          style={{
-                            left: `${leftPercent}%`,
-                            top: '2px',
-                          }}
-                        >
-                          {task.name}
-                          <span className="text-slate-400 ml-1">{task.responsible}</span>
-                        </div>
-
                         {/* Полоса задачи */}
                         <div
                           className={`absolute h-6 rounded-md flex items-center justify-between px-2 transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
@@ -660,7 +648,8 @@ export default function RafdezPage() {
                             left: `${leftPercent}%`,
                             width: `${Math.max(widthPercent, 2)}%`,
                             backgroundColor: isOverdue ? '#ef4444' : category.color,
-                            bottom: '4px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
                           }}
                           onClick={() => editable && openEditModal(task)}
                         >
