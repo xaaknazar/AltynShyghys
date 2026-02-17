@@ -608,7 +608,7 @@ export default function RafdezPage() {
                             className="w-3 h-3 rounded-full flex-shrink-0"
                             style={{ backgroundColor: category.color }}
                           />
-                          <span className="text-sm font-medium text-slate-900 truncate">{task.name}</span>
+                          <span className="text-sm font-medium text-slate-900 break-words">{task.name}</span>
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-slate-500">{task.responsible}</span>
@@ -624,7 +624,7 @@ export default function RafdezPage() {
                       </div>
 
                       {/* Полоса Ганта */}
-                      <div className="flex-1 relative py-3 px-1">
+                      <div className="flex-1 relative py-2 px-1" style={{ minHeight: '56px' }}>
                         {/* Сегодняшняя линия */}
                         {(() => {
                           const today = new Date();
@@ -641,22 +641,33 @@ export default function RafdezPage() {
                           return null;
                         })()}
 
+                        {/* Название задачи над полосой */}
+                        <div
+                          className="absolute text-xs text-slate-700 font-medium whitespace-nowrap overflow-visible z-20"
+                          style={{
+                            left: `${leftPercent}%`,
+                            top: '2px',
+                          }}
+                        >
+                          {task.name}
+                          <span className="text-slate-400 ml-1">{task.responsible}</span>
+                        </div>
+
                         {/* Полоса задачи */}
                         <div
-                          className={`absolute h-8 rounded-md flex items-center justify-between px-2 overflow-hidden transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
+                          className={`absolute h-6 rounded-md flex items-center justify-between px-2 transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
                           style={{
                             left: `${leftPercent}%`,
                             width: `${Math.max(widthPercent, 2)}%`,
                             backgroundColor: isOverdue ? '#ef4444' : category.color,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
+                            bottom: '4px',
                           }}
                           onClick={() => editable && openEditModal(task)}
                         >
-                          <span className="text-xs text-white font-medium truncate">
+                          <span className="text-xs text-white font-medium">
                             {new Date(task.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                           </span>
-                          <span className="text-xs text-white font-medium truncate">
+                          <span className="text-xs text-white font-medium">
                             {new Date(task.endDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                           </span>
                         </div>
