@@ -76,7 +76,7 @@ export default function RafdezPage() {
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
   const [filterCategory, setFilterCategory] = useState<TaskCategory | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
-  const [filterObject, setFilterObject] = useState<string>('all');
+  const [filterObjects, setFilterObjects] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
 
   // Форма задачи
@@ -254,10 +254,10 @@ export default function RafdezPage() {
     return tasks.filter((task) => {
       if (filterCategory !== 'all' && task.category !== filterCategory) return false;
       if (filterStatus !== 'all' && task.status !== filterStatus) return false;
-      if (filterObject !== 'all' && (task.object || '') !== filterObject) return false;
+      if (filterObjects.length > 0 && !filterObjects.includes(task.object || '')) return false;
       return true;
     });
-  }, [tasks, filterCategory, filterStatus, filterObject]);
+  }, [tasks, filterCategory, filterStatus, filterObjects]);
 
   // === ДИАГРАММА ГАНТА ===
   const dateRange = useMemo(() => {
@@ -478,20 +478,43 @@ export default function RafdezPage() {
 
         {/* Фильтры */}
         <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-600">Объект:</span>
-              <select
-                value={filterObject}
-                onChange={(e) => setFilterObject(e.target.value)}
-                className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">Все</option>
-                {OBJECTS.map((obj) => (
-                  <option key={obj} value={obj}>{obj}</option>
-                ))}
-              </select>
+          {/* Объекты — чипы с мультивыбором */}
+          <div className="mb-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-medium text-slate-600">Объекты:</span>
+              {filterObjects.length > 0 && (
+                <button
+                  onClick={() => setFilterObjects([])}
+                  className="text-xs text-slate-400 hover:text-slate-600"
+                >
+                  Сбросить
+                </button>
+              )}
             </div>
+            <div className="flex flex-wrap gap-2">
+              {OBJECTS.map((obj) => {
+                const isSelected = filterObjects.includes(obj);
+                return (
+                  <button
+                    key={obj}
+                    onClick={() => {
+                      setFilterObjects((prev) =>
+                        isSelected ? prev.filter((o) => o !== obj) : [...prev, obj]
+                      );
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {obj}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-600">Категория:</span>
               <select
