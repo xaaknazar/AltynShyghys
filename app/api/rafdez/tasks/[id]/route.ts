@@ -86,7 +86,7 @@ export async function PUT(
 
     const updateData = {
       name,
-      object: object || '',
+      object: Array.isArray(object) ? object : (object ? [object] : []),
       category,
       startDate,
       endDate,

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const task = {
       name,
-      object: object || '',
+      object: Array.isArray(object) ? object : (object ? [object] : []),
       category: category || 'other',
       startDate,
       endDate,
