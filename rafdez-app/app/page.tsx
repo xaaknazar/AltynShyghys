@@ -312,6 +312,10 @@ export default function RafdezPage() {
 
   const totalDays = Math.floor((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
+  // Минимальная ширина: 4px на день, чтобы график был читаемым
+  const MIN_DAY_WIDTH = 4;
+  const chartMinWidth = totalDays * MIN_DAY_WIDTH;
+
   const getTaskPosition = (task: ProjectTask) => {
     const start = new Date(task.startDate);
     const end = new Date(task.endDate);
@@ -577,129 +581,149 @@ export default function RafdezPage() {
         {/* Диаграмма Ганта */}
         {viewMode === 'gantt' && (
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            {/* Заголовок с месяцами */}
-            <div className="flex border-b border-slate-200">
-              <div className="w-64 min-w-64 p-3 border-r border-slate-200 bg-slate-50 font-semibold text-sm text-slate-700">
-                Задача
-              </div>
-              <div className="flex-1 relative bg-slate-50">
-                <div className="flex h-full">
-                  {months.map((month, idx) => (
-                    <div
-                      key={idx}
-                      className="border-r border-slate-200 px-2 py-3 text-xs font-semibold text-slate-600 text-center"
-                      style={{ width: `${(month.days / totalDays) * 100}%` }}
-                    >
-                      {month.label}
-                    </div>
-                  ))}
-                </div>
-                {/* Сегодняшняя дата над линией */}
-                {(() => {
-                  const today = new Date();
-                  const todayOffset = Math.floor((today.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
-                  const todayPercent = (todayOffset / totalDays) * 100;
-                  if (todayPercent >= 0 && todayPercent <= 100) {
-                    return (
-                      <>
-                        <div
-                          className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10"
-                          style={{ left: `${todayPercent}%` }}
-                        />
-                        <div
-                          className="absolute top-0 z-20 -translate-x-1/2 bg-red-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-b"
-                          style={{ left: `${todayPercent}%` }}
-                        >
-                          {today.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
-                        </div>
-                      </>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-            </div>
-
-            {/* Задачи */}
             {filteredTasks.length === 0 ? (
               <div className="p-12 text-center text-slate-500">
                 Нет задач для отображения. Добавьте первую задачу!
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
-                {filteredTasks.map((task) => {
-                  const { leftPercent, widthPercent, isOverdue } = getTaskPosition(task);
-                  const category = CATEGORIES[task.category];
-                  const editable = canEditTask(task);
+              <div className="flex">
+                {/* Левая колонка — фиксированная */}
+                <div className="w-64 min-w-64 flex-shrink-0 border-r border-slate-200">
+                  {/* Заголовок */}
+                  <div className="p-3 bg-slate-50 border-b border-slate-200 font-semibold text-sm text-slate-700">
+                    Задача
+                  </div>
+                  {/* Список задач */}
+                  <div className="divide-y divide-slate-100">
+                    {filteredTasks.map((task) => {
+                      const category = CATEGORIES[task.category];
+                      const editable = canEditTask(task);
+                      const { isOverdue } = getTaskPosition(task);
 
-                  return (
-                    <div key={task._id} className="flex hover:bg-slate-50 transition-colors">
-                      {/* Название задачи */}
-                      <div
-                        className={`w-64 min-w-64 p-3 border-r border-slate-200 ${editable ? 'cursor-pointer' : ''}`}
-                        onClick={() => editable && openEditModal(task)}
-                      >
-                        <div className="flex items-center gap-2">
+                      return (
+                        <div
+                          key={task._id}
+                          className={`p-3 hover:bg-slate-50 transition-colors ${editable ? 'cursor-pointer' : ''}`}
+                          style={{ height: '56px' }}
+                          onClick={() => editable && openEditModal(task)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <span className="text-sm font-medium text-slate-900 break-words line-clamp-1">{task.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-slate-500 truncate">{task.responsible}</span>
+                            {isOverdue && (
+                              <span className="text-xs text-red-600 font-medium flex-shrink-0">!</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Правая часть — скроллится горизонтально */}
+                <div className="flex-1 overflow-x-auto">
+                  <div style={{ minWidth: `${chartMinWidth}px` }}>
+                    {/* Заголовок с месяцами */}
+                    <div className="relative bg-slate-50 border-b border-slate-200">
+                      <div className="flex">
+                        {months.map((month, idx) => (
                           <div
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="text-sm font-medium text-slate-900 break-words">{task.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-slate-500">{task.responsible}</span>
-                          {task.createdBy && ROLES[task.createdBy as UserRole] && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${ROLES[task.createdBy as UserRole].color}`}>
-                              {ROLES[task.createdBy as UserRole].label}
-                            </span>
-                          )}
-                          {isOverdue && (
-                            <span className="text-xs text-red-600 font-medium">Просрочено</span>
-                          )}
-                        </div>
+                            key={idx}
+                            className="border-r border-slate-200 px-2 py-3 text-xs font-semibold text-slate-600 text-center"
+                            style={{ width: `${(month.days / totalDays) * 100}%` }}
+                          >
+                            {month.label}
+                          </div>
+                        ))}
                       </div>
-
-                      {/* Полоса Ганта */}
-                      <div className="flex-1 relative py-3 px-1">
-                        {/* Сегодняшняя линия */}
-                        {(() => {
-                          const today = new Date();
-                          const todayOffset = Math.floor((today.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
-                          const todayPercent = (todayOffset / totalDays) * 100;
-                          if (todayPercent >= 0 && todayPercent <= 100) {
-                            return (
+                      {/* Сегодняшняя дата */}
+                      {(() => {
+                        const today = new Date();
+                        const todayOffset = Math.floor((today.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
+                        const todayPercent = (todayOffset / totalDays) * 100;
+                        if (todayPercent >= 0 && todayPercent <= 100) {
+                          return (
+                            <>
                               <div
                                 className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10"
                                 style={{ left: `${todayPercent}%` }}
                               />
-                            );
-                          }
-                          return null;
-                        })()}
-
-                        {/* Полоса задачи */}
-                        <div
-                          className={`absolute h-6 rounded-md flex items-center justify-between px-2 transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
-                          style={{
-                            left: `${leftPercent}%`,
-                            width: `${Math.max(widthPercent, 2)}%`,
-                            backgroundColor: isOverdue ? '#ef4444' : category.color,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                          }}
-                          onClick={() => editable && openEditModal(task)}
-                        >
-                          <span className="text-xs text-white font-medium">
-                            {new Date(task.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
-                          </span>
-                          <span className="text-xs text-white font-medium">
-                            {new Date(task.endDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
+                              <div
+                                className="absolute top-0 z-20 -translate-x-1/2 bg-red-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-b"
+                                style={{ left: `${todayPercent}%` }}
+                              >
+                                {today.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                              </div>
+                            </>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
-                  );
-                })}
+
+                    {/* Полосы задач */}
+                    <div className="divide-y divide-slate-100">
+                      {filteredTasks.map((task) => {
+                        const { leftPercent, widthPercent, isOverdue } = getTaskPosition(task);
+                        const category = CATEGORIES[task.category];
+                        const editable = canEditTask(task);
+
+                        return (
+                          <div
+                            key={task._id}
+                            className="relative hover:bg-slate-50 transition-colors"
+                            style={{ height: '56px' }}
+                          >
+                            {/* Сегодняшняя линия */}
+                            {(() => {
+                              const today = new Date();
+                              const todayOffset = Math.floor((today.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
+                              const todayPercent = (todayOffset / totalDays) * 100;
+                              if (todayPercent >= 0 && todayPercent <= 100) {
+                                return (
+                                  <div
+                                    className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10"
+                                    style={{ left: `${todayPercent}%` }}
+                                  />
+                                );
+                              }
+                              return null;
+                            })()}
+
+                            {/* Полоса задачи */}
+                            <div
+                              className={`absolute h-7 rounded-md flex items-center justify-between px-2 transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
+                              style={{
+                                left: `${leftPercent}%`,
+                                width: `${Math.max(widthPercent, 0.5)}%`,
+                                backgroundColor: isOverdue ? '#ef4444' : category.color,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                              }}
+                              onClick={() => editable && openEditModal(task)}
+                              title={`${task.name}\n${new Date(task.startDate).toLocaleDateString('ru-RU')} — ${new Date(task.endDate).toLocaleDateString('ru-RU')}`}
+                            >
+                              <span className="text-xs text-white font-medium whitespace-nowrap">
+                                {new Date(task.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                              </span>
+                              {widthPercent > 3 && (
+                                <span className="text-xs text-white font-medium whitespace-nowrap">
+                                  {new Date(task.endDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
