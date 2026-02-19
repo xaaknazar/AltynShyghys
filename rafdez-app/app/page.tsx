@@ -78,6 +78,9 @@ export default function RafdezPage() {
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
   const [filterObjects, setFilterObjects] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
+  const [ganttCategories, setGanttCategories] = useState<TaskCategory[]>(
+    Object.keys(CATEGORIES) as TaskCategory[]
+  );
 
   // Форма задачи
   const [formData, setFormData] = useState<Omit<ProjectTask, '_id' | 'createdAt' | 'updatedAt'>>({
@@ -243,12 +246,6 @@ export default function RafdezPage() {
     setShowAddModal(true);
   };
 
-  // === УНИКАЛЬНЫЕ ОБЪЕКТЫ ===
-  const uniqueObjects = useMemo(() => {
-    const objects = tasks.map((t) => t.object).filter(Boolean);
-    return Array.from(new Set(objects)).sort();
-  }, [tasks]);
-
   // === ФИЛЬТРАЦИЯ ===
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -311,10 +308,6 @@ export default function RafdezPage() {
   }, [dateRange]);
 
   const totalDays = Math.floor((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-  // Минимальная ширина: 4px на день, чтобы график был читаемым
-  const MIN_DAY_WIDTH = 4;
-  const chartMinWidth = totalDays * MIN_DAY_WIDTH;
 
   const getTaskPosition = (task: ProjectTask) => {
     const start = new Date(task.startDate);
@@ -581,105 +574,111 @@ export default function RafdezPage() {
         {/* Диаграмма Ганта */}
         {viewMode === 'gantt' && (
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            {filteredTasks.length === 0 ? (
+            {/* Фильтр категорий в графике */}
+            <div className="px-4 py-2.5 border-b border-slate-200 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-slate-500 mr-1">Категории:</span>
+              {Object.entries(CATEGORIES).map(([key, { label, color }]) => {
+                const cat = key as TaskCategory;
+                const isVisible = ganttCategories.includes(cat);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setGanttCategories((prev) =>
+                        isVisible ? prev.filter((c) => c !== cat) : [...prev, cat]
+                      );
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                      isVisible ? 'bg-slate-100 text-slate-800' : 'bg-slate-50 text-slate-400 line-through'
+                    }`}
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: color, opacity: isVisible ? 1 : 0.3 }}
+                    />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {filteredTasks.filter((t) => ganttCategories.includes(t.category)).length === 0 ? (
               <div className="p-12 text-center text-slate-500">
-                Нет задач для отображения. Добавьте первую задачу!
+                Нет задач для отображения.
               </div>
             ) : (
-              <div className="flex">
-                {/* Левая колонка — фиксированная */}
-                <div className="w-64 min-w-64 flex-shrink-0 border-r border-slate-200">
-                  {/* Заголовок */}
-                  <div className="p-3 bg-slate-50 border-b border-slate-200 font-semibold text-sm text-slate-700">
-                    Задача
+              <>
+                {/* Шапка с месяцами */}
+                <div className="relative bg-slate-50 border-b border-slate-200">
+                  <div className="flex" style={{ marginLeft: '260px' }}>
+                    {months.map((month, idx) => (
+                      <div
+                        key={idx}
+                        className="border-r border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 text-center"
+                        style={{ width: `${(month.days / totalDays) * 100}%` }}
+                      >
+                        {month.label}
+                      </div>
+                    ))}
                   </div>
-                  {/* Список задач */}
-                  <div className="divide-y divide-slate-100">
-                    {filteredTasks.map((task) => {
+                  {/* Сегодняшняя дата — метка */}
+                  {(() => {
+                    const today = new Date();
+                    const todayOffset = Math.floor((today.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
+                    const todayPercent = (todayOffset / totalDays) * 100;
+                    if (todayPercent >= 0 && todayPercent <= 100) {
+                      const adjustedLeft = `calc(260px + (100% - 260px) * ${todayPercent / 100})`;
+                      return (
+                        <>
+                          <div
+                            className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10"
+                            style={{ left: adjustedLeft }}
+                          />
+                          <div
+                            className="absolute top-0 z-20 -translate-x-1/2 bg-red-500 text-white text-[10px] font-medium px-1 py-0.5 rounded-b"
+                            style={{ left: adjustedLeft }}
+                          >
+                            {today.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                          </div>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Строки задач */}
+                <div className="divide-y divide-slate-100">
+                  {filteredTasks
+                    .filter((t) => ganttCategories.includes(t.category))
+                    .map((task) => {
+                      const { leftPercent, widthPercent, isOverdue } = getTaskPosition(task);
                       const category = CATEGORIES[task.category];
                       const editable = canEditTask(task);
-                      const { isOverdue } = getTaskPosition(task);
 
                       return (
                         <div
                           key={task._id}
-                          className={`p-3 hover:bg-slate-50 transition-colors ${editable ? 'cursor-pointer' : ''}`}
-                          style={{ height: '56px' }}
+                          className={`flex items-stretch hover:bg-slate-50 transition-colors ${editable ? 'cursor-pointer' : ''}`}
                           onClick={() => editable && openEditModal(task)}
                         >
-                          <div className="flex items-center gap-2">
+                          {/* Левая колонка — название задачи */}
+                          <div className="w-[260px] min-w-[260px] flex-shrink-0 border-r border-slate-100 px-3 py-1.5 flex items-start gap-2">
                             <div
-                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5"
                               style={{ backgroundColor: category.color }}
                             />
-                            <span className="text-sm font-medium text-slate-900 break-words line-clamp-1">{task.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-slate-500 truncate">{task.responsible}</span>
-                            {isOverdue && (
-                              <span className="text-xs text-red-600 font-medium flex-shrink-0">!</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Правая часть — скроллится горизонтально */}
-                <div className="flex-1 overflow-x-auto">
-                  <div style={{ minWidth: `${chartMinWidth}px` }}>
-                    {/* Заголовок с месяцами */}
-                    <div className="relative bg-slate-50 border-b border-slate-200">
-                      <div className="flex">
-                        {months.map((month, idx) => (
-                          <div
-                            key={idx}
-                            className="border-r border-slate-200 px-2 py-3 text-xs font-semibold text-slate-600 text-center"
-                            style={{ width: `${(month.days / totalDays) * 100}%` }}
-                          >
-                            {month.label}
-                          </div>
-                        ))}
-                      </div>
-                      {/* Сегодняшняя дата */}
-                      {(() => {
-                        const today = new Date();
-                        const todayOffset = Math.floor((today.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
-                        const todayPercent = (todayOffset / totalDays) * 100;
-                        if (todayPercent >= 0 && todayPercent <= 100) {
-                          return (
-                            <>
-                              <div
-                                className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10"
-                                style={{ left: `${todayPercent}%` }}
-                              />
-                              <div
-                                className="absolute top-0 z-20 -translate-x-1/2 bg-red-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-b"
-                                style={{ left: `${todayPercent}%` }}
-                              >
-                                {today.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-slate-900 break-words leading-tight">{task.name}</div>
+                              <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                                {task.responsible}
+                                {isOverdue && <span className="text-red-500 font-bold ml-1">!</span>}
                               </div>
-                            </>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
+                            </div>
+                          </div>
 
-                    {/* Полосы задач */}
-                    <div className="divide-y divide-slate-100">
-                      {filteredTasks.map((task) => {
-                        const { leftPercent, widthPercent, isOverdue } = getTaskPosition(task);
-                        const category = CATEGORIES[task.category];
-                        const editable = canEditTask(task);
-
-                        return (
-                          <div
-                            key={task._id}
-                            className="relative hover:bg-slate-50 transition-colors"
-                            style={{ height: '56px' }}
-                          >
+                          {/* Правая часть — полоса */}
+                          <div className="flex-1 relative" style={{ minHeight: '32px' }}>
                             {/* Сегодняшняя линия */}
                             {(() => {
                               const today = new Date();
@@ -698,7 +697,7 @@ export default function RafdezPage() {
 
                             {/* Полоса задачи */}
                             <div
-                              className={`absolute h-7 rounded-md flex items-center justify-between px-2 transition-transform ${editable ? 'cursor-pointer hover:scale-y-110' : ''}`}
+                              className="absolute h-5 rounded flex items-center justify-between px-1.5"
                               style={{
                                 left: `${leftPercent}%`,
                                 width: `${Math.max(widthPercent, 0.5)}%`,
@@ -706,25 +705,23 @@ export default function RafdezPage() {
                                 top: '50%',
                                 transform: 'translateY(-50%)',
                               }}
-                              onClick={() => editable && openEditModal(task)}
                               title={`${task.name}\n${new Date(task.startDate).toLocaleDateString('ru-RU')} — ${new Date(task.endDate).toLocaleDateString('ru-RU')}`}
                             >
-                              <span className="text-xs text-white font-medium whitespace-nowrap">
+                              <span className="text-[10px] text-white font-medium whitespace-nowrap">
                                 {new Date(task.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                               </span>
-                              {widthPercent > 3 && (
-                                <span className="text-xs text-white font-medium whitespace-nowrap">
+                              {widthPercent > 4 && (
+                                <span className="text-[10px] text-white font-medium whitespace-nowrap">
                                   {new Date(task.endDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                                 </span>
                               )}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                        </div>
+                      );
+                    })}
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
