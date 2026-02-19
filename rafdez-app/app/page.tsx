@@ -81,6 +81,7 @@ export default function RafdezPage() {
   const [ganttCategories, setGanttCategories] = useState<TaskCategory[]>(
     Object.keys(CATEGORIES) as TaskCategory[]
   );
+  const [hiddenTaskIds, setHiddenTaskIds] = useState<Set<string>>(new Set());
 
   // Форма задачи
   const [formData, setFormData] = useState<Omit<ProjectTask, '_id' | 'createdAt' | 'updatedAt'>>({
@@ -602,7 +603,20 @@ export default function RafdezPage() {
               })}
             </div>
 
-            {filteredTasks.filter((t) => ganttCategories.includes(t.category)).length === 0 ? (
+            {/* Скрытые задачи */}
+            {hiddenTaskIds.size > 0 && (
+              <div className="px-4 py-1.5 border-b border-slate-200 flex items-center gap-2">
+                <span className="text-xs text-slate-400">Скрыто задач: {hiddenTaskIds.size}</span>
+                <button
+                  onClick={() => setHiddenTaskIds(new Set())}
+                  className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                >
+                  Показать все
+                </button>
+              </div>
+            )}
+
+            {filteredTasks.filter((t) => ganttCategories.includes(t.category) && !hiddenTaskIds.has(t._id || '')).length === 0 ? (
               <div className="p-12 text-center text-slate-500">
                 Нет задач для отображения.
               </div>
@@ -650,7 +664,7 @@ export default function RafdezPage() {
                 {/* Строки задач */}
                 <div className="divide-y divide-slate-100">
                   {filteredTasks
-                    .filter((t) => ganttCategories.includes(t.category))
+                    .filter((t) => ganttCategories.includes(t.category) && !hiddenTaskIds.has(t._id || ''))
                     .map((task) => {
                       const { leftPercent, widthPercent, isOverdue } = getTaskPosition(task);
                       const category = CATEGORIES[task.category];
@@ -664,6 +678,25 @@ export default function RafdezPage() {
                         >
                           {/* Левая колонка — название задачи */}
                           <div className="w-[260px] min-w-[260px] flex-shrink-0 border-r border-slate-100 px-3 py-1.5 flex items-start gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (task._id) {
+                                  setHiddenTaskIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(task._id!);
+                                    return next;
+                                  });
+                                }
+                              }}
+                              className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-300 hover:text-slate-500 transition-colors"
+                              title="Скрыть задачу"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                              </svg>
+                            </button>
                             <div
                               className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5"
                               style={{ backgroundColor: category.color }}
